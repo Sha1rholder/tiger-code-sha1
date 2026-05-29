@@ -1,0 +1,9 @@
+draft*
+.venv/
+__pycache__/
+
+/build/
+/luna_pinyin.userdb/
+/installation.yaml
+/user.yaml
+/default.custom.yaml

@@ -1,0 +1,81 @@
+schema:
+  schema_id: tiger_sc
+  name: tiger_sc
+  version: "1.0"
+  author: Sha1rholder (sha1rholder@outlook.com)
+  dependencies:
+    - tiger_py
+  description: 超级简体虎码
+
+ascii_composer:
+  switch_key:
+    Caps_Lock: clear
+    Control_L: inline_ascii
+    Control_R: inline_ascii
+    Eisu_toggle: clear
+    Shift_L: commit_code
+    Shift_R: commit_code
+
+switches:
+  - name: full_shape
+    reset: 0
+    states:
+      - 半角
+      - 全角
+
+engine:
+  processors:
+    - ascii_composer
+    - recognizer
+    - key_binder
+    - speller
+    - punctuator
+    - selector
+    - navigator
+    - express_editor
+  segmentors:
+    - ascii_segmentor
+    - matcher
+    - abc_segmentor
+    - punct_segmentor
+    - fallback_segmentor
+  translators:
+    - punct_translator
+    - reverse_lookup_translator
+    - table_translator
+  filters:
+    - uniquifier
+
+speller:
+  alphabet: zyxwvutsrqponmlkjihgfedcba
+
+translator:
+  enable_sentence: false
+  enable_user_dict: false
+  dictionary: tiger_sc
+
+reverse_lookup:
+  dictionary: tiger_py
+  prefix: "|"
+  tips: （拼音）
+  preedit_format:
+    - xform/([nl])v/$1ü/
+    - xform/([nl])ue/$1üe/
+    - xform/([jqxy])v/$1u/
+  comment_format: [xform/^/ /]
+
+key_binder:
+  bindings:
+    - { when: has_menu, accept: minus, send: Page_Up }
+    - { when: has_menu, accept: equal, send: Page_Down }
+    - { when: has_menu, accept: Right, send: Down }
+    - { when: has_menu, accept: Left, send: Up }
+
+recognizer:
+  import_preset: default
+  patterns:
+    punct: ^/([0-9]0?|[A-Za-z]+)$
+    reverse_lookup: ^\|[a-z]*'?$
+
+punctuator:
+  import_preset: symbols
