@@ -1,7 +1,5 @@
 name: tiger_add
 version: "1.0"
-sort: by_weight
-use_preset_vocabulary: false
 columns:
   - code
   - weight
@@ -71,11 +69,12 @@ xt	9	解释
 xw	9	解决
 zy	9	甚至
 zz	9	哥哥
+Sha	9	Sha1rholder
 cex	9	屄
+hqy	9	hqywygd
 kpd	9	浏览器
 out	9	outlook
 sha	9	sha1rholder
-sha	8	Sha1rholder
 cdrj	9	屌
 jmjj	9	肏
 jvfs	9	人月神话

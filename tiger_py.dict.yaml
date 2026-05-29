@@ -1,6 +1,5 @@
 name: tiger_py
 version: "1.0"
-use_preset_vocabulary: false
 columns:
   - code
   - weight
