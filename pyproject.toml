@@ -2,6 +2,7 @@
 name = "tiger-code-sha1"
 version = "1.0"
 requires-python = ">=3.14"
+dependencies = ["wordfreq"]
 
 [tool.ruff.format]
 indent-style = "tab"

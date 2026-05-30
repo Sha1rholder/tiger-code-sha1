@@ -1,1 +1,1 @@
-Python: use uv
+`uv run src/update_tiger.py`

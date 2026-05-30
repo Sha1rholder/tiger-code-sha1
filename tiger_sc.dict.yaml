@@ -6,6 +6,7 @@ columns:
   - text
 import_tables:
   - tiger_add
+  - tiger_en
 ...
 a	1313926	来
 b	613530	如

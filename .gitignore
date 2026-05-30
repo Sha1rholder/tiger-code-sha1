@@ -1,4 +1,7 @@
 draft*
+temp*
+wiki/
+
 .venv/
 __pycache__/
 
