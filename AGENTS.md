@@ -1,1 +1,1 @@
-`uv run src/update_tiger.py`
+`uv run src/main.py`
