@@ -11,7 +11,6 @@ from rime_dict import (
 	parse_columns,
 	require_columns,
 	row_from_fields,
-	sort_by_code,
 	split_header_and_tsv,
 	write_dict,
 )
@@ -48,14 +47,21 @@ def extract_rows(
 	return list(rows_by_text.values())
 
 
+def sort_by_weight_and_code(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+	"""先权重降序，再短码，最后按字母序。"""
+	return sorted(
+		rows, key=lambda row: (-int(row["weight"]), len(row["code"]), row["code"])
+	)
+
+
 def main() -> None:
-	"""读上游、按字去重取高权重、写回简体虎码字典。"""
+	"""读上游、按字去重取高权重、按权重与编码排序后写回简体虎码字典。"""
 	sc2013 = load_sc2013()
 	source_header, source_tsv = split_header_and_tsv(SOURCE)
 	target_header, _ = split_header_and_tsv(TARGET)
 	target_columns = parse_columns(target_header)
 
-	rows = sort_by_code(extract_rows(source_header, source_tsv, sc2013))
+	rows = sort_by_weight_and_code(extract_rows(source_header, source_tsv, sc2013))
 	target_tsv = format_rows(target_columns, rows)
 
 	write_dict(TARGET, target_header, target_tsv)
