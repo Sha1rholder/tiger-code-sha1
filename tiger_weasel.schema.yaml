@@ -42,6 +42,9 @@ engine:
     - punct_translator
     - reverse_lookup_translator
     - table_translator
+  filters:
+    - lua_filter@english_weight_filter
+    - uniquifier
 
 speller:
   alphabet: zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA
