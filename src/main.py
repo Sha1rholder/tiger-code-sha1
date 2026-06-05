@@ -255,7 +255,7 @@ def build_en_raw() -> list[Entry]:
 	frequencies = get_frequency_dict("en")
 	entries: list[Entry] = []
 	for word, frequency in frequencies.items():
-		if len(word) <= 4:
+		if len(word) <= 3:
 			continue
 		if not word.isalpha() or not word.isascii() or not word.islower():
 			continue

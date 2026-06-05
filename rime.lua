@@ -1,1 +1,2 @@
-english_weight_filter = require("lua/english_weight_filter")
+---@diagnostic disable-next-line: lowercase-global
+english_weight_filter = require("english_weight_filter")
