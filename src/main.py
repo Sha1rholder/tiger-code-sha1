@@ -1,4 +1,4 @@
-from utils import add, en, py, sc2013, tiger
+from utils import add, en, py_sc, sc2013, tiger
 
 
 def replace_tsv(filename: str, rows: list[tuple[str, str]]) -> None:
@@ -23,8 +23,8 @@ def main() -> None:
 	# 用sc2013.py生成sc2013
 	sc2013_set = sc2013.get_result()
 
-	# 调用py.py，用py替换tiger_py.dict.yaml的tsv部分
-	py_rows = py.get_result(sc2013_set)
+	# 调用py_sc.py，用py替换tiger_py.dict.yaml的tsv部分
+	py_rows = py_sc.get_result(sc2013_set)
 	replace_tsv("tiger_py.dict.yaml", py_rows)
 
 	# 用tiger.py获取tiger，用add.py获取add，用en.py获取en并处理

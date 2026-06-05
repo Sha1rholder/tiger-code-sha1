@@ -1,7 +1,7 @@
 def get_result(sc2013: set[str]) -> list[tuple[str, str]]:
-	"""返回按原顺序过滤后的拼音单字(code, text)列表。"""
-	# 从`upstream/PY_c.dict.yaml`的tsv部分提取(code, text)列表py
-	py: list[tuple[str, str]] = []
+	"""返回按词频降序排列并过滤后的拼音单字(code, text)列表。"""
+	# 从`upstream/PY_c.dict.yaml`的tsv部分提取(text, code, weight)列表py_raw
+	py_raw: list[tuple[str, str, int]] = []
 
 	with open("upstream/PY_c.dict.yaml", encoding="utf-8") as f:
 		after_sep = False
@@ -14,17 +14,26 @@ def get_result(sc2013: set[str]) -> list[tuple[str, str]]:
 				continue
 
 			parts = line.split("\t")
-			if len(parts) < 2:
+			if len(parts) < 3:
 				raise SystemExit(f"第{line_number}行不是有效的TSV行：{line}")
-			text, code = parts[:2]
+			text, code, weight_text = parts[:3]
 
-			# 去掉所有text不在sc2013中的行（text必须完全严格匹配，因此只会保留单字）
+			# 只保留text在sc2013中的元组
 			if text not in sc2013:
 				continue
 
-			py.append((code, text))
+			try:
+				weight = int(weight_text)
+			except ValueError as error:
+				raise SystemExit(f"第{line_number}行weight不是整数：{line}") from error
 
-	return py
+			py_raw.append((code, text, weight))
+
+	# 按weight降序排列py_raw
+	py_raw.sort(key=lambda row: row[2], reverse=True)
+
+	# py_raw去掉weight列生成(code, text)列表py_sc并返回
+	return [(code, text) for code, text, _weight in py_raw]
 
 
 if __name__ == "__main__":
