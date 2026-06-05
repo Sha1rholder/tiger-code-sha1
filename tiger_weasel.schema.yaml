@@ -43,8 +43,8 @@ engine:
     - reverse_lookup_translator
     - table_translator
   filters:
+    - lua_filter@force_seq
     - uniquifier
-    # - lua_filter@force_seq
 
 speller:
   alphabet: zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA

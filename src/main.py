@@ -32,10 +32,13 @@ def main() -> None:
 	add_rows = add.get_result()
 	en_rows = [(word, word) for word in en.get_result()]
 
+"""
 	# 合并tiger+add+en替换tiger.dict.yaml的tsv部分
 	tiger_add_en = tiger_rows + add_rows + en_rows
 	replace_tsv("tiger.dict.yaml", tiger_add_en)
+"""
 
+	# 合并tiger+add+en, weight
 
 if __name__ == "__main__":
 	main()
