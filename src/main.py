@@ -1,3 +1,5 @@
+from math import ceil, log10
+
 from utils import add, en, py_sc, sc2013, tiger
 
 
@@ -58,8 +60,6 @@ def main() -> None:
 	tiger_add_en = tiger_add + en_rows
 
 	# 更新tiger.dict.yaml
-	from math import ceil, log10
-
 	start_weight = 10 ** ceil(log10(len(tiger_add_en))) if tiger_add_en else 0
 	tiger_add_en_weight = [
 		(code, str(start_weight - index), text)
