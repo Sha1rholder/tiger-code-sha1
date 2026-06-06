@@ -1,5 +1,7 @@
 ---
 name: tiger_sha1_py
+version: "2026.06.06"
+sort: original
 columns:
   - code
   - text

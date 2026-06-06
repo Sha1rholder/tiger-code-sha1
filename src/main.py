@@ -1,5 +1,3 @@
-from math import ceil, log10
-
 from utils import add, en, py_sc, sc2013, tiger
 
 
@@ -54,12 +52,23 @@ def main() -> None:
 
 	tiger_add_en = tiger_add + en_rows
 
-	start_weight = 10 ** ceil(log10(len(tiger_add_en))) if tiger_add_en else 0
+	MAX_WEIGHT = 999999
+	if len(tiger_add_en) > MAX_WEIGHT + 1:
+		print(
+			f"Warning: {len(tiger_add_en) - (MAX_WEIGHT + 1)} entries will have weight clamped to 0"
+		)
 	tiger_add_en_weight = [
-		(code, str(start_weight - index), text)
+		(code, str(max(0, MAX_WEIGHT - index)), text)
 		for index, (code, text) in enumerate(tiger_add_en)
 	]
 	replace_tsv3("tiger_sha1.dict.yaml", tiger_add_en_weight)
+
+	seen: set[tuple[str, str]] = set()
+	for code, text in tiger_add_en:
+		if (code, text) in seen:
+			print(f"Warning: duplicate entry found — code: {code}, text: {text}")
+		else:
+			seen.add((code, text))
 
 
 if __name__ == "__main__":
