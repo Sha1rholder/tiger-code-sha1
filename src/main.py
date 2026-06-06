@@ -1,5 +1,3 @@
-from math import ceil, log10
-
 from utils import add, en, py_sc, sc2013, tiger
 
 
@@ -56,13 +54,14 @@ def main() -> None:
 	tiger_add_en = tiger_rows + add_rows + en_rows
 
 	# 替换tiger.dict.yaml的tsv部分
-	# replace_tsv2("tiger.dict.yaml", tiger_add_en)
-	start_weight = 10 ** ceil(log10(len(tiger_add_en))) if tiger_add_en else 0
-	tiger_add_en_weight = [
-		(code, str(start_weight - index), text)
-		for index, (code, text) in enumerate(tiger_add_en)
-	]
-	replace_tsv3("tiger.dict.yaml", tiger_add_en_weight)
+	replace_tsv2("tiger.dict.yaml", tiger_add_en)
+	# from math import ceil, log10
+	# start_weight = 10 ** ceil(log10(len(tiger_add_en))) if tiger_add_en else 0
+	# tiger_add_en_weight = [
+	# 	(code, str(start_weight - index), text)
+	# 	for index, (code, text) in enumerate(tiger_add_en)
+	# ]
+	# replace_tsv3("tiger.dict.yaml", tiger_add_en_weight)
 
 
 if __name__ == "__main__":
