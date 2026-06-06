@@ -1,9 +1,9 @@
 def get_result(sc2013: set[str]) -> list[tuple[str, str]]:
 	"""返回按词频降序排列并过滤后的拼音单字(code, text)列表。"""
-	# 从`upstream/PY_c.dict.yaml`的tsv部分提取(text, code, weight)列表py_raw
+	# 从`upstream/tiger/PY_c.dict.yaml`的tsv部分提取(text, code, weight)列表py_raw
 	py_raw: list[tuple[str, str, int]] = []
 
-	with open("upstream/PY_c.dict.yaml", encoding="utf-8") as f:
+	with open("upstream/tiger/PY_c.dict.yaml", encoding="utf-8") as f:
 		after_sep = False
 		for line_number, line in enumerate(f, 1):
 			line = line.rstrip("\n")

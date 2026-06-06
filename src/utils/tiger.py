@@ -1,10 +1,10 @@
 def get_result(sc2013: set[str]) -> list[tuple[str, str]]:
 	"""返回按原顺序过滤并去重后的虎码单字(code, text)列表。"""
-	# 从`upstream/tiger.dict.yaml`的tsv部分提取(code, text)列表tiger，保留原顺序
+	# 从`upstream/tiger/tiger.dict.yaml`的tsv部分提取(code, text)列表tiger，保留原顺序
 	tiger: list[tuple[str, str]] = []
 	seen_texts: set[str] = set()
 
-	with open("upstream/tiger.dict.yaml", encoding="utf-8") as f:
+	with open("upstream/tiger/tiger.dict.yaml", encoding="utf-8") as f:
 		after_sep = False
 		for line_number, line in enumerate(f, 1):
 			line = line.rstrip("\n")

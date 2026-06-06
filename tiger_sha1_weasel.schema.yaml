@@ -1,12 +1,11 @@
 ---
 schema:
-  schema_id: tiger_weasel
-  name: tiger_weasel
-  version: "1.0"
+  schema_id: tiger_sha1_weasel
+  name: tiger_sha1_weasel
   author: Sha1rholder (sha1rholder@outlook.com)
   dependencies:
-    - tiger_py
-  description: 中英混输简体虎码
+    - tiger_sha1_py
+  description: 基于虎码的中英混输简体字方案
 
 ascii_composer:
   switch_key:
@@ -52,10 +51,12 @@ speller:
 translator:
   enable_sentence: false
   enable_user_dict: false
-  dictionary: tiger
+  dictionary: tiger_sha1
+  comment_format:
+    - "xform/~/ /"
 
 reverse_lookup:
-  dictionary: tiger_py
+  dictionary: tiger_sha1_py
   prefix: "|"
   tips: （拼音）
   preedit_format:
