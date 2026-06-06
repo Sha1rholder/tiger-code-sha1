@@ -53,7 +53,7 @@ translator:
   enable_user_dict: false
   dictionary: tiger_sha1
   comment_format:
-    - "xform/~/ /"
+    - xform/~/ /
 
 reverse_lookup:
   dictionary: tiger_sha1_py
@@ -63,7 +63,8 @@ reverse_lookup:
     - xform/([nl])v/$1ü/
     - xform/([nl])ue/$1üe/
     - xform/([jqxy])v/$1u/
-  comment_format: [xform/^/ /]
+  comment_format:
+    - xform/^/ /
 
 key_binder:
   bindings:
@@ -71,6 +72,9 @@ key_binder:
     - { when: has_menu, accept: equal, send: Page_Down }
     - { when: has_menu, accept: Right, send: Down }
     - { when: has_menu, accept: Left, send: Up }
+
+menu:
+  page_size: 9
 
 recognizer:
   import_preset: default
