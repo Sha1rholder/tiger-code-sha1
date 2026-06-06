@@ -62,6 +62,9 @@ def replace_tsv3(filename: str, rows: list[tuple[str, str, str]]) -> None:
 
 
 def main() -> None:
+	MAX_WEIGHT = 999999
+	MAX_WEIGHT_EN = 900000
+
 	sc2013_set = sc2013.get_result()
 
 	py_rows = py_sc.get_result(sc2013_set)
@@ -69,31 +72,34 @@ def main() -> None:
 
 	tiger_rows = tiger.get_result(sc2013_set)
 	add_rows, add_sort_start = add.get_result()
-	update_lua_sort_start(len(tiger_rows) + add_sort_start + 1)
 	tiger_add = tiger_rows + add_rows
+	# Rime table_translator still prefers shorter codes; Lua later reorders the tail.
 	tiger_add.sort(key=lambda item: len(item[0]))
 
-	en_rows = [(word, word) for word in en.get_result()]
-
-	tiger_add_en = tiger_add + en_rows
-
-	MAX_WEIGHT = 999999
-	if len(tiger_add_en) > MAX_WEIGHT + 1:
-		print(
-			f"Warning: {len(tiger_add_en) - (MAX_WEIGHT + 1)} entries will have weight clamped to 0"
-		)
-	tiger_add_en_weight = [
+	tiger_add_weight = [
 		(code, str(max(0, MAX_WEIGHT - index)), text)
-		for index, (code, text) in enumerate(tiger_add_en)
+		for index, (code, text) in enumerate(tiger_add)
 	]
+
+	en_rows = [(word, word) for word in en.get_result()]
+	en_rows_weight = [
+		(code, str(max(0, MAX_WEIGHT_EN - index)), text)
+		for index, (code, text) in enumerate(en_rows)
+	]
+
+	tiger_add_en_weight = tiger_add_weight + en_rows_weight
 	replace_tsv3("tiger_sha1.dict.yaml", tiger_add_en_weight)
 
 	seen: set[tuple[str, str]] = set()
-	for code, text in tiger_add_en:
+	for code, _, text in tiger_add_en_weight:
 		if (code, text) in seen:
 			print(f"Warning: duplicate entry found — code: {code}, text: {text}")
 		else:
 			seen.add((code, text))
+
+	# The tail starts at long add entries plus English words, where weight order must be restored by lua/tiger_weight_sort.lua after Rime's code-length sort.
+	add_en_start = len(tiger_rows) + add_sort_start + 1
+	update_lua_sort_start(add_en_start)
 
 
 if __name__ == "__main__":

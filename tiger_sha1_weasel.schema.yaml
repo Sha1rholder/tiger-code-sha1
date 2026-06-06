@@ -43,6 +43,7 @@ engine:
     - table_translator
   filters:
     - lua_filter@*tiger_weight_sort
+    - lua_filter@*tiger_hide_latin_completion_comment
     - uniquifier
 
 speller:
@@ -53,8 +54,8 @@ translator:
   enable_user_dict: false
   dictionary: tiger_sha1
   comment_format:
-    - xform/~//
-    # - xform/^.*$//
+    - xform/~// # 显示补全提示（去掉~）
+    # - xform/^.*$// # 不显示补全提示
 
 reverse_lookup:
   dictionary: tiger_sha1_py
