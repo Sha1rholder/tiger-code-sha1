@@ -25,11 +25,10 @@
 ├── tiger_sha1_py.schema.yaml		# 拼音反查伪方案
 ├── tiger_sha1_py.dict.yaml			# 拼音反查词典
 ├── symbols.yaml					# 符号表
-├── default.custom.yaml				# 默认配置定制
 ├── weasel.custom.yaml				# 小狼毫界面定制
 ├── lua/							# Lua脚本
 │	├── en_weight_sort.lua			# 英文候选按权重排序
-│	└── hide_en_comments.lua		# 隐藏英文补全建议
+│	└── hide_en_comment.lua			# 隐藏英文补全建议
 ├── src/							# 词典生成工具
 │	├── main.py						# 更新dicts
 │	└── utils/						# 工具模块
