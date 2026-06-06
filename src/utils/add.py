@@ -1,4 +1,4 @@
-def get_result() -> list[tuple[str, str]]:
+def get_result() -> tuple[list[tuple[str, str]], int]:
 	"""返回按编码长度和字母顺序稳定排序后的附加词条(code, text)列表。"""
 	# 从`upstream/add.tsv`提取(code, text)列表add
 	add: list[tuple[str, str]] = []
@@ -26,9 +26,16 @@ def get_result() -> list[tuple[str, str]]:
 		for code, text in add:
 			f.write(f"{code}\t{text}\n")
 
-	return add
+	# 第一个码长大于等于5的字符的index，需要lua sort
+	sort_start = next(
+		(index for index, (code, _) in enumerate(add) if len(code) >= 5), len(add)
+	)
+
+	return add, sort_start
 
 
 if __name__ == "__main__":
-	for code, text in get_result():
+	rows, sort_start = get_result()
+	for code, text in rows:
 		print(f"{code}\t{text}")
+	print(sort_start)

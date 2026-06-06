@@ -53,7 +53,8 @@ translator:
   enable_user_dict: false
   dictionary: tiger_sha1
   comment_format:
-    - xform/^.*$//
+    - xform/~//
+    # - xform/^.*$//
 
 reverse_lookup:
   dictionary: tiger_sha1_py

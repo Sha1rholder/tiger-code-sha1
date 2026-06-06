@@ -44,7 +44,7 @@ def main() -> None:
 	replace_tsv2("tiger_sha1_py.dict.yaml", py_rows)
 
 	tiger_rows = tiger.get_result(sc2013_set)
-	add_rows = add.get_result()
+	add_rows, add_sort_start = add.get_result()
 	tiger_add = tiger_rows + add_rows
 	tiger_add.sort(key=lambda item: len(item[0]))
 
