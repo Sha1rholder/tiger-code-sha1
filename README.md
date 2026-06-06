@@ -1,0 +1,68 @@
+# Tiger Code SHA1
+
+基于虎码改良的中英混合简体输入方案
+
+目前仅支持Weasel小狼毫，未来会支持全平台
+
+## 特性（对比虎码秃版）
+
+- **拼音反查**：通过`|`前缀触发拼音反查功能
+- **中英混输**：支持中文和英文混合输入，无需切换输入法
+- **英文词库**：集成英文词库，支持首字母大写
+- **规范汉字**：默认仅收录《通用规范汉字表（2013）》中的标准简体字
+- **智能排序**：使用Lua脚本实现按权重而非码长排序候选英文单词
+- **自定义加词**：自定义加词可通过`src/main.py`自动sort并同步到输入方案中
+- **特殊符号**：见`symbols.yaml`，切换到全角可输入一些常用特殊符号
+- **唯一编码**：所有字符只保留唯一编码以降低心智负担
+- **永不自动上屏**：即使唯一候选也要按空格上屏
+- **永不自动清除buffer**：可以输入超过4码以实现更流畅的中英混输
+
+## 文件结构
+
+```text
+├── tiger_sha1_weasel.schema.yaml	# 主输入方案
+├── tiger_sha1.dict.yaml			# 主词典（含中英文）
+├── tiger_sha1_py.schema.yaml		# 拼音反查伪方案
+├── tiger_sha1_py.dict.yaml			# 拼音反查词典
+├── symbols.yaml					# 符号表
+├── default.custom.yaml				# 默认配置定制
+├── weasel.custom.yaml				# 小狼毫界面定制
+├── lua/							# Lua脚本
+│	├── en_weight_sort.lua			# 英文候选按权重排序
+│	└── hide_en_comments.lua		# 隐藏英文补全建议
+├── src/							# 词典生成工具
+│	├── main.py						# 更新dicts
+│	└── utils/						# 工具模块
+│		├── tiger.py				# 虎码处理
+│		├── en.py					# 英文处理
+│		├── py_sc.py				# 拼音处理
+│		├── sc2013.py				# 规范汉字处理
+│		└── add.py					# 附加词条处理
+└── upstream/						# 上游数据
+	├── tiger/						# 虎码原始数据
+	├── SC2013/						# 通用规范汉字表
+	├── ESDB.txt					# 英文拼写数据库
+	└── add.tsv						# 附加词条
+```
+
+## 使用方法
+
+1. 安装Weasel小狼毫
+2. 将本仓库内容复制或`git clone`（建议浅clone）到Rime用户数据目录`%APPDATA%\Rime`
+3. 重新部署Rime
+
+若要加减词，请编辑`upstream/add.tsv`，然后执行`uv run src/main.py`以更新词典。不需要手动整理`upstream/add.tsv`，脚本会自动处理
+
+词典生成工具会：
+1. 从虎码原始数据提取规范汉字编码
+2. 生成拼音反查词典
+3. 集成高频英文单词
+4. 按权重排序所有词条
+
+## 致谢
+
+- [虎码输入法](https://tiger-code.com) - 原始编码方案
+- [Rime Weasel](https://rime.im/) - 输入引擎
+- [通用规范汉字表](https://github.com/shengdoushi/common-standard-chinese-characters-table) - 数据集
+- [English Speller Database](https://wordlist.aspell.net/) - 英语单词数据库
+- [wordfreq](https://github.com/rspeer/wordfreq) - 英语词频数据库

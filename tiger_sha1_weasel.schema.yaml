@@ -5,7 +5,7 @@ schema:
   author: Sha1rholder (sha1rholder@outlook.com)
   dependencies:
     - tiger_sha1_py
-  description: 基于虎码的中英混输简体字方案
+  description: 基于虎码改良的中英混输简体字方案
 
 ascii_composer:
   switch_key:
@@ -43,7 +43,7 @@ engine:
     - table_translator
   filters:
     - lua_filter@*en_weight_sort
-    - lua_filter@*hide_latin_comment
+    - lua_filter@*hide_en_comment
     - uniquifier
 
 speller:

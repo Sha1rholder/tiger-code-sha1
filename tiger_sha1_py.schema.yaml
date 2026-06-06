@@ -1,7 +1,7 @@
 ---
 schema:
   schema_id: tiger_sha1_py
-  name: tiger_sha1的单字拼音反查伪方案，勿用
+  name: （伪方案勿用）拼音反查
 translator:
   dictionary: tiger_sha1_py
   prism: tiger_sha1_py
