@@ -88,6 +88,7 @@ menu:
 recognizer:
   import_preset: default
   patterns:
+    uppercase: "a^"
     reverse_lookup: ^\|[a-z]*'?$
 
 punctuator:

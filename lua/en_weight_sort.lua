@@ -2,7 +2,7 @@
 
 ---按`tiger_sha1.dict.yaml`中的weight重排虎码候选，绕过Rime默认的码长优先排序
 
-local MAX_WEIGHT_EN = 900000 -- from src/main.py
+local MAX_WEIGHT_EN = 400000 -- = MAX_WEIGHT_EN in src/main.py
 
 local entries = {}
 local loaded = false

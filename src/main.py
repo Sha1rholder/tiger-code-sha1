@@ -38,8 +38,12 @@ def replace_tsv3(filename: str, rows: list[tuple[str, str, str]]) -> None:
 
 
 def main() -> None:
-	MAX_WEIGHT = 999999
-	MAX_WEIGHT_EN = 900000
+	MAX_WEIGHT_1 = 900000
+	MAX_WEIGHT_2 = 800000
+	MAX_WEIGHT_3 = 700000
+	MAX_WEIGHT_4 = 600000
+	MAX_WEIGHT_more = 500000
+	MAX_WEIGHT_EN = 400000
 
 	sc2013_set = sc2013.get_result()
 
@@ -51,10 +55,20 @@ def main() -> None:
 	tiger_add = tiger_rows + add_rows
 	tiger_add.sort(key=lambda item: len(item[0]))
 
-	tiger_add_weight = [
-		(code, str(max(0, MAX_WEIGHT - index)), text)
-		for index, (code, text) in enumerate(tiger_add)
-	]
+	max_weight_by_code_len = {
+		1: MAX_WEIGHT_1,
+		2: MAX_WEIGHT_2,
+		3: MAX_WEIGHT_3,
+		4: MAX_WEIGHT_4,
+	}
+	code_len_counts: dict[int, int] = {}
+	tiger_add_weight = []
+	for code, text in tiger_add:
+		code_len = len(code) if len(code) < 5 else 5
+		index = code_len_counts.get(code_len, 0)
+		max_weight = max_weight_by_code_len.get(code_len, MAX_WEIGHT_more)
+		tiger_add_weight.append((code, str(max(0, max_weight - index)), text))
+		code_len_counts[code_len] = index + 1
 
 	en_rows = [(word, word) for word in en.get_result()]
 	en_rows_weight = [
