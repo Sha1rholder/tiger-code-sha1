@@ -30,7 +30,6 @@ def get_result() -> list[tuple[str, str]]:
 
 
 if __name__ == "__main__":
-	rows, sort_start = get_result()
+	rows = get_result()
 	for code, text in rows:
 		print(f"{code}\t{text}")
-	print(sort_start)
