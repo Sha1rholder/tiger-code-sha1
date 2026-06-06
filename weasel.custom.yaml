@@ -19,7 +19,7 @@ patch:
       text_color: 0xc9c9c9
   style:
     color_font: true
-    font_face: "Noto Sans SC"
+    font_face: Noto Sans SC
     font_point: 16
     color_scheme: polycarbonate-dark
     horizontal: true
@@ -31,3 +31,4 @@ patch:
       margin_x: 5
       margin_y: 5
       min_width: 0
+      max_width: 800
