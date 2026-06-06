@@ -1,1 +1,1 @@
-`uv run src/main.py`
+`uv run src/main.py` to update dictionaries

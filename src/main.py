@@ -45,17 +45,21 @@ def main() -> None:
 	py_rows = py_sc.get_result(sc2013_set)
 	replace_tsv2("tiger_py.dict.yaml", py_rows)
 
-	# 用tiger.py获取tiger，用add.py获取add，用en.py获取en并处理
+	# 合并tiger和add为tiger_add
 	tiger_rows = tiger.get_result(sc2013_set)
 	add_rows = add.get_result()
+	tiger_add = tiger_rows + add_rows
+	tiger_add.sort(key=lambda item: len(item[0]))
+
+	# 处理en
 	en_rows = [(word, word) for word in en.get_result()]
 
-	# 合并tiger+add+en
-	tiger_add_en = tiger_rows + add_rows + en_rows
+	# 合并tiger_add和en为tiger_add_en
+	tiger_add_en = tiger_add + en_rows
 
-	# 替换tiger.dict.yaml的tsv部分
-	# replace_tsv2("tiger.dict.yaml", tiger_add_en)
+	# 更新tiger.dict.yaml
 	from math import ceil, log10
+
 	start_weight = 10 ** ceil(log10(len(tiger_add_en))) if tiger_add_en else 0
 	tiger_add_en_weight = [
 		(code, str(start_weight - index), text)
