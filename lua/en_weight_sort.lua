@@ -1,8 +1,6 @@
 ---@diagnostic disable: undefined-global
 
----按`tiger_sha1.dict.yaml`中的weight重排虎码候选，绕过Rime默认的码长优先排序
-
-local MAX_WEIGHT_EN = 400000 -- = MAX_WEIGHT_EN in src/main.py
+---按`tiger_sha1_en.dict.yaml`中的weight重排英文候选，绕过Rime默认的码长优先排序
 
 local entries = {}
 local loaded = false
@@ -15,14 +13,14 @@ local function data_dir()
 end
 
 local function open_dict()
-	local file = io.open(data_dir() .. "/tiger_sha1.dict.yaml", "r")
+	local file = io.open(data_dir() .. "/tiger_sha1_en.dict.yaml", "r")
 	if file ~= nil then
 		return file
 	end
-	return io.open("tiger_sha1.dict.yaml", "r")
+	return io.open("tiger_sha1_en.dict.yaml", "r")
 end
 
----读取`tiger_sha1.dict.yaml`正文，按text缓存需要Lua重排的尾段词条
+---读取`tiger_sha1_en.dict.yaml`正文，按text缓存需要Lua重排的英文词条
 local function load_weights()
 	if loaded then
 		return
@@ -34,7 +32,7 @@ local function load_weights()
 	local file = open_dict()
 	if file == nil then
 		if log ~= nil and log.warning ~= nil then
-			log.warning("tiger_weight_sort: failed to open tiger_sha1.dict.yaml")
+			log.warning("tiger_weight_sort: failed to open tiger_sha1_en.dict.yaml")
 		end
 		return
 	end
@@ -48,7 +46,7 @@ local function load_weights()
 			-- 词典正文格式：code<TAB>weight<TAB>text
 			local code, weight_text, text = line:match("^([^\t]+)\t([^\t]+)\t(.+)$")
 			local weight = tonumber(weight_text)
-			if code ~= nil and text ~= nil and weight ~= nil and weight <= MAX_WEIGHT_EN then
+			if code ~= nil and text ~= nil and weight ~= nil then
 				if entries[text] == nil then
 					entries[text] = {}
 					count = count + 1
@@ -67,7 +65,7 @@ local function load_weights()
 	file:close()
 
 	if log ~= nil and log.info ~= nil then
-		log.info("tiger_weight_sort: loaded " .. count .. " weights from weight " .. MAX_WEIGHT_EN)
+		log.info("tiger_weight_sort: loaded " .. count .. " weights from tiger_sha1_en.dict.yaml")
 	end
 end
 

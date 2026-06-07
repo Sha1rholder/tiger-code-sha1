@@ -21,23 +21,24 @@
 
 ```text
 ├── tiger_sha1_weasel.schema.yaml	# 主输入方案
-├── tiger_sha1.dict.yaml			# 主词典（含中英文）
+├── tiger_sha1.dict.yaml			# 主词典
+├── tiger_sha1_en.dict.yaml			# 英文词典
 ├── tiger_sha1_py.schema.yaml		# 拼音反查伪方案
 ├── tiger_sha1_py.dict.yaml			# 拼音反查词典
 ├── symbols.yaml					# 符号表
 ├── weasel.custom.yaml				# 小狼毫界面定制
-├── lua/							# Lua脚本
+├── lua/
 │	├── en_weight_sort.lua			# 英文候选按权重排序
 │	└── hide_en_comment.lua			# 隐藏英文补全建议
-├── src/							# 词典生成工具
+├── src/
 │	├── main.py						# 更新dicts
-│	└── utils/						# 工具模块
+│	└── utils/
 │		├── tiger.py				# 虎码处理
 │		├── en.py					# 英文处理
 │		├── py_sc.py				# 拼音处理
 │		├── sc2013.py				# 规范汉字处理
 │		└── add.py					# 附加词条处理
-└── upstream/						# 上游数据
+└── upstream/
 	├── tiger/						# 虎码原始数据
 	├── SC2013/						# 通用规范汉字表
 	├── ESDB.txt					# 英文拼写数据库

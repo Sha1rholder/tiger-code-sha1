@@ -76,11 +76,11 @@ def main() -> None:
 		for index, (code, text) in enumerate(en_rows)
 	]
 
-	tiger_add_en_weight = tiger_add_weight + en_rows_weight
-	replace_tsv3("tiger_sha1.dict.yaml", tiger_add_en_weight)
+	replace_tsv3("tiger_sha1.dict.yaml", tiger_add_weight)
+	replace_tsv3("tiger_sha1_en.dict.yaml", en_rows_weight)
 
 	seen: set[tuple[str, str]] = set()
-	for code, _, text in tiger_add_en_weight:
+	for code, _, text in tiger_add_weight + en_rows_weight:
 		if (code, text) in seen:
 			print(f"Warning: duplicate entry found — code: {code}, text: {text}")
 		else:
