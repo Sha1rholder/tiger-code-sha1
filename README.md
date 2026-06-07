@@ -46,7 +46,7 @@
 
 ## 使用方法
 
-1. 安装Weasel小狼毫
+1. 安装Weasel小狼毫和Noto Sans SC字体
 2. 将本仓库内容复制或`git clone`（建议浅clone）到Rime用户数据目录`%APPDATA%\Rime`
 3. 重新部署Rime
 
@@ -60,8 +60,8 @@
 
 ## 致谢
 
-- [虎码输入法](https://tiger-code.com) - 原始编码方案
-- [Rime Weasel](https://rime.im/) - 输入引擎
+- [虎码输入法](https://www.tiger-code.com) - 原始编码方案
+- [Rime Weasel](https://rime.im) - 输入引擎
 - [通用规范汉字表](https://github.com/shengdoushi/common-standard-chinese-characters-table) - 数据集
-- [English Speller Database](https://wordlist.aspell.net/) - 英语单词数据库
+- [English Speller Database](https://wordlist.aspell.net) - 英语单词数据库
 - [wordfreq](https://github.com/rspeer/wordfreq) - 英语词频数据库
