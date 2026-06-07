@@ -52,7 +52,7 @@ speller:
 translator:
   enable_sentence: false
   enable_user_dict: false
-  dictionary: tiger_sha1
+  dictionary: tiger_sha1_weasel
   comment_format:
     - xform/~//
 

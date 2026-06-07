@@ -17,6 +17,14 @@ def get_result() -> list[tuple[str, str]]:
 
 			add.append((code, text))
 
+	# 检查重复的text并警告
+	seen_text: set[str] = set()
+	for _, text in add:
+		if text in seen_text:
+			print(f"警告：text '{text}' 重复")
+		else:
+			seen_text.add(text)
+
 	# 先按code长度升序排列；后对于相同的code长度，按字母顺序（先a后z）排列；再对于相同的code，按原先后顺序排列
 	add.sort(key=lambda item: (len(item[0]), item[0].casefold()))
 

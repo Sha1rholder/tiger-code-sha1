@@ -1,6 +1,5 @@
 code	text
 a	函数
-B	<blockquote>
 b	如果
 b	张君一
 b	君一
@@ -33,9 +32,9 @@ w	怎么
 x	应该
 y	当然
 aa	静静
-ap	函数
-BB	</blockquote>
 bb	妈妈
+bq	<blockquote>
+bq	</blockquote>
 dd	哈哈
 dv	虽然
 ee	想想

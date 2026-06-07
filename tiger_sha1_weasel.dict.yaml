@@ -1,0 +1,13 @@
+---
+name: tiger_sha1_weasel
+version: 2026.06.07
+sort: by_weight
+columns:
+  - code
+  - weight
+  - text
+import_tables:
+  - alphabet
+  - tiger_sha1
+  - tiger_sha1_en
+...
