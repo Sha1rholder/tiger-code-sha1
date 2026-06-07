@@ -1,6 +1,6 @@
 ---
 name: tiger_sha1_py
-version: "2026.06.07"
+version: 2026.06.07
 sort: original
 columns:
   - code

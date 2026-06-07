@@ -10,6 +10,7 @@
 - **中英混输**：支持中文和英文混合输入，无需切换输入法
 - **英文词库**：集成英文词库，支持首字母大写
 - **规范汉字**：默认仅收录《通用规范汉字表（2013）》中的标准简体字
+- **中文补全**：使用前缀局部权重保持补全排序，并减少加词时的词典diff
 - **英文候选**：使用Lua translator按词表顺序惰性产出英文候选，避免短前缀全量排序
 - **自定义加词**：自定义加词可通过`src/main.py`自动sort并同步到输入方案中
 - **特殊符号**：见`symbols.yaml`，切换到全角可输入一些常用特殊符号
@@ -58,16 +59,7 @@
 1. 从虎码原始数据提取规范汉字编码
 2. 生成拼音反查词典
 3. 集成高频英文单词
-4. 按词表顺序生成所有词条
-
-英文候选性能评估：
-
-```powershell
-uv run python bench/en_candidate_perf.py
-uv run python bench/en_candidate_perf.py --format json --output bench/en_candidate_perf.report.json
-```
-
-实现原理见`docs/english-candidate-performance.md`。
+4. 为中文词条生成前缀局部权重，英文词条保持词表顺序
 
 ## 致谢
 
