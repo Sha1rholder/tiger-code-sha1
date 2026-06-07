@@ -10,7 +10,7 @@
 - **中英混输**：支持中文和英文混合输入，无需切换输入法
 - **英文词库**：集成英文词库，支持首字母大写
 - **规范汉字**：默认仅收录《通用规范汉字表（2013）》中的标准简体字
-- **智能排序**：使用Lua脚本实现按权重而非码长排序候选英文单词
+- **英文候选**：使用Lua translator按词频权重惰性产出英文候选，避免短前缀全量排序
 - **自定义加词**：自定义加词可通过`src/main.py`自动sort并同步到输入方案中
 - **特殊符号**：见`symbols.yaml`，切换到全角可输入一些常用特殊符号
 - **唯一编码**：所有字符只保留唯一编码以降低心智负担
@@ -29,7 +29,7 @@
 ├── symbols.yaml					# 符号表
 ├── weasel.custom.yaml				# 小狼毫界面定制
 ├── lua/
-│	├── en_weight_sort.lua			# 英文候选按权重排序
+│	├── en_weight_translate.lua		# 英文候选按权重惰性产出
 │	└── hide_en_comment.lua			# 隐藏英文补全建议
 ├── src/
 │	├── main.py						# 更新dicts
@@ -59,6 +59,15 @@
 2. 生成拼音反查词典
 3. 集成高频英文单词
 4. 按权重排序所有词条
+
+英文候选性能评估：
+
+```powershell
+uv run python bench/en_candidate_perf.py
+uv run python bench/en_candidate_perf.py --format json --output bench/en_candidate_perf.report.json
+```
+
+实现原理见`docs/english-candidate-performance.md`。
 
 ## 致谢
 

@@ -9,5 +9,4 @@ columns:
 import_tables:
   - alphabet
   - tiger_sha1
-  - tiger_sha1_en
 ...

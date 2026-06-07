@@ -41,8 +41,8 @@ engine:
     - punct_translator
     - reverse_lookup_translator
     - table_translator
+    - lua_translator@*en_weight_translate
   filters:
-    - lua_filter@*en_weight_sort
     - lua_filter@*hide_en_comment
     - uniquifier
 
@@ -55,6 +55,9 @@ translator:
   dictionary: tiger_sha1_weasel
   comment_format:
     - xform/~//
+
+en_weight_translate:
+  enable_perf_log: false
 
 reverse_lookup:
   dictionary: tiger_sha1_py
