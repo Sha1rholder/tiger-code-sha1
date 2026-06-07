@@ -23,6 +23,7 @@
 ├── tiger_sha1_weasel.schema.yaml	# 主输入方案
 ├── tiger_sha1.dict.yaml			# 主词典
 ├── tiger_sha1_en.dict.yaml			# 英文词典
+├── alphabet.dict.yaml				# 大写字母表
 ├── tiger_sha1_py.schema.yaml		# 拼音反查伪方案
 ├── tiger_sha1_py.dict.yaml			# 拼音反查词典
 ├── symbols.yaml					# 符号表
