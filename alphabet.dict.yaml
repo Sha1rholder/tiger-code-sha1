@@ -1,34 +1,34 @@
 ---
 name: alphabet
-version: "2026.06.07"
+version: "2026.06.08"
+sort: original
 columns:
   - code
-  - weight
   - text
 ...
-A	999999	A
-B	999999	B
-C	999999	C
-D	999999	D
-E	999999	E
-F	999999	F
-G	999999	G
-H	999999	H
-I	999999	I
-J	999999	J
-K	999999	K
-L	999999	L
-M	999999	M
-N	999999	N
-O	999999	O
-P	999999	P
-Q	999999	Q
-R	999999	R
-S	999999	S
-T	999999	T
-U	999999	U
-V	999999	V
-W	999999	W
-X	999999	X
-Y	999999	Y
-Z	999999	Z
+A	A
+B	B
+C	C
+D	D
+E	E
+F	F
+G	G
+H	H
+I	I
+J	J
+K	K
+L	L
+M	M
+N	N
+O	O
+P	P
+Q	Q
+R	R
+S	S
+T	T
+U	U
+V	V
+W	W
+X	X
+Y	Y
+Z	Z

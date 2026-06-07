@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global
 
----Yield English candidates lazily in tiger_sha1_en.dict.yaml weight order.
+---Yield English candidates lazily in tiger_sha1_en.dict.yaml order.
 
 local MAX_PREFIX_LEN = 4
 local DICT_NAME = "tiger_sha1_en.dict.yaml"
@@ -63,16 +63,14 @@ local function load_entries()
 	local rank = 0
 	for line in file:lines() do
 		if in_body then
-			rank = rank + 1
-			-- Dictionary body format: code<TAB>weight<TAB>text.
-			local code, weight_text, text = line:match("^([^\t]+)\t([^\t]+)\t(.+)$")
-			local weight = tonumber(weight_text)
-			if code ~= nil and text ~= nil and weight ~= nil then
+			-- Dictionary body format: code<TAB>text.
+			local code, text = line:match("^([^\t]+)\t(.+)$")
+			if code ~= nil and text ~= nil then
+				rank = rank + 1
 				count = count + 1
 				add_entry({
 					code = code,
 					text = text,
-					weight = weight,
 					rank = rank,
 				})
 			end
