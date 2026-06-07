@@ -1,11 +1,13 @@
 ---
 name: tiger_sha1
-version: "2026.06.06"
+version: "2026.06.07"
 sort: by_weight
 columns:
   - code
   - weight
   - text
+import_tables:
+  - tiger_sha1_en
 ...
 u	900000	的
 f	899999	一

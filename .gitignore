@@ -1,6 +1,7 @@
 draft*
 temp*
 wiki/
+reference/
 
 .venv/
 __pycache__/

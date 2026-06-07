@@ -1,0 +1,9 @@
+---
+name: tiger_sha1_en
+version: "2026.06.07"
+sort: by_weight
+columns:
+  - code
+  - weight
+  - text
+...
