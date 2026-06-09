@@ -26,6 +26,7 @@ switches:
 engine:
   processors:
     - ascii_composer
+    - lua_processor@commit_raw_before_symbol
     - recognizer
     - key_binder
     - speller
