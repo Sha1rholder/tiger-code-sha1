@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global
 
----Yield English candidates lazily in tiger_sha1_en.dict.yaml order.
+---按 tiger_sha1_en.dict.yaml 顺序懒加载产出英文候选词
 
 local MAX_PREFIX_LEN = 4
 local DICT_NAME = "tiger_sha1_en.dict.yaml"
@@ -63,7 +63,7 @@ local function load_entries()
 	local rank = 0
 	for line in file:lines() do
 		if in_body then
-			-- Dictionary body format: code<TAB>text.
+			-- 词典正文格式：编码<TAB>文本
 			local code, text = line:match("^([^\t]+)\t(.+)$")
 			if code ~= nil and text ~= nil then
 				rank = rank + 1
@@ -110,7 +110,7 @@ end
 
 local function make_candidate(segment, input, entry)
 	local cand = Candidate("english", segment_start(segment), segment_end(segment, input), entry.text, " ")
-	-- Keep English candidates behind table candidates while preserving the dictionary order inside this translator.
+	-- 使英文候选词排在码表候选词之后，同时在translator内部保持词典顺序
 	cand.quality = -entry.rank
 	return cand
 end

@@ -1,7 +1,7 @@
 ---@diagnostic disable: undefined-global
 
----Hide completion comments for candidates containing ASCII letters.
----A single space is used as the replacement comment because an empty comment can fall back to the original completion hint in Weasel 0.17/librime-lua.
+---隐藏包含ASCII候选词的补全注释
+---使用单个空格作为替代注释，因为空注释在 Weasel 0.17/librime-lua 中会回退显示原始补全提示
 
 local function has_latin_letter(text)
 	return text ~= nil and text:find("[A-Za-z]") ~= nil
@@ -18,7 +18,7 @@ end
 local function filter(input, _env)
 	for cand in input:iter() do
 		if has_latin_letter(cand.text) then
-			-- Rebuild the candidate instead of wrapping it, so inherited comments from table completion entries do not leak through.
+			-- 重新构建候选词以防码表补全条目的继承注释泄露
 			yield(Candidate(cand.type, candidate_start(cand), candidate_end(cand), cand.text, " "))
 		else
 			yield(cand)

@@ -1,8 +1,8 @@
 ---@diagnostic disable: undefined-global
 
----Commit the raw alphabetic code before handling a following symbol key.
+---在处理后续符号前直接提交当前的纯字母编码
 
----After clearing the context, re-process the same key once so punctuator and express_editor still decide how to handle the symbol itself.
+---重新处理同一个按键一次，以便标点处理器和express_editor仍能决定如何处理该符号本身
 
 local kAccepted = 1
 local kNoop = 2
