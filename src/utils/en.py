@@ -2,7 +2,7 @@ from wordfreq import get_frequency_dict
 
 
 def get_base_forms(word: str) -> list[str]:
-	"""返回英文单词可能的基础词形。"""
+	"""返回单词可能的基础词形"""
 	base_forms: list[str] = []
 
 	def add(form: str) -> None:
@@ -46,9 +46,8 @@ def get_base_forms(word: str) -> list[str]:
 
 
 def get_result() -> list[str]:
-	"""返回按词频降序排列的英文单词列表（含首字母大写版本）。"""
-	# 把`upstream/ESDB.txt`制成set esdb
-	esdb: set[str] = set()
+	"""返回按词频降序排列的英文单词列表，保留ESDB原始大小写"""
+	esdb: list[str] = []
 	with open("upstream/ESDB.txt", encoding="utf-8") as f:
 		after_sep = False
 		for line in f:
@@ -56,23 +55,30 @@ def get_result() -> list[str]:
 				after_sep = True
 				continue
 			if after_sep:
-				esdb.add(line.strip())
+				word = line.strip()
+				if word:
+					esdb.append(word)
 
 	en_freq = get_frequency_dict("en")
 
-	# 去掉含非标准英文字母字符、不在esdb中的词并按词频降序排列输出一维列表en_words
+	# 去掉含非标准英文字母字符、无法匹配wordfreq的词，并按词频降序排列
 	en_words: list[str] = sorted(
-		(w for w in en_freq if w.isascii() and w.isalpha() and w in esdb),
-		key=lambda w: en_freq[w],
+		(
+			word
+			for word in esdb
+			if word.isascii() and word.isalpha() and word.casefold() in en_freq
+		),
+		key=lambda word: en_freq[word.casefold()],
 		reverse=True,
 	)
 
-	en_word_set = set(en_words)
+	en_word_set = {word.casefold() for word in en_words}
 
 	def is_relative_low_freq_variant(word: str) -> bool:
+		word_key = word.casefold()
 		return any(
-			base in en_word_set and en_freq[word] < en_freq[base]
-			for base in get_base_forms(word)
+			base in en_word_set and en_freq[word_key] < en_freq[base]
+			for base in get_base_forms(word_key)
 		)
 
 	en_words = [w for w in en_words if not is_relative_low_freq_variant(w)]
@@ -80,14 +86,27 @@ def get_result() -> list[str]:
 	# 去掉码长小于4的词
 	en_words = [w for w in en_words if len(w) >= 4]
 
-	# 对于每个纯小写的词，生成一个首字母大写的版本加在原词后面
-	result: list[str] = []
-	for w in en_words:
-		result.append(w)
-		if w.islower():
-			result.append(w.capitalize())
+	initial_caps: list[str] = []
+	all_caps: list[str] = []
+	seen = set(en_words)
+	for word in en_words:
+		# 对于每个**首字母小写**的词，生成首字母大写版本
+		if word[0].islower():
+			initial_cap = word[0].upper() + word[1:]
+			if initial_cap not in seen:
+				initial_caps.append(initial_cap)
+				seen.add(initial_cap)
+		# 对于每个**不是全小写**的词，生成全大写版本
+		if not word.islower():
+			all_cap = word.upper()
+			if all_cap not in seen:
+				all_caps.append(all_cap)
+				seen.add(all_cap)
 
-	return result
+	en_words.extend(initial_caps)
+	en_words.extend(all_caps)
+
+	return en_words
 
 
 if __name__ == "__main__":
