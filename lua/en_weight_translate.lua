@@ -1,6 +1,8 @@
 ---@diagnostic disable: undefined-global
 
----按 tiger_sha1_en.dict.yaml 顺序懒加载产出英文候选词
+---按 tiger_sha1_en.dict.yaml 懒加载英文候选
+---当输入不是任何主码表编码前缀时，先产出原始输入，方便直接上屏未知英文词
+---英文候选整体排在主码表候选之后，但在本translator内保持英文词表顺序
 
 local MAX_PREFIX_LEN = 4
 local EN_DICT_NAME = "tiger_sha1_en.dict.yaml"
@@ -34,6 +36,7 @@ local function starts_with(text, prefix)
 end
 
 local function add_entry(entry)
+	-- 同一词条挂到1~4码前缀桶，长输入再在桶内过滤，避免每次全表扫描
 	local max_len = math.min(MAX_PREFIX_LEN, #entry.code)
 	for len = 1, max_len do
 		local prefix = entry.code:sub(1, len)
@@ -47,6 +50,7 @@ local function add_entry(entry)
 end
 
 local function add_main_code(code)
+	-- 记录主码表所有编码前缀，用于判断raw input是否会干扰中文候选
 	for len = 1, #code do
 		main_prefixes[code:sub(1, len)] = true
 	end
@@ -83,6 +87,7 @@ local function load_imported_tables(import_tables)
 end
 
 load_main_dict = function(filename)
+	-- 递归加载主码表避免环形引用
 	if loading_main_dicts[filename] == true then
 		return
 	end
@@ -178,7 +183,7 @@ local function load_entries()
 	local rank = 0
 	for line in file:lines() do
 		if in_body then
-			-- 词典正文格式：编码<TAB>文本
+			-- 英文词典正文格式：编码<TAB>文本，文件顺序即补全权重顺序
 			local code, text = line:match("^([^\t]+)\t(.+)$")
 			if code ~= nil and text ~= nil then
 				rank = rank + 1
@@ -253,6 +258,7 @@ local function translator(input, segment, env)
 	local lookup_input = input
 	local bucket_key = lookup_input:sub(1, math.min(MAX_PREFIX_LEN, #lookup_input))
 	local bucket = entries_by_prefix[bucket_key] or {}
+	-- 4码以内直接用对应前缀桶；大于等于4码为一桶
 	local needs_filter = #lookup_input > MAX_PREFIX_LEN
 
 	if perf_log_enabled and log ~= nil and log.info ~= nil and start_time ~= nil then
@@ -269,6 +275,7 @@ local function translator(input, segment, env)
 	end
 
 	if not main_prefixes[input] then
+		-- 输入不再可能命中中文码表时，先给原始英文，避免未知词只能选补全项
 		yield(make_raw_candidate(segment, input))
 	end
 

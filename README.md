@@ -76,7 +76,8 @@
 
 - 候选来源为`wordfreq`词频库和`upstream/ESDB.txt`拼写库的交集
 - 英文词表按词频降序排列，输入时由Lua translator按词表顺序惰性产出
-- 若当前纯字母buffer没有中文码表候选，则Lua translator会先产出buffer本身，其余英文候选后移
+- 若buffer没有中文码表候选，则Lua translator会先产出buffer本身，其余英文候选后移
+- 若buffer仍是中文码表编码前缀，则不额外产出buffer本身，避免干扰中文候选
 - 将相对原单词较低频的复数、第三人称、过去式和进行时降权
 - 过滤码长小于4的单词，并为纯小写词追加首字母大写版本
 
