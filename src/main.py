@@ -111,18 +111,18 @@ def git_sync() -> None:
 
 	# 检查是否有 staged changes
 	result = subprocess.run(["git", "diff", "--cached", "--quiet"])
-	if result.returncode == 0:
+	if result.returncode != 0:
+		msg = input('Commit message (default: "update"): ').strip()
+		if not msg:
+			msg = "update"
+		print(f'Running git commit -m "{msg}"')
+		subprocess.run(["git", "commit", "-m", msg], check=True)
+	else:
 		print("Nothing to commit, working tree clean.")
-		return
-
-	msg = input("Commit message (default: \"update\"): ").strip()
-	if not msg:
-		msg = "update"
-	print(f'Running git commit -m "{msg}"')
-	subprocess.run(["git", "commit", "-m", msg], check=True)
 
 	branch = subprocess.check_output(
-		["git", "branch", "--show-current"], text=True,
+		["git", "branch", "--show-current"],
+		text=True,
 	).strip()
 	if branch == "main":
 		print("Running git push")
