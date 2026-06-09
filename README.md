@@ -60,6 +60,7 @@
 可用参数：
 - `--deploy`：更新词典后自动重新部署Weasel
 - `--sync`：更新词典后自动执行`git add .`、`git commit`、`git push`以同步到上游（仅在main分支时触发push，其他分支仅commit）
+- `--force-sync`：更新词典后自动执行`git add .`、`git commit`、`git push --force`以强制同步到上游（仅在main分支时触发push，其他分支仅commit；不能和`--sync`同时使用）
 
 ## 实现细节
 

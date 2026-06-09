@@ -108,7 +108,7 @@ def main() -> None:
 		print("All clear! No duplicate entries found.")
 
 
-def git_sync() -> None:
+def git_sync(*, force: bool = False) -> None:
 	"""Stage all changes, commit with user input, and push if on main."""
 	print("Running git add .")
 	subprocess.run(["git", "add", "."], check=True)
@@ -129,8 +129,11 @@ def git_sync() -> None:
 		text=True,
 	).strip()
 	if branch == "main":
-		print("Running git push")
-		subprocess.run(["git", "push"], check=True)
+		push_command = ["git", "push"]
+		if force:
+			push_command.append("--force")
+		print(f"Running {' '.join(push_command)}")
+		subprocess.run(push_command, check=True)
 		print("Push complete.")
 	else:
 		print(f"Branch is '{branch}', skipping push.")
@@ -143,10 +146,16 @@ def parse_args() -> argparse.Namespace:
 		action="store_true",
 		help="Run WeaselDeployer.exe after updating dictionaries",
 	)
-	parser.add_argument(
+	sync_group = parser.add_mutually_exclusive_group()
+	sync_group.add_argument(
 		"--sync",
 		action="store_true",
 		help="Sync changes: git add, commit, and push (only on main)",
+	)
+	sync_group.add_argument(
+		"--force-sync",
+		action="store_true",
+		help="Sync changes with git push --force on main",
 	)
 	return parser.parse_args()
 
@@ -168,5 +177,5 @@ if __name__ == "__main__":
 	main()
 	if args.deploy:
 		deploy()
-	if args.sync:
-		git_sync()
+	if args.sync or args.force_sync:
+		git_sync(force=args.force_sync)
