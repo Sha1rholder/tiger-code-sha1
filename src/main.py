@@ -109,6 +109,12 @@ def git_sync() -> None:
 	print("Running git add .")
 	subprocess.run(["git", "add", "."], check=True)
 
+	# 检查是否有 staged changes
+	result = subprocess.run(["git", "diff", "--cached", "--quiet"])
+	if result.returncode == 0:
+		print("Nothing to commit, working tree clean.")
+		return
+
 	msg = input("Commit message (default: \"update\"): ").strip()
 	if not msg:
 		msg = "update"
