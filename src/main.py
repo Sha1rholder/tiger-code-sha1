@@ -104,12 +104,39 @@ def main() -> None:
 			seen.add((code, text))
 
 
+def git_sync() -> None:
+	"""Stage all changes, commit with user input, and push."""
+	print("Running git add .")
+	subprocess.run(["git", "add", "."], check=True)
+
+	msg = input("Commit message (default: \"update\"): ").strip()
+	if not msg:
+		msg = "update"
+	print(f'Running git commit -m "{msg}"')
+	subprocess.run(["git", "commit", "-m", msg], check=True)
+
+	print("Running git push")
+	# 获取上游分支，若无则使用当前分支名推送到 origin
+	upstream = subprocess.check_output(
+		["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+		text=True,
+	).strip()
+	remote, refspec = upstream.split("/", 1)
+	subprocess.run(["git", "push", remote, f"HEAD:{refspec}"], check=True)
+	print("Push complete.")
+
+
 def parse_args() -> argparse.Namespace:
 	parser = argparse.ArgumentParser(description="Update Rime dictionaries")
 	parser.add_argument(
 		"--deploy",
 		action="store_true",
 		help="Run WeaselDeployer.exe after updating dictionaries",
+	)
+	parser.add_argument(
+		"--sync",
+		action="store_true",
+		help="Sync changes: git add, commit, and push",
 	)
 	return parser.parse_args()
 
@@ -122,7 +149,14 @@ def deploy() -> None:
 
 
 if __name__ == "__main__":
+	import os
+	from pathlib import Path
+
+	os.chdir(Path(__file__).resolve().parent.parent)
+
 	args = parse_args()
 	main()
 	if args.deploy:
 		deploy()
+	if args.sync:
+		git_sync()
