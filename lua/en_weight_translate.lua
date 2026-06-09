@@ -3,12 +3,15 @@
 ---按 tiger_sha1_en.dict.yaml 懒加载英文候选
 ---当输入不是任何主码表编码前缀时，先产出原始输入，方便直接上屏未知英文词
 ---英文候选整体排在主码表候选之后，但在本translator内保持英文词表顺序
+---Lua产出的英文候选默认带尾随空格，便于连续输入英文
 
 local MAX_PREFIX_LEN = 4
 local EN_DICT_NAME = "tiger_sha1_en.dict.yaml"
 local MAIN_DICT_NAME = "tiger_sha1_weasel.dict.yaml"
 local LOG_PREFIX = "en_weight_translate"
 local PERF_LOG_CONFIG = "en_weight_translate/enable_perf_log"
+local APPEND_SPACE_TO_EN_CANDIDATES = true -- 改为false关闭此功能
+local EN_CANDIDATE_SUFFIX = " "
 
 local en_loaded = false
 local entries_by_prefix = {}
@@ -228,15 +231,24 @@ local function segment_end(segment, input)
 	return segment._end or segment["end"] or (segment_start(segment) + #input)
 end
 
+local function en_candidate_text(text)
+	if APPEND_SPACE_TO_EN_CANDIDATES then
+		return text .. EN_CANDIDATE_SUFFIX
+	end
+	return text
+end
+
 local function make_candidate(segment, input, entry)
-	local cand = Candidate("english", segment_start(segment), segment_end(segment, input), entry.text, " ")
+	local cand = Candidate("english", segment_start(segment), segment_end(segment, input), en_candidate_text(entry.text),
+		" ")
 	-- 使英文候选词排在码表候选词之后，同时在translator内部保持词典顺序
 	cand.quality = -entry.rank
 	return cand
 end
 
 local function make_raw_candidate(segment, input)
-	local cand = Candidate("raw_input", segment_start(segment), segment_end(segment, input), input, " ")
+	local cand = Candidate("raw_input", segment_start(segment), segment_end(segment, input), en_candidate_text(input),
+		" ")
 	cand.quality = 0
 	return cand
 end
