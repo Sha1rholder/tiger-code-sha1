@@ -115,15 +115,15 @@ def git_sync() -> None:
 	print(f'Running git commit -m "{msg}"')
 	subprocess.run(["git", "commit", "-m", msg], check=True)
 
-	print("Running git push")
-	# 获取上游分支，若无则使用当前分支名推送到 origin
-	upstream = subprocess.check_output(
-		["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
-		text=True,
+	branch = subprocess.check_output(
+		["git", "branch", "--show-current"], text=True,
 	).strip()
-	remote, refspec = upstream.split("/", 1)
-	subprocess.run(["git", "push", remote, f"HEAD:{refspec}"], check=True)
-	print("Push complete.")
+	if branch == "main":
+		print("Running git push")
+		subprocess.run(["git", "push"], check=True)
+		print("Push complete.")
+	else:
+		print(f"Branch is '{branch}', skipping push.")
 
 
 def parse_args() -> argparse.Namespace:
