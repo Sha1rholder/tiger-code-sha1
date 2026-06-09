@@ -14,9 +14,11 @@
 - **英文候选**：使用Lua translator按词表顺序惰性产出英文候选，避免短前缀全量排序
 - **自定义加词**：自定义加词可通过`src/main.py`自动sort并同步到输入方案中
 - **特殊符号**：见`symbols.yaml`，切换到全角可输入一些常用特殊符号
+- **符号续打**：输入符号直接提交当前buffer
 - **唯一编码**：所有字符只保留唯一编码以降低心智负担
 - **永不自动上屏**：即使唯一候选也要按空格上屏
 - **永不自动清除buffer**：可以输入超过4码以实现更流畅的中英混输
+- **Ctrl清屏**：按下Ctrl清空当前输入buffer，等同Esc
 
 ## 文件结构
 
@@ -29,7 +31,10 @@
 ├── tiger_sha1_py.dict.yaml			# 拼音反查词典
 ├── symbols.yaml					# 符号表
 ├── weasel.custom.yaml				# 小狼毫界面定制
+├── rime.lua						# Lua模块注册入口
 ├── lua/
+│	├── clear_buffer_on_ctrl.lua		# Ctrl松开时清空候选缓冲区
+│	├── commit_raw_before_symbol.lua	# 符号键前提交纯字母原码
 │	├── en_weight_translate.lua		# 英文候选按词表顺序惰性产出
 │	└── hide_en_comment.lua			# 隐藏英文补全建议
 ├── src/
@@ -64,6 +69,7 @@
 2. 生成拼音反查词典
 3. 集成高频英文单词
 4. 为中文词条生成前缀局部权重，英文词条保持词表顺序
+5. 检查中文和英文词典中的重复词条并输出警告
 
 英文混输方案：
 - 候选来源为`wordfreq`词频库和`upstream/ESDB.txt`拼写库的交集

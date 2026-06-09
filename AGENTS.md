@@ -3,3 +3,5 @@
 `uv run src/main.py --deploy` to update dictionaries and redeploy Weasel.
 
 Weasel's log files are stored in `%TEMP%\rime.weasel\`.
+
+Update `README.md` after implementing new features or modifying behaviors.
