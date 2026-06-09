@@ -81,7 +81,14 @@ def get_result() -> list[str]:
 			for base in get_base_forms(word_key)
 		)
 
-	en_words = [w for w in en_words if not is_relative_low_freq_variant(w)]
+	normal_words: list[str] = []
+	variant_words: list[str] = []
+	for word in en_words:
+		if is_relative_low_freq_variant(word):
+			variant_words.append(word)
+		else:
+			normal_words.append(word)
+	en_words = normal_words + variant_words
 
 	# 去掉码长小于4的词
 	en_words = [w for w in en_words if len(w) >= 4]
