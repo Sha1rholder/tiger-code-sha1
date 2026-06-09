@@ -19,7 +19,9 @@ local function filter(input, _env)
 	for cand in input:iter() do
 		if has_latin_letter(cand.text) then
 			-- 重新构建候选词以防码表补全条目的继承注释泄露
-			yield(Candidate(cand.type, candidate_start(cand), candidate_end(cand), cand.text, " "))
+			local replacement = Candidate(cand.type, candidate_start(cand), candidate_end(cand), cand.text, " ")
+			replacement.quality = cand.quality
+			yield(replacement)
 		else
 			yield(cand)
 		end

@@ -3,12 +3,16 @@
 ---按 tiger_sha1_en.dict.yaml 顺序懒加载产出英文候选词
 
 local MAX_PREFIX_LEN = 4
-local DICT_NAME = "tiger_sha1_en.dict.yaml"
+local EN_DICT_NAME = "tiger_sha1_en.dict.yaml"
+local MAIN_DICT_NAME = "tiger_sha1_weasel.dict.yaml"
 local LOG_PREFIX = "en_weight_translate"
 local PERF_LOG_CONFIG = "en_weight_translate/enable_perf_log"
 
-local loaded = false
+local en_loaded = false
 local entries_by_prefix = {}
+local main_loaded = false
+local main_prefixes = {}
+local loading_main_dicts = {}
 
 local function data_dir()
 	if rime_api ~= nil and rime_api.get_user_data_dir ~= nil then
@@ -17,12 +21,12 @@ local function data_dir()
 	return "."
 end
 
-local function open_dict()
-	local file = io.open(data_dir() .. "/" .. DICT_NAME, "r")
+local function open_file(filename)
+	local file = io.open(data_dir() .. "/" .. filename, "r")
 	if file ~= nil then
 		return file
 	end
-	return io.open(DICT_NAME, "r")
+	return io.open(filename, "r")
 end
 
 local function starts_with(text, prefix)
@@ -42,18 +46,129 @@ local function add_entry(entry)
 	end
 end
 
+local function add_main_code(code)
+	for len = 1, #code do
+		main_prefixes[code:sub(1, len)] = true
+	end
+end
+
+local function split_tabs(line)
+	local fields = {}
+	local start = 1
+	while true do
+		local tab_start, tab_end = line:find("\t", start, true)
+		if tab_start == nil then
+			fields[#fields + 1] = line:sub(start)
+			break
+		end
+		fields[#fields + 1] = line:sub(start, tab_start - 1)
+		start = tab_end + 1
+	end
+	return fields
+end
+
+local function dict_filename(dict_name)
+	if dict_name:match("%.dict%.yaml$") then
+		return dict_name
+	end
+	return dict_name .. ".dict.yaml"
+end
+
+local load_main_dict
+
+local function load_imported_tables(import_tables)
+	for _, dict_name in ipairs(import_tables) do
+		load_main_dict(dict_filename(dict_name))
+	end
+end
+
+load_main_dict = function(filename)
+	if loading_main_dicts[filename] == true then
+		return
+	end
+	loading_main_dicts[filename] = true
+
+	local file = open_file(filename)
+	if file == nil then
+		if log ~= nil and log.warning ~= nil then
+			log.warning(LOG_PREFIX .. ": failed to open " .. filename)
+		end
+		return
+	end
+
+	local in_body = false
+	local in_columns = false
+	local in_import_tables = false
+	local columns = {}
+	local import_tables = {}
+	local code_index = 1
+
+	for line in file:lines() do
+		if in_body then
+			local fields = split_tabs(line)
+			local code = fields[code_index]
+			if code ~= nil and code ~= "" then
+				add_main_code(code)
+			end
+		elseif line == "..." then
+			for index, column in ipairs(columns) do
+				if column == "code" then
+					code_index = index
+					break
+				end
+			end
+			in_body = true
+		elseif line:match("^columns:%s*$") then
+			in_columns = true
+			in_import_tables = false
+		elseif line:match("^import_tables:%s*$") then
+			in_import_tables = true
+			in_columns = false
+		elseif line:match("^%S") then
+			in_columns = false
+			in_import_tables = false
+		else
+			if in_columns then
+				local column = line:match("^%s*%-%s*(%S+)%s*$")
+				if column ~= nil then
+					columns[#columns + 1] = column
+				end
+			elseif in_import_tables then
+				local dict_name = line:match("^%s*%-%s*(%S+)%s*$")
+				if dict_name ~= nil then
+					import_tables[#import_tables + 1] = dict_name
+				end
+			end
+		end
+	end
+
+	file:close()
+	load_imported_tables(import_tables)
+end
+
+local function load_main_prefixes()
+	if main_loaded then
+		return
+	end
+
+	main_prefixes = {}
+	loading_main_dicts = {}
+	main_loaded = true
+	load_main_dict(MAIN_DICT_NAME)
+end
+
 local function load_entries()
-	if loaded then
+	if en_loaded then
 		return
 	end
 
 	entries_by_prefix = {}
-	loaded = true
+	en_loaded = true
 
-	local file = open_dict()
+	local file = open_file(EN_DICT_NAME)
 	if file == nil then
 		if log ~= nil and log.warning ~= nil then
-			log.warning(LOG_PREFIX .. ": failed to open " .. DICT_NAME)
+			log.warning(LOG_PREFIX .. ": failed to open " .. EN_DICT_NAME)
 		end
 		return
 	end
@@ -82,7 +197,7 @@ local function load_entries()
 	file:close()
 
 	if log ~= nil and log.info ~= nil then
-		log.info(LOG_PREFIX .. ": loaded " .. count .. " entries from " .. DICT_NAME)
+		log.info(LOG_PREFIX .. ": loaded " .. count .. " entries from " .. EN_DICT_NAME)
 	end
 end
 
@@ -115,8 +230,15 @@ local function make_candidate(segment, input, entry)
 	return cand
 end
 
+local function make_raw_candidate(segment, input)
+	local cand = Candidate("raw_input", segment_start(segment), segment_end(segment, input), input, " ")
+	cand.quality = 0
+	return cand
+end
+
 local function translator(input, segment, env)
 	load_entries()
+	load_main_prefixes()
 
 	if input == nil or not input:match("^[A-Za-z]+$") then
 		return
@@ -146,6 +268,10 @@ local function translator(input, segment, env)
 		)
 	end
 
+	if not main_prefixes[input] then
+		yield(make_raw_candidate(segment, input))
+	end
+
 	for _, entry in ipairs(bucket) do
 		if not needs_filter or starts_with(entry.code, lookup_input) then
 			yield(make_candidate(segment, input, entry))
@@ -156,6 +282,7 @@ end
 return {
 	init = function(_env)
 		load_entries()
+		load_main_prefixes()
 	end,
 	func = translator,
 }
