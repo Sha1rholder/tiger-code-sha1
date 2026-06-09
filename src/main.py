@@ -105,7 +105,7 @@ def main() -> None:
 
 
 def git_sync() -> None:
-	"""Stage all changes, commit with user input, and push."""
+	"""Stage all changes, commit with user input, and push if on main."""
 	print("Running git add .")
 	subprocess.run(["git", "add", "."], check=True)
 
@@ -136,7 +136,7 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument(
 		"--sync",
 		action="store_true",
-		help="Sync changes: git add, commit, and push",
+		help="Sync changes: git add, commit, and push (only on main)",
 	)
 	return parser.parse_args()
 

@@ -53,7 +53,11 @@
 2. 将本仓库内容复制或`git clone`（建议浅clone）到Rime用户数据目录`%APPDATA%\Rime`
 3. 重新部署Rime
 
-若要加减词，请编辑`upstream/add.tsv`，然后执行`uv run src/main.py --deploy`以更新词典并重新部署Weasel（不加`--deploy`参数就不会触发部署，只更新词典）。不需要手动整理`upstream/add.tsv`，脚本会自动处理
+若要加减词，请编辑`upstream/add.tsv`，然后执行`uv run src/main.py`以更新词典。不需要手动整理`upstream/add.tsv`，脚本会自动处理
+
+可用参数：
+- `--deploy`：更新词典后自动重新部署Weasel
+- `--sync`：更新词典后自动执行`git add .`、`git commit`、`git push`以同步到上游（仅在main分支时触发push，其他分支仅commit）
 
 词典生成工具会：
 1. 从虎码原始数据提取规范汉字编码
