@@ -1,3 +1,6 @@
+import argparse
+import subprocess
+
 from utils import add, en, py_sc, sc2013, tiger
 
 LOCAL_WEIGHT_STRIDE = 100
@@ -101,5 +104,25 @@ def main() -> None:
 			seen.add((code, text))
 
 
+def parse_args() -> argparse.Namespace:
+	parser = argparse.ArgumentParser(description="Update Rime dictionaries")
+	parser.add_argument(
+		"--deploy",
+		action="store_true",
+		help="Run WeaselDeployer.exe after updating dictionaries",
+	)
+	return parser.parse_args()
+
+
+def deploy() -> None:
+	deployer = r"C:\Program Files\Rime\weasel-0.17.4\WeaselDeployer.exe"
+	print(f"Running {deployer} ...")
+	subprocess.run([deployer, "/deploy"], check=True)
+	print("Deploy complete.")
+
+
 if __name__ == "__main__":
+	args = parse_args()
 	main()
+	if args.deploy:
+		deploy()
