@@ -97,11 +97,15 @@ def main() -> None:
 	replace_tsv2("tiger_sha1_en.dict.yaml", en_rows)
 
 	seen: set[tuple[str, str]] = set()
+	duplicates = 0
 	for code, text in tiger_add + en_rows:
 		if (code, text) in seen:
 			print(f"Warning: duplicate entry found — code: {code}, text: {text}")
+			duplicates += 1
 		else:
 			seen.add((code, text))
+	if duplicates == 0:
+		print("All clear! No duplicate entries found.")
 
 
 def git_sync() -> None:
