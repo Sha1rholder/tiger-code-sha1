@@ -42,6 +42,34 @@ def get_base_forms(word: str) -> list[str]:
 		if len(stem) > 2 and stem[-1] == stem[-2]:
 			add(stem[:-1])
 
+	# 名词化后缀
+	if len(word) >= 7 and word.endswith("ments"):
+		stem = word[:-5]
+		add(stem)
+		add(stem + "e")
+	elif len(word) >= 6 and word.endswith("ment"):
+		stem = word[:-4]
+		add(stem)
+		add(stem + "e")
+
+	# 施事/工具名词后缀
+	if len(word) >= 5 and word.endswith("ers"):
+		stem = word[:-3]
+		add(stem)
+		add(stem + "e")
+		if stem.endswith("i"):
+			add(stem[:-1] + "y")
+		if len(stem) > 2 and stem[-1] == stem[-2]:
+			add(stem[:-1])
+	elif len(word) >= 4 and word.endswith("er"):
+		stem = word[:-2]
+		add(stem)
+		add(stem + "e")
+		if stem.endswith("i"):
+			add(stem[:-1] + "y")
+		if len(stem) > 2 and stem[-1] == stem[-2]:
+			add(stem[:-1])
+
 	return base_forms
 
 
