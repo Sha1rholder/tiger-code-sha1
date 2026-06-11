@@ -28,7 +28,6 @@
 ├── tiger_sha1_py.dict.yaml				# 拼音反查词典
 ├── symbols.yaml						# 符号表
 ├── weasel.custom.yaml					# 小狼毫界面定制
-├── rime.lua							# Lua模块注册入口
 ├── lua/
 │	├── clear_buffer_on_ctrl.lua		# Ctrl松开时清空候选缓冲区
 │	├── commit_raw_before_symbol.lua	# 符号键提交buffer
