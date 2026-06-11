@@ -42,12 +42,51 @@ def get_base_forms(word: str) -> list[str]:
 		if len(stem) > 2 and stem[-1] == stem[-2]:
 			add(stem[:-1])
 
+	# 副词后缀
+	if len(word) >= 4 and word.endswith("ly"):
+		stem = word[:-2]
+		if len(stem) >= 3:
+			add(stem)
+			add(stem + "e")
+		if len(word) >= 5 and word.endswith("ily"):
+			add(word[:-3] + "y")
+		if len(word) >= 7 and word.endswith("ically"):
+			add(word[:-4])
+		if len(word) >= 5 and word.endswith("bly"):
+			add(word[:-1] + "e")
+
+	# 比较级和最高级
+	if len(word) >= 5 and word.endswith("iest"):
+		add(word[:-4] + "y")
+	elif len(word) >= 5 and word.endswith("est"):
+		stem = word[:-3]
+		add(stem)
+		add(stem + "e")
+		if len(stem) > 2 and stem[-1] == stem[-2]:
+			add(stem[:-1])
+
+	if len(word) >= 4 and word.endswith("ier"):
+		add(word[:-3] + "y")
+
 	# 名词化后缀
 	if len(word) >= 7 and word.endswith("ments"):
 		stem = word[:-5]
 		add(stem)
 		add(stem + "e")
 	elif len(word) >= 6 and word.endswith("ment"):
+		stem = word[:-4]
+		add(stem)
+		add(stem + "e")
+
+	if len(word) >= 8 and word.endswith("inesses"):
+		add(word[:-7] + "y")
+	elif len(word) >= 7 and word.endswith("nesses"):
+		stem = word[:-6]
+		add(stem)
+		add(stem + "e")
+	elif len(word) >= 6 and word.endswith("iness"):
+		add(word[:-5] + "y")
+	elif len(word) >= 5 and word.endswith("ness"):
 		stem = word[:-4]
 		add(stem)
 		add(stem + "e")
@@ -70,11 +109,22 @@ def get_base_forms(word: str) -> list[str]:
 		if len(stem) > 2 and stem[-1] == stem[-2]:
 			add(stem[:-1])
 
+	# able形容词后缀
+	if len(word) >= 6 and word.endswith("able"):
+		stem = word[:-4]
+		if len(stem) >= 3 or stem in {"be", "do", "go"}:
+			add(stem)
+		add(stem + "e")
+		if stem.endswith("i"):
+			add(stem[:-1] + "y")
+		if len(stem) > 2 and stem[-1] == stem[-2]:
+			add(stem[:-1])
+
 	return base_forms
 
 
 def get_result() -> list[str]:
-	"""返回按词频降序排列的英文单词列表，保留ESDB原始大小写"""
+	"""返回按自定义顺序排列的英文单词列表，保留ESDB原始大小写"""
 	esdb: list[str] = []
 	with open("upstream/ESDB.txt", encoding="utf-8") as f:
 		after_sep = False
