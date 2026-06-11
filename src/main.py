@@ -91,10 +91,11 @@ def main() -> None:
 	tiger_add.sort(key=lambda item: len(item[0]))
 	tiger_add_weight = add_prefix_local_weights(tiger_add)
 
-	en_rows = [(word, word) for word in en.get_result()]
+	en_words = en.get_result()
+	en_rows = [(word, word) for word in en_words]
 
 	replace_tsv3("tiger_sha1.dict.yaml", tiger_add_weight)
-	replace_tsv2("tiger_sha1_en.dict.yaml", en_rows)
+	en.write_result("lua/en_dict.txt", en_words)
 
 	seen: set[tuple[str, str]] = set()
 	duplicates = 0

@@ -1,12 +1,12 @@
 ---@diagnostic disable: undefined-global
 
----按 tiger_sha1_en.dict.yaml 懒加载英文候选
+---按 lua/en_dict.txt 懒加载英文候选
 ---当输入不是任何主码表编码前缀时，先产出原始输入，方便直接上屏未知英文词
 ---英文候选整体排在主码表候选之后，但在本translator内保持英文词表顺序
 ---Lua产出的英文候选默认带尾随空格，便于连续输入英文
 
 local MAX_PREFIX_LEN = 4
-local EN_DICT_NAME = "tiger_sha1_en.dict.yaml"
+local EN_DICT_NAME = "lua/en_dict.txt"
 local MAIN_DICT_NAME = "tiger_sha1_weasel.dict.yaml"
 local LOG_PREFIX = "en_weight_translate"
 local PERF_LOG_CONFIG = "en_weight_translate/enable_perf_log"
@@ -183,24 +183,18 @@ local function load_entries()
 		return
 	end
 
-	local in_body = false
 	local count = 0
 	local rank = 0
 	for line in file:lines() do
-		if in_body then
-			-- 英文词典正文格式：编码<TAB>文本，文件顺序即补全权重顺序
-			local code, text = line:match("^([^\t]+)\t(.+)$")
-			if code ~= nil and text ~= nil then
-				rank = rank + 1
-				count = count + 1
-				add_entry({
-					code = code,
-					text = text,
-					rank = rank,
-				})
-			end
-		elseif line == "..." then
-			in_body = true
+		-- 英文词表格式：一行一词，顺序即权重
+		if line ~= "" then
+			rank = rank + 1
+			count = count + 1
+			add_entry({
+				code = line,
+				text = line,
+				rank = rank,
+			})
 		end
 	end
 

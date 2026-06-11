@@ -22,7 +22,6 @@
 ```text
 ├── tiger_sha1_weasel.schema.yaml		# 主输入方案
 ├── tiger_sha1.dict.yaml				# 主词典
-├── tiger_sha1_en.dict.yaml				# 英文词典
 ├── alphabet.dict.yaml					# 大写字母表
 ├── tiger_sha1_py.schema.yaml			# 拼音反查伪方案
 ├── tiger_sha1_py.dict.yaml				# 拼音反查词典
@@ -31,6 +30,7 @@
 ├── lua/
 │	├── clear_buffer_on_ctrl.lua		# Ctrl松开时清空候选缓冲区
 │	├── commit_raw_before_symbol.lua	# 符号键提交buffer
+│	├── en_dict.txt						# 英文词表
 │	├── en_weight_translate.lua			# 英文候选按词表顺序惰性产出
 │	└── hide_en_comment.lua				# 隐藏英文补全建议
 ├── src/
@@ -76,7 +76,7 @@
 英文混输方案
 
 - 候选来源为`wordfreq`词频库和`upstream/ESDB.txt`拼写库的交集
-- 英文词表按词频降序排列，输入时由Lua translator按词表顺序惰性产出
+- 英文词表生成到`lua/en_dict.txt`，按词频降序排列，输入时由Lua translator按词表顺序惰性产出
 - 若buffer没有中文码表候选，则Lua translator会先产出buffer本身，其余英文候选后移
 - 若buffer仍是中文码表编码前缀，则不额外产出buffer本身，避免干扰中文候选
 - Lua translator产出的原始英文和英文补全候选默认带尾随空格，便于连续输入英文

@@ -116,6 +116,15 @@ def get_result() -> list[str]:
 	return en_words
 
 
+def write_result(filename: str = "lua/en_dict.txt", words: list[str] | None = None) -> None:
+	"""将英文词表写为一行一词的纯文本文件"""
+	if words is None:
+		words = get_result()
+
+	with open(filename, "w", encoding="utf-8", newline="") as f:
+		for word in words:
+			f.write(f"{word}\n")
+
+
 if __name__ == "__main__":
-	for word in get_result():
-		print(word)
+	write_result()
