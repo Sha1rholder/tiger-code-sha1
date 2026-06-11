@@ -36,6 +36,24 @@ def get_result(sc2013: set[str]) -> list[tuple[str, str]]:
 	return [(code, text) for code, text, _weight in py_raw]
 
 
+def write_result(filename: str, rows: list[tuple[str, str]]) -> None:
+	"""替换Rime拼音反查词典tsv正文。"""
+	with open(filename, encoding="utf-8") as f:
+		lines = f.readlines()
+
+	for index, line in enumerate(lines):
+		if line.strip() == "...":
+			header = lines[: index + 1]
+			break
+	else:
+		raise SystemExit(f"{filename}中找不到词典正文分隔符：...")
+
+	with open(filename, "w", encoding="utf-8", newline="") as f:
+		f.writelines(header)
+		for code, text in rows:
+			f.write(f"{code}\t{text}\n")
+
+
 if __name__ == "__main__":
 	sc2013: set[str] = set()
 	for filename in ("level-1.txt", "level-2.txt", "level-3.txt"):
