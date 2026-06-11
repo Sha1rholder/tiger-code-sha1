@@ -1,5 +1,7 @@
 import argparse
+import os
 import subprocess
+from pathlib import Path
 
 from utils import add, en, py_sc, sc2013, tiger
 
@@ -92,9 +94,6 @@ def deploy() -> None:
 
 
 if __name__ == "__main__":
-	import os
-	from pathlib import Path
-
 	os.chdir(Path(__file__).resolve().parent.parent)
 
 	args = parse_args()

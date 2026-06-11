@@ -28,7 +28,7 @@
 ├── symbols.yaml						# 符号表
 ├── weasel.custom.yaml					# 小狼毫界面定制
 ├── lua/
-│	├── clear_buffer_on_ctrl.lua		# Ctrl松开时清空候选缓冲区
+│	├── clear_buffer_on_ctrl.lua		# Ctrl松开时清空buffer
 │	├── commit_raw_before_symbol.lua	# 符号键提交buffer
 │	├── en_dict.txt						# 英文词表
 │	├── en_weight_translate.lua			# 英文候选按词表顺序惰性产出
