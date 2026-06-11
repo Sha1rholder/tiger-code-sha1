@@ -10,7 +10,8 @@ local EN_DICT_NAME = "tiger_sha1_en.dict.yaml"
 local MAIN_DICT_NAME = "tiger_sha1_weasel.dict.yaml"
 local LOG_PREFIX = "en_weight_translate"
 local PERF_LOG_CONFIG = "en_weight_translate/enable_perf_log"
-local APPEND_SPACE_TO_EN_CANDIDATES = true -- 改为false关闭此功能
+local APPEND_SPACE_CONFIG = "en_weight_translate/append_space_to_candidates"
+local DEFAULT_APPEND_SPACE_TO_EN_CANDIDATES = true
 local EN_CANDIDATE_SUFFIX = " "
 
 local en_loaded = false
@@ -18,6 +19,7 @@ local entries_by_prefix = {}
 local main_loaded = false
 local main_prefixes = {}
 local loading_main_dicts = {}
+local append_space_to_en_candidates = DEFAULT_APPEND_SPACE_TO_EN_CANDIDATES
 
 local function data_dir()
 	if rime_api ~= nil and rime_api.get_user_data_dir ~= nil then
@@ -209,17 +211,24 @@ local function load_entries()
 	end
 end
 
-local function get_config_bool(env, path)
+local function get_config_bool(env, path, default)
+	if default == nil then
+		default = false
+	end
+
 	local engine = env ~= nil and env.engine or nil
 	local schema = engine ~= nil and engine.schema or nil
 	local config = schema ~= nil and schema.config or nil
 	if config == nil or config.get_bool == nil then
-		return false
+		return default
 	end
 
 	local ok, value = pcall(function()
 		return config:get_bool(path)
 	end)
+	if not ok or value == nil then
+		return default
+	end
 	return ok and value == true
 end
 
@@ -232,7 +241,7 @@ local function segment_end(segment, input)
 end
 
 local function en_candidate_text(text)
-	if APPEND_SPACE_TO_EN_CANDIDATES then
+	if append_space_to_en_candidates then
 		return text .. EN_CANDIDATE_SUFFIX
 	end
 	return text
@@ -299,7 +308,12 @@ local function translator(input, segment, env)
 end
 
 return {
-	init = function(_env)
+	init = function(env)
+		append_space_to_en_candidates = get_config_bool(
+			env,
+			APPEND_SPACE_CONFIG,
+			DEFAULT_APPEND_SPACE_TO_EN_CANDIDATES
+		)
 		load_entries()
 		load_main_prefixes()
 	end,
