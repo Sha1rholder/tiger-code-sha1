@@ -1,6 +1,32 @@
 from wordfreq import get_frequency_dict
 
 
+def dedupe_esdb_case_variants(words: list[str]) -> list[str]:
+	"""同一ESDB单词有多种大小写形式时，逐位优先保留小写形式"""
+	groups: dict[str, list[tuple[int, str]]] = {}
+	for index, word in enumerate(words):
+		groups.setdefault(word.casefold(), []).append((index, word))
+
+	keep_indexes: set[int] = set()
+	for entries in groups.values():
+		candidates = entries
+		max_pos = min(len(word) for _, word in candidates)
+		for pos in range(max_pos):
+			if len(candidates) == 1:
+				break
+			if any(word[pos].isupper() for _, word in candidates) and any(
+				word[pos].islower() for _, word in candidates
+			):
+				candidates = [
+					(index, word)
+					for index, word in candidates
+					if not word[pos].isupper()
+				]
+		keep_indexes.add(candidates[0][0])
+
+	return [word for index, word in enumerate(words) if index in keep_indexes]
+
+
 def get_base_forms(word: str) -> list[str]:
 	"""返回单词可能的基础词形"""
 	base_forms: list[str] = []
@@ -181,6 +207,8 @@ def get_result(esdb_filename: str) -> list[str]:
 				word = line.strip()
 				if word:
 					esdb.append(word)
+
+	esdb = dedupe_esdb_case_variants(esdb)
 
 	en_freq = get_frequency_dict("en")
 
