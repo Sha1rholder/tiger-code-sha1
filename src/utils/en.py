@@ -123,10 +123,55 @@ def get_base_forms(word: str) -> list[str]:
 	return base_forms
 
 
-def get_result() -> list[str]:
+def filter_and_sort_en_words(
+	en_words: list[str], en_freq: dict[str, float]
+) -> list[str]:
+	"""将变体词排在普通词之后，并去掉码长小于4的词"""
+	en_word_set = {word.casefold() for word in en_words}
+
+	normal_words: list[str] = []
+	variant_words: list[str] = []
+	for word in en_words:
+		word_key = word.casefold()
+		if any(
+			base in en_word_set and en_freq[word_key] < en_freq[base]
+			for base in get_base_forms(word_key)
+		):
+			variant_words.append(word)
+		else:
+			normal_words.append(word)
+	result = normal_words + variant_words
+
+	# 去掉码长小于4的词
+	return [w for w in result if len(w) >= 4]
+
+
+def add_case_variants(en_words: list[str]) -> list[str]:
+	"""为首字母小写词生成首字母大写版本，为非全小写词生成全大写版本"""
+	initial_caps: list[str] = []
+	all_caps: list[str] = []
+	seen = set(en_words)
+	for word in en_words:
+		# 对于每个**首字母小写**的词，生成首字母大写版本
+		if word[0].islower():
+			initial_cap = word[0].upper() + word[1:]
+			if initial_cap not in seen:
+				initial_caps.append(initial_cap)
+				seen.add(initial_cap)
+		# 对于每个**不是全小写**的词，生成全大写版本
+		if not word.islower():
+			all_cap = word.upper()
+			if all_cap not in seen:
+				all_caps.append(all_cap)
+				seen.add(all_cap)
+
+	return en_words + initial_caps + all_caps
+
+
+def get_result(esdb_filename: str) -> list[str]:
 	"""返回按自定义顺序排列的英文单词列表，保留ESDB原始大小写"""
 	esdb: list[str] = []
-	with open("upstream/ESDB.txt", encoding="utf-8") as f:
+	with open(esdb_filename, encoding="utf-8") as f:
 		after_sep = False
 		for line in f:
 			if line.strip() == "---":
@@ -150,61 +195,18 @@ def get_result() -> list[str]:
 		reverse=True,
 	)
 
-	en_word_set = {word.casefold() for word in en_words}
-
-	def is_relative_low_freq_variant(word: str) -> bool:
-		word_key = word.casefold()
-		return any(
-			base in en_word_set and en_freq[word_key] < en_freq[base]
-			for base in get_base_forms(word_key)
-		)
-
-	normal_words: list[str] = []
-	variant_words: list[str] = []
-	for word in en_words:
-		if is_relative_low_freq_variant(word):
-			variant_words.append(word)
-		else:
-			normal_words.append(word)
-	en_words = normal_words + variant_words
-
-	# 去掉码长小于4的词
-	en_words = [w for w in en_words if len(w) >= 4]
-
-	initial_caps: list[str] = []
-	all_caps: list[str] = []
-	seen = set(en_words)
-	for word in en_words:
-		# 对于每个**首字母小写**的词，生成首字母大写版本
-		if word[0].islower():
-			initial_cap = word[0].upper() + word[1:]
-			if initial_cap not in seen:
-				initial_caps.append(initial_cap)
-				seen.add(initial_cap)
-		# 对于每个**不是全小写**的词，生成全大写版本
-		if not word.islower():
-			all_cap = word.upper()
-			if all_cap not in seen:
-				all_caps.append(all_cap)
-				seen.add(all_cap)
-
-	en_words.extend(initial_caps)
-	en_words.extend(all_caps)
+	en_words = filter_and_sort_en_words(en_words, en_freq)
+	en_words = add_case_variants(en_words)
 
 	return en_words
 
 
-def write_result(
-	filename: str = "lua/en_dict.txt", words: list[str] | None = None
-) -> None:
+def write_result(filename: str, words: list[str]) -> None:
 	"""将英文词表写为一行一词的纯文本文件"""
-	if words is None:
-		words = get_result()
-
 	with open(filename, "w", encoding="utf-8", newline="") as f:
 		for word in words:
 			f.write(f"{word}\n")
 
 
 if __name__ == "__main__":
-	write_result()
+	write_result("lua/en_dict.txt", get_result("upstream/ESDB.txt"))

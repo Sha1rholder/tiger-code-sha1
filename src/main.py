@@ -16,7 +16,7 @@ def main() -> None:
 	add_rows = add.get_result("tiger_sha1_add.tsv")
 	tiger_add = tiger_rows + add_rows
 
-	en_words = en.get_result()
+	en_words = en.get_result("upstream/ESDB.txt")
 	en_rows = [(word, word) for word in en_words]
 
 	tiger.write_result("tiger_sha1.dict.yaml", tiger_add)
