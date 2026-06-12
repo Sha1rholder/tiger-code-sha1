@@ -3,7 +3,6 @@ from pathlib import Path
 
 from wordfreq import get_frequency_dict
 
-
 MIN_WORD_LEN = 4
 CONSONANTS = set("bcdfghjklmnpqrstvwxyz")
 
@@ -62,7 +61,12 @@ def get_base_ranked_entries(esdb_filename: str) -> list[RankedWord]:
 			input_order=input_order,
 		)
 		for input_order, word in enumerate(esdb)
-		if word.isascii() and word.isalpha() and word.casefold() in en_freq
+		if (
+			word.isascii()
+			and word.isalpha()
+			and len(word) >= 3
+			and word.casefold() in en_freq
+		)
 	]
 
 	return rank_base_entries(infos)
