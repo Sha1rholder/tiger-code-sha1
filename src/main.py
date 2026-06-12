@@ -42,9 +42,10 @@ def git_sync(*, force: bool = False) -> None:
 	# 检查是否有 staged changes
 	result = subprocess.run(["git", "diff", "--cached", "--quiet"])
 	if result.returncode != 0:
-		msg = input('Commit message (default: "update"): ').strip()
+		msg = input("Commit message (press enter to discard): ").strip()
 		if not msg:
-			msg = "update"
+			print("Skipping git commit.")
+			return
 		print(f'Running git commit -m "{msg}"')
 		subprocess.run(["git", "commit", "-m", msg], check=True)
 	else:
