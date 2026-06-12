@@ -41,7 +41,8 @@
 │		├── en.py						# 英文处理
 │		├── py_sc.py					# 拼音处理
 │		├── sc2013.py					# 规范汉字处理
-│		└── add.py						# 附加词条处理
+│		├── add.py						# 附加词条处理
+│		└── README.md					# 脚本说明
 └── upstream/
 	├── tiger/							# 虎码原始数据
 	├── SC2013/							# 通用规范汉字表
@@ -58,8 +59,8 @@
 
 可用参数：
 - `--deploy`：更新词典后自动重新部署Weasel
+- `--en_dict`：更新词典时额外输出`temp/en_dict.tsv`供审查
 - `--sync`：更新词典后自动执行`git add .`、`git commit`、`git push`以同步到上游（仅在main分支时触发push，其他分支仅commit）
-- `--force-sync`：更新词典后自动执行`git add .`、`git commit`、`git push --force`以强制同步到上游（仅在main分支时触发push，其他分支仅commit；不能和`--sync`同时使用）
 
 若要使英文候选默认带尾随空格，可将`tiger_sha1_weasel.default.yaml > en_weight_translate > append_space_to_candidates`的值改为true并重新部署
 
@@ -76,12 +77,10 @@
 英文混输方案
 
 - 候选来源为`wordfreq`词频库和`upstream/ESDB.txt`拼写库的交集
-- 英文词表生成到`lua/en_dict.txt`，按词频降序排列，输入时由Lua translator按词表顺序惰性产出
+- 英文词表生成到`lua/en_dict.txt`，生成逻辑见`src/utils/README.md`
 - 若buffer没有中文码表候选，则Lua translator会先产出buffer本身，其余英文候选后移
 - 若buffer仍是中文码表编码前缀，则不额外产出buffer本身，避免干扰中文候选
 - Lua translator产出的原始英文和英文补全候选默认带尾随空格，便于连续输入英文
-- 将相对原单词较低频的复数、第三人称、过去式、进行时、副词、比较级、最高级、`-ment/-ments`和`-ness/-iness`名词化、`-er/-ers`施事/工具名词、`-able`形容词降权
-- 过滤码长小于4的单词，并为纯小写词追加首字母大写版本
 
 ……
 
