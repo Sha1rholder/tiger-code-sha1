@@ -12,7 +12,7 @@ def main() -> None:
 	py_rows = py_sc.get_result(sc2013_set)
 	py_sc.write_result("tiger_sha1_py.dict.yaml", py_rows)
 
-	tiger_rows = tiger.get_result(sc2013_set)
+	tiger_rows = tiger.get_result(sc2013_set, "upstream/tiger/tiger.dict.yaml")
 	add_rows = add.get_result("tiger_sha1_add.tsv")
 	tiger_add = tiger_rows + add_rows
 
