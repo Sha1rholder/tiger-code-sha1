@@ -59,8 +59,8 @@
 
 可用参数：
 - `--deploy`：更新词典后自动重新部署Weasel
+- `--en_dict`：更新词典时额外输出`temp/en_dict.tsv`供审查
 - `--sync`：更新词典后自动执行`git add .`、`git commit`、`git push`以同步到上游（仅在main分支时触发push，其他分支仅commit）
-- `--force-sync`：更新词典后自动执行`git add .`、`git commit`、`git push --force`以强制同步到上游（仅在main分支时触发push，其他分支仅commit；不能和`--sync`同时使用）
 
 若要使英文候选默认带尾随空格，可将`tiger_sha1_weasel.default.yaml > en_weight_translate > append_space_to_candidates`的值改为true并重新部署
 

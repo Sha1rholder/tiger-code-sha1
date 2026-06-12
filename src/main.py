@@ -6,7 +6,7 @@ from pathlib import Path
 from utils import add, en, py_sc, sc2013, tiger
 
 
-def main() -> None:
+def main(*, write_en_dict_review: bool = False) -> None:
 	sc2013_set = sc2013.get_result()
 
 	py_rows = py_sc.get_result(sc2013_set)
@@ -17,18 +17,15 @@ def main() -> None:
 	tiger_add = tiger_rows + add_rows
 
 	en_base_entries = en.get_base_ranked_entries("upstream/ESDB.txt")
-	en_words = en.add_case_variants(
-		[
-			entry.word
-			for entry in en_base_entries
-			if len(entry.word) >= en.MIN_WORD_LEN
-		]
+	en_dict = en.add_case_variants(
+		[entry.word for entry in en_base_entries if len(entry.word) >= en.MIN_WORD_LEN]
 	)
-	en_rows = [(word, word) for word in en_words]
+	en_rows = [(word, word) for word in en_dict]
 
 	tiger.write_result("tiger_sha1.dict.yaml", tiger_add)
-	en.write_result("lua/en_dict.txt", en_words)
-	en.write_review_tsv("temp/en_words.tsv", en_base_entries)
+	en.write_result("lua/en_dict.txt", en_dict)
+	if write_en_dict_review:
+		en.write_review_tsv("temp/en_dict.tsv", en_base_entries)
 
 	seen: set[tuple[str, str]] = set()
 	duplicates = 0
@@ -42,7 +39,7 @@ def main() -> None:
 		print("All clear! No duplicate entries found.")
 
 
-def git_sync(*, force: bool = False) -> None:
+def git_sync() -> None:
 	"""Stage all changes, commit with user input, and push if on main."""
 	print("Running git add .")
 	subprocess.run(["git", "add", "."], check=True)
@@ -64,11 +61,8 @@ def git_sync(*, force: bool = False) -> None:
 		text=True,
 	).strip()
 	if branch == "main":
-		push_command = ["git", "push"]
-		if force:
-			push_command.append("--force")
-		print(f"Running {' '.join(push_command)}")
-		subprocess.run(push_command, check=True)
+		print("Running git push")
+		subprocess.run(["git", "push"], check=True)
 		print("Push complete.")
 	else:
 		print(f"Branch is '{branch}', skipping push.")
@@ -81,16 +75,15 @@ def parse_args() -> argparse.Namespace:
 		action="store_true",
 		help="Run WeaselDeployer.exe after updating dictionaries",
 	)
-	sync_group = parser.add_mutually_exclusive_group()
-	sync_group.add_argument(
+	parser.add_argument(
+		"--en_dict",
+		action="store_true",
+		help="Also write temp/en_dict.tsv for English dictionary review",
+	)
+	parser.add_argument(
 		"--sync",
 		action="store_true",
 		help="Sync changes: git add, commit, and push (only on main)",
-	)
-	sync_group.add_argument(
-		"--force-sync",
-		action="store_true",
-		help="Sync changes with git push --force on main",
 	)
 	return parser.parse_args()
 
@@ -106,8 +99,8 @@ if __name__ == "__main__":
 	os.chdir(Path(__file__).resolve().parent.parent)
 
 	args = parse_args()
-	main()
+	main(write_en_dict_review=args.en_dict)
 	if args.deploy:
 		deploy()
-	if args.sync or args.force_sync:
-		git_sync(force=args.force_sync)
+	if args.sync:
+		git_sync()

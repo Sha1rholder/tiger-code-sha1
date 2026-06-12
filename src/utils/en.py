@@ -219,12 +219,12 @@ def dedupe_case_variants(words: list[str]) -> list[str]:
 	return [word for index, word in enumerate(words) if index in keep_indexes]
 
 
-def add_case_variants(en_words: list[str]) -> list[str]:
+def add_case_variants(en_dict: list[str]) -> list[str]:
 	"""为首字母小写词生成首字母大写版本，为非全小写词生成全大写版本"""
 	initial_caps: list[str] = []
 	all_caps: list[str] = []
-	seen = set(en_words)
-	for word in en_words:
+	seen = set(en_dict)
+	for word in en_dict:
 		if word[0].islower():
 			initial_cap = word[0].upper() + word[1:]
 			if initial_cap not in seen:
@@ -236,7 +236,7 @@ def add_case_variants(en_words: list[str]) -> list[str]:
 				all_caps.append(all_cap)
 				seen.add(all_cap)
 
-	return en_words + initial_caps + all_caps
+	return en_dict + initial_caps + all_caps
 
 
 def write_result(filename: str, words: list[str]) -> None:
