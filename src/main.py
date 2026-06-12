@@ -16,11 +16,19 @@ def main() -> None:
 	add_rows = add.get_result("tiger_sha1_add.tsv")
 	tiger_add = tiger_rows + add_rows
 
-	en_words = en.get_result("upstream/ESDB.txt")
+	en_base_entries = en.get_base_ranked_entries("upstream/ESDB.txt")
+	en_words = en.add_case_variants(
+		[
+			entry.word
+			for entry in en_base_entries
+			if len(entry.word) >= en.MIN_WORD_LEN
+		]
+	)
 	en_rows = [(word, word) for word in en_words]
 
 	tiger.write_result("tiger_sha1.dict.yaml", tiger_add)
 	en.write_result("lua/en_dict.txt", en_words)
+	en.write_review_tsv("temp/en_words.tsv", en_base_entries)
 
 	seen: set[tuple[str, str]] = set()
 	duplicates = 0
