@@ -1,2 +1,8 @@
 * text=auto eol=lf
-uv.lock binary
+/uv.lock binary
+
+/tiger_sha1.dict.yaml -diff linguist-generated=true
+/tiger_sha1_py.dict.yaml -diff linguist-generated=true
+/lua/en_dict.txt -diff linguist-generated=true
+
+/upstream/* -diff linguist-generated=true

@@ -21,16 +21,17 @@
 
 ```text
 ├── tiger_sha1_weasel.schema.yaml		# 主输入方案
-├── tiger_sha1.dict.yaml				# 主词典
-├── alphabet.dict.yaml					# 大写字母表
+├── tiger_sha1.dict.yaml				# 主词典（机器生成）
 ├── tiger_sha1_py.schema.yaml			# 拼音反查伪方案
-├── tiger_sha1_py.dict.yaml				# 拼音反查词典
+├── tiger_sha1_py.dict.yaml				# 拼音反查词典（机器生成）
+├── tiger_sha1_add.tsv					# 附加词条（可定制）
+├── alphabet.dict.yaml					# 大写字母表
 ├── symbols.yaml						# 符号表
 ├── weasel.custom.yaml					# 小狼毫界面定制
 ├── lua/
 │	├── clear_buffer_on_ctrl.lua		# Ctrl松开时清空buffer
 │	├── commit_raw_before_symbol.lua	# 符号键提交buffer
-│	├── en_dict.txt						# 英文词表
+│	├── en_dict.txt						# 英文词表（机器生成）
 │	├── en_weight_translate.lua			# 英文候选按词表顺序惰性产出
 │	└── hide_en_comment.lua				# 隐藏英文补全建议
 ├── src/
@@ -44,8 +45,7 @@
 └── upstream/
 	├── tiger/							# 虎码原始数据
 	├── SC2013/							# 通用规范汉字表
-	├── ESDB.txt						# 英文拼写数据库
-	└── add.tsv							# 附加词条（推荐定制）
+	└── ESDB.txt						# 英文拼写数据库
 ```
 
 ## 使用方法
@@ -54,7 +54,7 @@
 2. 将本仓库内容下载或`git clone`（建议浅clone）到Rime用户数据目录`%APPDATA%\Rime\`
 3. 重新部署Rime
 
-若要加减词，请编辑`upstream/add.tsv`，然后执行`uv run src/main.py`以更新词典。不需要手动整理`upstream/add.tsv`，脚本会自动处理
+若要加减词，请编辑`tiger_sha1_add.tsv`，然后执行`uv run src/main.py`以更新词典。不需要手动整理`tiger_sha1_add.tsv`，脚本会自动处理
 
 可用参数：
 - `--deploy`：更新词典后自动重新部署Weasel

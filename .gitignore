@@ -1,7 +1,6 @@
 draft*
 temp*
 /reference/
-/lua/en_dict.txt
 
 .venv/
 __pycache__/
