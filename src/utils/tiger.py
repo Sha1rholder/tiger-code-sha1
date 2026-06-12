@@ -7,13 +7,12 @@ LENGTH_WEIGHT_BASE = {
 }
 
 
-def get_result(sc2013: set[str]) -> list[tuple[str, str]]:
-	"""返回按原顺序过滤并去重后的虎码单字(code, text)列表。"""
-	# 从`upstream/tiger/tiger.dict.yaml`的tsv部分提取(code, text)列表tiger，保留原顺序
-	tiger: list[tuple[str, str]] = []
-	seen_texts: set[str] = set()
+def get_result(sc2013: set[str], tiger_dict:str) -> list[tuple[str, str]]:
+	"""返回过滤并单一化编码后的虎码单字(code, text)列表"""
+	# 从tiger_dict的tsv部分提取(code, text)列表tiger，保留原顺序
+	selected_by_text: dict[str, tuple[int, str, str]] = {}
 
-	with open("upstream/tiger/tiger.dict.yaml", encoding="utf-8") as f:
+	with open(tiger_dict, encoding="utf-8") as f:
 		after_sep = False
 		for line_number, line in enumerate(f, 1):
 			line = line.rstrip("\n")
@@ -31,14 +30,15 @@ def get_result(sc2013: set[str]) -> list[tuple[str, str]]:
 			if text not in sc2013:
 				continue
 
-			# 对于text相同的元组，只保留更靠前的
-			if text in seen_texts:
-				continue
+			# 对于text相同的元组，保留码长更短的；码长相同时保留更靠前的
+			current = selected_by_text.get(text)
+			if current is None or len(code) < len(current[1]):
+				selected_by_text[text] = (line_number, code, text)
 
-			seen_texts.add(text)
-			tiger.append((code, text))
-
-	return tiger
+	return [
+		(code, text)
+		for _, code, text in sorted(selected_by_text.values(), key=lambda item: item[0])
+	]
 
 
 def code_len_group(code: str) -> int:
@@ -103,5 +103,5 @@ if __name__ == "__main__":
 	for filename in ("level-1.txt", "level-2.txt", "level-3.txt"):
 		with open(f"upstream/SC2013/{filename}", encoding="utf-8") as f:
 			sc2013.update(line.strip() for line in f if line.strip())
-	for code, text in get_result(sc2013):
+	for code, text in get_result(sc2013, "upstream/tiger/tiger.dict.yaml"):
 		print(f"{code}\t{text}")
