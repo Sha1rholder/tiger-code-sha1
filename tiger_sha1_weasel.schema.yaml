@@ -70,9 +70,10 @@ en_weight_translate:
 
 input_record:
   log_dir: input_records
-  flush_size: 20
-  flush_interval_sec: 5
-  record_idle_edit_keys: true
+  flush_size: 100
+  flush_interval_sec: 30
+  sync_interval_sec: 120
+  record_idle_edit_keys: false
 
 reverse_lookup:
   dictionary: tiger_sha1_py

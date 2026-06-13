@@ -12,7 +12,7 @@
 - **规范汉字**：默认仅收录《通用规范汉字表（2013）》中的标准简体字
 - **唯一编码**：所有字符只保留唯一编码以降低心智负担
 - **更多符号**：见`symbols.yaml`，切换到全角可输入一些常用特殊符号
-- **输入记录**：默认记录Rime已上屏文本和无候选时的Space/BackSpace，便于个人输入习惯分析
+- **输入记录**：默认低开销记录Rime已上屏文本，便于个人输入习惯分析
 - **自动化加词**：可通过`src/main.py`自动sort并同步到输入方案中
 - **永不自动上屏**：即使唯一候选也要按空格上屏
 - **永不自动清除buffer**：可以输入超过4码以实现更流畅的中英混输
@@ -66,14 +66,16 @@
 
 若要使英文候选默认带尾随空格，可将`tiger_sha1_weasel.default.yaml > en_weight_translate > append_space_to_candidates`的值改为true并重新部署
 
-输入记录默认开启，可在方案菜单中切换`输入记录开/输入记录关`临时暂停。日志写入`%APPDATA%\Rime\input_records\rime_input_YYYY-MM-DD.jsonl`，每行一条JSON事件，例如：
+输入记录默认开启，可在方案菜单中切换`输入记录开/输入记录关`临时暂停。默认只记录Rime实际提交的文本；若要额外记录无候选菜单时的Space/BackSpace，可将`tiger_sha1_weasel.schema.yaml > input_record > record_idle_edit_keys`改为`true`后重新部署。
+
+日志写入`%APPDATA%\Rime\input_records\rime_input_YYYY-MM-DD.jsonl`，每行一条JSON事件，例如：
 
 ```json
 {"t":1781269012,"time":"2026-06-13 03:20:12","type":"commit","schema":"tiger_sha1_weasel","text":"今天"}
-{"t":1781269015,"time":"2026-06-13 03:20:15","type":"edit","schema":"tiger_sha1_weasel","key":"BackSpace"}
+{"t":1781269015,"time":"2026-06-13 03:20:15","type":"commit","schema":"tiger_sha1_weasel","text":"。"}
 ```
 
-记录范围仅限Rime实际提交的文本，以及无候选菜单时Rime能观察到的Space/BackSpace；有候选时Space通常会导致上屏，因此只记录对应commit，不额外记录Space。该功能不是系统级键盘记录器，不覆盖ASCII模式直通、密码框、应用快捷键或未经过Rime处理的输入。
+记录范围仅限Rime实际提交的文本，以及可选的无候选菜单Space/BackSpace；有候选时Space通常会导致上屏，因此只记录对应commit，不额外记录Space。该功能不是系统级键盘记录器，不覆盖ASCII模式直通、密码框、应用快捷键或未经过Rime处理的输入。
 
 ## 实现细节
 
@@ -96,9 +98,9 @@
 输入记录
 
 - `lua/input_record.lua`通过`context.commit_notifier`记录上屏文本，标点若由Rime提交也会进入commit日志
-- 日志按天轮转为JSONL，使用内存buffer批量追加；默认20条或5秒触发一次flush，退出组件时强制flush
-- 无候选菜单时的Space/BackSpace作为`edit`事件记录；有候选菜单时不额外记录这些按键，避免和commit重复
-- `input_record/log_dir`、`flush_size`、`flush_interval_sec`、`record_idle_edit_keys`可在schema中调整
+- 日志按天轮转为JSONL，使用内存buffer批量追加到长期打开的全缓冲文件句柄；默认100条或30秒追加一次，120秒或退出组件时强制同步
+- 无候选菜单时的Space/BackSpace可作为`edit`事件记录；默认关闭以降低按键热路径开销，有候选菜单时始终不额外记录这些按键，避免和commit重复
+- `input_record/log_dir`、`flush_size`、`flush_interval_sec`、`sync_interval_sec`、`record_idle_edit_keys`可在schema中调整
 
 ……
 
