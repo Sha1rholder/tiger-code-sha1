@@ -6,6 +6,7 @@ temp*
 __pycache__/
 
 /build/
+/input_records/
 /luna_pinyin.userdb/
 /installation.yaml
 /user.yaml
