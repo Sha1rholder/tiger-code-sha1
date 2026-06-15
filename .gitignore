@@ -1,9 +1,9 @@
 draft*
 temp*
-/reference/
 
 .venv/
 __pycache__/
+.ruff_cache/
 
 /build/
 /luna_pinyin.userdb/

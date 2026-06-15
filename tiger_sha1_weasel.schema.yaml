@@ -52,6 +52,7 @@ speller:
   alphabet: zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA
 
 translator:
+  enable_completion: false
   enable_sentence: false
   enable_user_dict: false
   dictionary: tiger_sha1_weasel
@@ -76,10 +77,10 @@ reverse_lookup:
 key_binder:
   bindings:
     - when: has_menu
-      accept: minus
+      accept: Up
       send: Page_Up
     - when: has_menu
-      accept: equal
+      accept: Down
       send: Page_Down
     - when: has_menu
       accept: Right
