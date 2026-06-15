@@ -9,7 +9,6 @@
 3. 读取`upstream/tiger/tiger.dict.yaml`正文为`list[tuple[code, text]]`，交给`utils/tiger.py`过滤、单一化编码并合并中文附加词
 4. 读取`tiger_sha1_add_zh.tsv`，交给`utils/tiger.py`检查重复`text`并排序，然后由`main.py`写回
 5. 读取`upstream/ESDB.txt`为`set[str]`，读取`tiger_sha1_add_en.txt`为`list[str]`，交给`utils/en.py`生成英文排序和大小写变体，然后由`main.py`写回
-6. 检查中文和英文词典中完全相同的`(code, text)`组合，发现重复时输出警告
 
 ## 模块职责
 

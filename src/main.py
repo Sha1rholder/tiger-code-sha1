@@ -193,21 +193,6 @@ def write_en_review_tsv(filename: str, entries: list[en.RankedWord]) -> None:
 			)
 
 
-def warn_duplicate_entries(rows: list[tuple[str, str]]) -> None:
-	"""检查并警告重复词条"""
-	seen: set[tuple[str, str]] = set()
-	duplicates = 0
-	for code, text in rows:
-		if (code, text) in seen:
-			print(f"Warning: duplicate entry found - code: {code}, text: {text}")
-			duplicates += 1
-		else:
-			seen.add((code, text))
-
-	if duplicates == 0:
-		print("All clear! No duplicate entries found.")
-
-
 def main(*, write_en_dict_review: bool = False) -> None:
 	"""更新中文、拼音和英文词典并按需写出审查文件"""
 	sc2013_set = get_sc2013(
@@ -248,8 +233,6 @@ def main(*, write_en_dict_review: bool = False) -> None:
 	write_words("lua/en_dict.txt", en_dict)
 	if write_en_dict_review:
 		write_en_review_tsv("temp/en_dict.tsv", en_base_entries)
-
-	warn_duplicate_entries(zh_rows + [(word, word) for word in en_dict])
 
 
 def git_sync() -> None:
