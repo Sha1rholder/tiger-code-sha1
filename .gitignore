@@ -11,6 +11,6 @@ __pycache__/
 /user.yaml
 /default.custom.yaml
 
-/tiger_sha1.dict.yaml
+/tiger_sha1_zh.dict.yaml
 /tiger_sha1_py.dict.yaml
 /lua/en_dict.txt

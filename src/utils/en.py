@@ -1,5 +1,5 @@
+from collections.abc import Iterable
 from dataclasses import dataclass
-from pathlib import Path
 
 from wordfreq import get_frequency_dict
 
@@ -20,72 +20,45 @@ class WordInfo:
 	word: str
 	key: str
 	frequency: float
-	input_order: int
 
 
-def get_result(esdb_filename: str) -> list[str]:
-	"""返回按自定义顺序排列的英文单词列表，保留ESDB原始大小写"""
+def get_result(esdb_words: set[str]) -> list[str]:
+	"""返回按自定义顺序排列的英文单词列表，保留ESDB大小写。"""
 	return add_case_variants(
 		[
 			entry.word
-			for entry in get_base_ranked_entries(esdb_filename)
+			for entry in get_base_ranked_entries(esdb_words)
 			if len(entry.word) >= MIN_WORD_LEN
 		]
 	)
 
 
-def get_add_words(filename: str) -> list[str]:
+def sort_add_words(words: list[str]) -> list[str]:
 	"""返回按单词长度和字母顺序稳定排序后的英文附加词。"""
-	words: list[str] = []
-	with open(filename, encoding="utf-8") as f:
-		for line in f:
-			word = line.strip()
-			if word:
-				words.append(word)
+	clean_words = [word for word in words if word]
 
 	seen: set[str] = set()
-	for word in words:
+	for word in clean_words:
 		if word in seen:
 			print(f"警告：英文附加词 '{word}' 重复")
 		else:
 			seen.add(word)
 
-	words.sort(key=lambda word: (len(word), word.casefold()))
-
-	with open(filename, "w", encoding="utf-8", newline="") as f:
-		for word in words:
-			f.write(f"{word}\n")
-
-	return words
+	return sorted(clean_words, key=lambda word: (len(word), word.casefold()))
 
 
-def get_base_ranked_entries(esdb_filename: str) -> list[RankedWord]:
-	"""返回未过滤码长且不含派生大小写词条的英文词条排序指标"""
-	esdb: list[str] = []
-	with open(esdb_filename, encoding="utf-8") as f:
-		after_sep = False
-		for line in f:
-			if line.strip() == "---":
-				after_sep = True
-				continue
-			if after_sep:
-				word = line.strip()
-				if word:
-					esdb.append(word)
-
-	esdb = dedupe_case_variants(esdb)
-
+def get_base_ranked_entries(esdb_words: set[str]) -> list[RankedWord]:
+	"""返回未过滤码长且不含派生大小写词条的英文词条排序指标。"""
+	esdb = dedupe_case_variants(esdb_words)
 	en_freq = get_frequency_dict("en")
 
-	# 去掉含非标准英文字母字符、无法匹配wordfreq的词
 	infos = [
 		WordInfo(
 			word=word,
 			key=word.casefold(),
 			frequency=en_freq[word.casefold()],
-			input_order=input_order,
 		)
-		for input_order, word in enumerate(esdb)
+		for word in esdb
 		if (
 			word.isascii()
 			and word.isalpha()
@@ -98,7 +71,7 @@ def get_base_ranked_entries(esdb_filename: str) -> list[RankedWord]:
 
 
 def rank_base_entries(infos: list[WordInfo]) -> list[RankedWord]:
-	"""按提权词频和降权次数排序"""
+	"""按降权次数、提权词频、原词频和词面排序。"""
 	infos_by_key = {info.key: info for info in infos}
 	parent_by_key = build_parent_map(infos_by_key)
 
@@ -128,14 +101,16 @@ def rank_base_entries(infos: list[WordInfo]) -> list[RankedWord]:
 		key=lambda entry: (
 			entry.demotion_count,
 			-entry.boosted_frequency,
-			infos_by_key[entry.word.casefold()].input_order,
+			-entry.frequency,
+			entry.word.casefold(),
+			entry.word,
 		),
 	)
 	return entries
 
 
 def build_parent_map(infos_by_key: dict[str, WordInfo]) -> dict[str, str]:
-	"""为每个词选择唯一直接基本形式"""
+	"""为每个词选择唯一直接基本形式。"""
 	parent_by_key: dict[str, str] = {}
 	for key in infos_by_key:
 		candidates = [
@@ -146,12 +121,12 @@ def build_parent_map(infos_by_key: dict[str, WordInfo]) -> dict[str, str]:
 		if not candidates:
 			continue
 
-		_, parent_key = min(
+		_priority, parent_key = min(
 			candidates,
 			key=lambda candidate: (
 				candidate[0],
 				-infos_by_key[candidate[1]].frequency,
-				infos_by_key[candidate[1]].input_order,
+				candidate[1],
 			),
 		)
 		parent_by_key[key] = parent_key
@@ -160,7 +135,7 @@ def build_parent_map(infos_by_key: dict[str, WordInfo]) -> dict[str, str]:
 
 
 def iter_base_candidates(word: str):
-	"""按README中的规则顺序产出直接基本形式候选"""
+	"""按规则顺序产出直接基本形式候选。"""
 	rules = [
 		lambda value: strip_suffix(value, "s"),
 		lambda value: strip_suffix(value, "es"),
@@ -194,14 +169,14 @@ def iter_base_candidates(word: str):
 
 
 def strip_suffix(word: str, suffix: str) -> str | None:
-	"""去掉指定后缀，无法去掉时返回None"""
+	"""去掉指定后缀，无法去掉时返回None。"""
 	if len(word) <= len(suffix) or not word.endswith(suffix):
 		return None
 	return word[: -len(suffix)]
 
 
 def replace_suffix(word: str, suffix: str, replacement: str) -> str | None:
-	"""将指定后缀替换为另一段文本，无法替换时返回None"""
+	"""将指定后缀替换为另一段文本，无法替换时返回None。"""
 	base = strip_suffix(word, suffix)
 	if base is None:
 		return None
@@ -209,7 +184,7 @@ def replace_suffix(word: str, suffix: str, replacement: str) -> str | None:
 
 
 def strip_doubled_consonant_suffix(word: str, suffix: str) -> str | None:
-	"""去掉后缀和词尾双写辅音，无法匹配时返回None"""
+	"""去掉后缀和词尾双写辅音，无法匹配时返回None。"""
 	base = strip_suffix(word, suffix)
 	if base is None or len(base) < 2:
 		return None
@@ -218,34 +193,26 @@ def strip_doubled_consonant_suffix(word: str, suffix: str) -> str | None:
 	return base[:-1]
 
 
-def dedupe_case_variants(words: list[str]) -> list[str]:
-	"""同一单词有多种大小写形式时，逐位优先保留小写形式"""
-	groups: dict[str, list[tuple[int, str]]] = {}
-	for index, word in enumerate(words):
-		groups.setdefault(word.casefold(), []).append((index, word))
+def dedupe_case_variants(words: Iterable[str]) -> list[str]:
+	"""同一单词有多种大小写形式时，逐位优先保留更偏小写的形式。"""
+	groups: dict[str, list[str]] = {}
+	for word in words:
+		groups.setdefault(word.casefold(), []).append(word)
 
-	keep_indexes: set[int] = set()
-	for entries in groups.values():
-		candidates = entries
-		max_pos = min(len(word) for _, word in candidates)
-		for pos in range(max_pos):
-			if len(candidates) == 1:
-				break
-			if any(word[pos].isupper() for _, word in candidates) and any(
-				word[pos].islower() for _, word in candidates
-			):
-				candidates = [
-					(index, word)
-					for index, word in candidates
-					if not word[pos].isupper()
-				]
-		keep_indexes.add(candidates[0][0])
+	return sorted(
+		(min(group, key=case_variant_sort_key) for group in groups.values()),
+		key=lambda word: (word.casefold(), word),
+	)
 
-	return [word for index, word in enumerate(words) if index in keep_indexes]
+
+def case_variant_sort_key(word: str) -> tuple[tuple[int, ...], str]:
+	"""小写字符优先，其次用词面保证确定性。"""
+	char_key = tuple(0 if char.islower() else 1 if char.isupper() else 2 for char in word)
+	return char_key, word
 
 
 def add_case_variants(en_dict: list[str]) -> list[str]:
-	"""为首字母小写词生成首字母大写版本，为非全小写词生成全大写版本"""
+	"""为首字母小写词生成首字母大写版本，为非全小写词生成全大写版本。"""
 	initial_caps: list[str] = []
 	all_caps: list[str] = []
 	seen = set(en_dict)
@@ -262,30 +229,3 @@ def add_case_variants(en_dict: list[str]) -> list[str]:
 				seen.add(all_cap)
 
 	return en_dict + initial_caps + all_caps
-
-
-def write_result(filename: str, words: list[str]) -> None:
-	"""将词表写为一行一词的纯文本文件"""
-	with open(filename, "w", encoding="utf-8", newline="") as f:
-		for word in words:
-			f.write(f"{word}\n")
-
-
-def write_review_tsv(filename: str, entries: list[RankedWord]) -> None:
-	"""将词表和排序指标写为便于审查的TSV文件"""
-	path = Path(filename)
-	if path.parent != Path("."):
-		path.parent.mkdir(parents=True, exist_ok=True)
-	with path.open("w", encoding="utf-8", newline="") as f:
-		f.write("word\tfrequency\tboosted_frequency\tdemotion_count\n")
-		for entry in entries:
-			f.write(
-				f"{entry.word}\t"
-				f"{entry.frequency:.17g}\t"
-				f"{entry.boosted_frequency:.17g}\t"
-				f"{entry.demotion_count}\n"
-			)
-
-
-if __name__ == "__main__":
-	write_result("lua/en_dict.txt", get_result("upstream/ESDB.txt"))
