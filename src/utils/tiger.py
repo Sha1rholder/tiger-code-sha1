@@ -7,7 +7,7 @@ LENGTH_WEIGHT_BASE = {
 }
 
 
-def get_result(sc2013: set[str], tiger_dict:str) -> list[tuple[str, str]]:
+def get_result(sc2013: set[str], tiger_dict: str) -> list[tuple[str, str]]:
 	"""返回过滤并单一化编码后的虎码单字(code, text)列表"""
 	# 从tiger_dict的tsv部分提取(code, text)列表tiger，保留原顺序
 	selected_by_text: dict[str, tuple[int, str, str]] = {}
@@ -41,17 +41,20 @@ def get_result(sc2013: set[str], tiger_dict:str) -> list[tuple[str, str]]:
 	]
 
 
-def code_len_group(code: str) -> int:
-	return len(code) if len(code) < 4 else 4
-
-
 def add_prefix_local_weights(rows: list[tuple[str, str]]) -> list[tuple[str, str, int]]:
+	"""为每行分配权重
+
+	权重 = 码长基础权重 + 同前缀内局部权重（同前缀越靠前权重越高）
+	码长 > 4 的按 4 处理；码长 = 1 的直接赋予基础权重
+	"""
 	prefix_counts_by_len: dict[int, dict[str, int]] = {}
 	weighted_rows: list[tuple[str, str, int]] = []
 
 	for code, text in rows:
-		code_len = code_len_group(code)
-		if code_len == 1:
+		code_len = len(code)
+		if code_len > 4:
+			code_len = 4
+		elif code_len == 1:
 			weighted_rows.append((code, text, LENGTH_WEIGHT_BASE[code_len]))
 			continue
 
