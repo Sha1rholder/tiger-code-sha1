@@ -20,7 +20,8 @@
 ├ tiger_sha1.dict.yaml				# 主词典（机器生成）
 ├ tiger_sha1_py.schema.yaml			# 拼音反查伪方案
 ├ tiger_sha1_py.dict.yaml			# 拼音反查词典（机器生成）
-├ tiger_sha1_add.tsv				# 附加词条（可定制）
+├ tiger_sha1_add_zh.tsv				# 附加词条（中文词表后）
+├ tiger_sha1_add_en.txt				# 附加词条（英文词表前）
 ├ alphabet.dict.yaml				# 大写字母表
 ├ symbols.yaml						# 符号表
 ├ weasel.custom.yaml				# 小狼毫界面定制
@@ -56,7 +57,7 @@
 3. 执行`git clone --depth=1 https://github.com/Sha1rholder/tiger-code-sha1.git "$env:APPDATA\Rime"; uv run "$env:APPDATA\Rime\src\main.py" --deploy`
 4. 在Weasel控制面板中选择`tiger_sha1_weasel`
 
-若要加减词，请编辑`tiger_sha1_add.tsv`，然后执行`uv run "$env:APPDATA\Rime\src\main.py --deploy"`。不需要手动整理`tiger_sha1_add.tsv`，脚本会自动处理
+若要加减词，请编辑`tiger_sha1_add_zh.tsv`或`tiger_sha1_add_en.txt`，然后执行`uv run "$env:APPDATA\Rime\src\main.py --deploy"`。不需要手动整理附加词表，脚本会自动处理
 
 `src/main.py`可用参数：
 - `--deploy`：更新词典后自动重新部署Weasel

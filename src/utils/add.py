@@ -38,6 +38,6 @@ def get_result(add_words: str) -> list[tuple[str, str]]:
 
 
 if __name__ == "__main__":
-	rows = get_result("tiger_sha1_add.tsv")
+	rows = get_result("tiger_sha1_add_zh.tsv")
 	for code, text in rows:
 		print(f"{code}\t{text}")

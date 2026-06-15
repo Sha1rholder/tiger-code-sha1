@@ -34,6 +34,31 @@ def get_result(esdb_filename: str) -> list[str]:
 	)
 
 
+def get_add_words(filename: str) -> list[str]:
+	"""返回按单词长度和字母顺序稳定排序后的英文附加词。"""
+	words: list[str] = []
+	with open(filename, encoding="utf-8") as f:
+		for line in f:
+			word = line.strip()
+			if word:
+				words.append(word)
+
+	seen: set[str] = set()
+	for word in words:
+		if word in seen:
+			print(f"警告：英文附加词 '{word}' 重复")
+		else:
+			seen.add(word)
+
+	words.sort(key=lambda word: (len(word), word.casefold()))
+
+	with open(filename, "w", encoding="utf-8", newline="") as f:
+		for word in words:
+			f.write(f"{word}\n")
+
+	return words
+
+
 def get_base_ranked_entries(esdb_filename: str) -> list[RankedWord]:
 	"""返回未过滤码长且不含派生大小写词条的英文词条排序指标"""
 	esdb: list[str] = []

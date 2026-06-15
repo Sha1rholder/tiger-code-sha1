@@ -5,8 +5,8 @@
 1. `src/utils/sc2013.py`读取`upstream/SC2013/`中的三个字表，生成《通用规范汉字表（2013）》汉字集合
 2. `src/utils/py_sc.py`从`upstream/tiger/PY_c.dict.yaml`提取拼音反查单字，只保留规范汉字，并按原词频权重降序排列
 3. `src/utils/tiger.py`从`upstream/tiger/tiger.dict.yaml`提取虎码单字，只保留规范汉字；同一个字保留码长更短的编码，码长相同则保留上游更靠前的编码
-4. `src/utils/add.py`读取并整理`tiger_sha1_add.tsv`，再与虎码单字合并写入主词典
-5. `src/utils/en.py`生成英文基础词表，补充大小写变体，并写入`lua/en_dict.txt`
+4. `src/utils/add.py`读取并整理`tiger_sha1_add_zh.tsv`，再与虎码单字合并写入主词典
+5. `src/utils/en.py`读取并整理`tiger_sha1_add_en.txt`，生成英文基础词表，补充大小写变体，并写入`lua/en_dict.txt`
 6. 主流程检查中文和英文词典中完全相同的`code, text`组合，发现重复时输出警告
 
 ## 模块职责
@@ -15,7 +15,7 @@
 - `src/utils/sc2013.py`：合并`level-1.txt`、`level-2.txt`、`level-3.txt`为规范简体汉字集合
 - `src/utils/py_sc.py`：生成拼音反查词典正文，输出格式为`code<TAB>text`
 - `src/utils/tiger.py`：过滤并单一化虎码编码，写主词典时为中文候选生成权重
-- `src/utils/add.py`：整理附加词条，检查重复`text`，按码长和编码稳定排序后写回`tiger_sha1_add.tsv`
+- `src/utils/add.py`：整理附加词条，检查重复`text`，按码长和编码稳定排序后写回`tiger_sha1_add_zh.tsv`
 - `src/utils/en.py`：从ESDB和`wordfreq`生成英文词表，计算变体关系、提权词频和排序指标
 
 ## 中文词典权重
@@ -33,13 +33,23 @@
 
 ## 附加词条
 
-`tiger_sha1_add.tsv`第一行固定为`code<TAB>text`。`utils/add.py`会跳过空行，要求其余行严格为两列TSV；读取后检查重复`text`并输出警告。写回时排序规则为：
+`tiger_sha1_add_zh.tsv`第一行固定为`code<TAB>text`。`utils/add.py`会跳过空行，要求其余行严格为两列TSV；读取后检查重复`text`并输出警告。写回时排序规则为：
 
 1. `code`长度升序
 2. `code.casefold()`升序
 3. Python稳定排序保留相同`code`的原始先后顺序
 
 ## 英文处理
+
+### 英文附加词表
+
+`tiger_sha1_add_en.txt`是一行一词的纯文本文件。`utils/en.py`会跳过空行，检查完全相同的重复词并输出警告。写回时排序规则为：
+
+1. 单词长度升序
+2. `word.casefold()`升序
+3. Python稳定排序保留相同`word.casefold()`的原始先后顺序
+
+排序后的附加词会原样放在`lua/en_dict.txt`顶部。若基础英文词表包含完全相同的词，主流程会跳过基础词表里的重复项，避免最终英文词表重复
 
 ### 英文词表来源
 

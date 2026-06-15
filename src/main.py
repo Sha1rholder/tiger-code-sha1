@@ -13,13 +13,18 @@ def main(*, write_en_dict_review: bool = False) -> None:
 	py_sc.write_result("tiger_sha1_py.dict.yaml", py_rows)
 
 	tiger_rows = tiger.get_result(sc2013_set, "upstream/tiger/tiger.dict.yaml")
-	add_rows = add.get_result("tiger_sha1_add.tsv")
+	add_rows = add.get_result("tiger_sha1_add_zh.tsv")
 	tiger_add = tiger_rows + add_rows
 
+	en_add_words = en.get_add_words("tiger_sha1_add_en.txt")
 	en_base_entries = en.get_base_ranked_entries("upstream/ESDB.txt")
-	en_dict = en.add_case_variants(
-		[entry.word for entry in en_base_entries if len(entry.word) >= en.MIN_WORD_LEN]
-	)
+	en_add_seen = set(en_add_words)
+	en_base_words = [
+		entry.word
+		for entry in en_base_entries
+		if len(entry.word) >= en.MIN_WORD_LEN and entry.word not in en_add_seen
+	]
+	en_dict = en_add_words + en.add_case_variants(en_base_words)
 	en_rows = [(word, word) for word in en_dict]
 
 	tiger.write_result("tiger_sha1.dict.yaml", tiger_add)
@@ -89,6 +94,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def deploy() -> None:
+	"""WeaselDeploy"""
 	deployer = r"C:\Program Files\Rime\weasel-0.17.4\WeaselDeployer.exe"
 	print(f"Running {deployer} ...")
 	subprocess.run([deployer, "/deploy"], check=True)
