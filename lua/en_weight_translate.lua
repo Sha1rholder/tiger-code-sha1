@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global
 
----按 lua/en_dict.txt 懒加载英文候选
+---按lua/en_dict.txt懒加载英文候选
 ---当输入不是任何主码表编码前缀时，先产出原始输入，方便直接上屏未知英文词
 ---英文候选整体排在主码表候选之后，但在本translator内保持英文词表顺序
 ---Lua产出的英文候选默认带尾随空格，便于连续输入英文

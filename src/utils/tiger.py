@@ -1,110 +1,69 @@
-LOCAL_WEIGHT_STRIDE = 100
-LENGTH_WEIGHT_BASE = {
-	1: 300,
-	2: 200,
-	3: 100,
-	4: 0,
-}
-DICT_HEADER = """---
-name: tiger_sha1
-version: 2026.06.08
-sort: by_weight
-columns:
-  - code
-  - weight
-  - text
-...
-"""
+def code_len_group(code: str) -> int:
+	"""返回码长分组，4码及以上归为4"""
+	return min(len(code), 4)
 
 
-def get_result(sc2013: set[str], tiger_dict: str) -> list[tuple[str, str]]:
+def filter_tiger(
+	upstream_tiger_dict: list[tuple[str, str]],
+	sc2013: set[str],
+) -> list[tuple[str, str]]:
 	"""返回过滤并单一化编码后的虎码单字(code, text)列表"""
-	# 从tiger_dict的tsv部分提取(code, text)列表tiger，保留原顺序
-	selected_by_text: dict[str, tuple[int, str, str]] = {}
+	selected: list[tuple[str, str] | None] = []
+	index_by_text: dict[str, int] = {}
+	code_counts: dict[str, int] = {}
 
-	with open(tiger_dict, encoding="utf-8") as f:
-		after_sep = False
-		for line_number, line in enumerate(f, 1):
-			line = line.rstrip("\n")
-			if line.strip() == "...":
-				after_sep = True
-				continue
-			if not after_sep or not line:
-				continue
-
-			parts = line.split("\t")
-			if len(parts) < 2:
-				raise SystemExit(f"第{line_number}行不是有效的TSV行：{line}")
-			text, code = parts[:2]
-			# 去掉text不在sc2013中的元组
-			if text not in sc2013:
-				continue
-
-			# 对于text相同的元组，保留码长更短的；码长相同时保留更靠前的
-			current = selected_by_text.get(text)
-			if current is None or len(code) < len(current[1]):
-				selected_by_text[text] = (line_number, code, text)
-
-	return [
-		(code, text)
-		for _, code, text in sorted(selected_by_text.values(), key=lambda item: item[0])
-	]
-
-
-def add_prefix_local_weights(rows: list[tuple[str, str]]) -> list[tuple[str, str, int]]:
-	"""为每行分配权重
-
-	权重 = 码长基础权重 + 同前缀内局部权重（同前缀越靠前权重越高）
-	码长 > 4 的按 4 处理；码长 = 1 的直接赋予基础权重
-	"""
-	prefix_counts_by_len: dict[int, dict[str, int]] = {}
-	weighted_rows: list[tuple[str, str, int]] = []
-
-	for code, text in rows:
-		code_len = len(code)
-		if code_len > 4:
-			code_len = 4
-		elif code_len == 1:
-			weighted_rows.append((code, text, LENGTH_WEIGHT_BASE[code_len]))
+	for code, text in upstream_tiger_dict:
+		if text not in sc2013:
 			continue
 
-		prefix = code[:-1]
-		prefix_counts = prefix_counts_by_len.setdefault(code_len, {})
-		prefix_count = prefix_counts.get(prefix, 0)
-		if prefix_count >= LOCAL_WEIGHT_STRIDE:
-			raise SystemExit(
-				f"prefix-local weight overflow: code length group {code_len}, "
-				f"prefix {prefix!r} has more than {LOCAL_WEIGHT_STRIDE} entries"
-			)
+		current_index = index_by_text.get(text)
+		if current_index is None:
+			index_by_text[text] = len(selected)
+			selected.append((code, text))
+			code_counts[code] = code_counts.get(code, 0) + 1
+			continue
 
-		prefix_counts[prefix] = prefix_count + 1
-		local_weight = LOCAL_WEIGHT_STRIDE - prefix_count - 1
-		weight = LENGTH_WEIGHT_BASE[code_len] + local_weight
-		weighted_rows.append((code, text, weight))
+		current = selected[current_index]
+		if current is None:
+			raise AssertionError("selected text index points to an empty row")
+		current_code, _current_text = current
+		if len(code) >= len(current_code):
+			continue
 
-	return weighted_rows
+		# 后续短码只有在未被已选中的更高权重条目占用时才替换
+		if code_counts.get(code, 0) > 0:
+			continue
 
+		code_counts[current_code] -= 1
+		if code_counts[current_code] == 0:
+			del code_counts[current_code]
+		selected[current_index] = None
+		index_by_text[text] = len(selected)
+		selected.append((code, text))
+		code_counts[code] = 1
 
-def write_result(
-	filename: str,
-	rows: list[tuple[str, str]],
-) -> list[tuple[str, str, int]]:
-	"""写入完整Rime虎码主词典，并返回写入的加权行。"""
-	sorted_rows = sorted(rows, key=lambda item: len(item[0]))
-	weighted_rows = add_prefix_local_weights(sorted_rows)
-
-	with open(filename, "w", encoding="utf-8", newline="") as f:
-		f.write(DICT_HEADER)
-		for code, text, weight in weighted_rows:
-			f.write(f"{code}\t{weight}\t{text}\n")
-
-	return weighted_rows
+	return [row for row in selected if row is not None]
 
 
-if __name__ == "__main__":
-	sc2013: set[str] = set()
-	for filename in ("level-1.txt", "level-2.txt", "level-3.txt"):
-		with open(f"upstream/SC2013/{filename}", encoding="utf-8") as f:
-			sc2013.update(line.strip() for line in f if line.strip())
-	for code, text in get_result(sc2013, "upstream/tiger/tiger.dict.yaml"):
-		print(f"{code}\t{text}")
+def combine_tiger_add(
+	tiger_rows: list[tuple[str, str]],
+	zh_add_rows: list[tuple[str, str]],
+) -> list[tuple[str, str]]:
+	"""按码长分层合并虎码基础词和中文附加词"""
+	rows: list[tuple[str, str]] = []
+	for group in (1, 2, 3, 4):
+		rows.extend(row for row in tiger_rows if code_len_group(row[0]) == group)
+		rows.extend(row for row in zh_add_rows if code_len_group(row[0]) == group)
+	return rows
+
+
+def sort_zh_add(rows: list[tuple[str, str]]) -> list[tuple[str, str]]:
+	"""返回按编码长度和字母顺序稳定排序后的附加词条(code, text)列表"""
+	seen_text: set[str] = set()
+	for _code, text in rows:
+		if text in seen_text:
+			print(f"警告：中文附加词text='{text}'重复")
+		else:
+			seen_text.add(text)
+
+	return sorted(rows, key=lambda item: (len(item[0]), item[0].casefold()))

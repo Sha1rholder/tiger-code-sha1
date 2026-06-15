@@ -1,84 +1,72 @@
 # 词典生成实现说明
 
-`src/main.py`负责串联`src/utils/`中的工具模块，执行顺序如下：
+`src/main.py`负责所有项目文件读写和Rime/TSV/TXT格式解析，`src/utils/`中的模块只处理已经读入的结构化数据。所有输入读取都按行分割处理，兼容`CRLF`和`LF`
 
-1. `src/utils/sc2013.py`读取`upstream/SC2013/`中的三个字表，生成《通用规范汉字表（2013）》汉字集合
-2. `src/utils/py_sc.py`从`upstream/tiger/PY_c.dict.yaml`提取拼音反查单字，只保留规范汉字，并按原词频权重降序排列
-3. `src/utils/tiger.py`从`upstream/tiger/tiger.dict.yaml`提取虎码单字，只保留规范汉字；同一个字保留码长更短的编码，码长相同则保留上游更靠前的编码
-4. `src/utils/add.py`读取并整理`tiger_sha1_add_zh.tsv`，再与虎码单字合并写入主词典
-5. `src/utils/en.py`读取并整理`tiger_sha1_add_en.txt`，生成英文基础词表，补充大小写变体，并写入`lua/en_dict.txt`
-6. 主流程检查中文和英文词典中完全相同的`code, text`组合，发现重复时输出警告
+主流程执行顺序：
+
+1. 读取`upstream/SC2013/level-1.txt`、`level-2.txt`、`level-3.txt`，交给`main.py`合并为`set[str]`
+2. 读取`upstream/tiger/PY_c.dict.yaml`正文为`list[tuple[code, weight, text]]`，交给`utils/py_sc.py`过滤并按词频降序生成拼音反查词典
+3. 读取`upstream/tiger/tiger.dict.yaml`正文为`list[tuple[code, text]]`，交给`utils/tiger.py`过滤、单一化编码并合并中文附加词
+4. 读取`tiger_sha1_add_zh.tsv`，交给`utils/tiger.py`检查重复`text`并排序，然后由`main.py`写回
+5. 读取`upstream/ESDB.txt`为`set[str]`，读取`tiger_sha1_add_en.txt`为`list[str]`，交给`utils/en.py`生成英文排序和大小写变体，然后由`main.py`写回
 
 ## 模块职责
 
-- `src/main.py`：更新词典、按需重新部署Weasel、按需同步git
-- `src/utils/sc2013.py`：合并`level-1.txt`、`level-2.txt`、`level-3.txt`为规范简体汉字集合
-- `src/utils/py_sc.py`：生成拼音反查词典正文，输出格式为`code<TAB>text`
-- `src/utils/tiger.py`：过滤并单一化虎码编码，写主词典时为中文候选生成权重
-- `src/utils/add.py`：整理附加词条，检查重复`text`，按码长和编码稳定排序后写回`tiger_sha1_add_zh.tsv`
-- `src/utils/en.py`：从ESDB和`wordfreq`生成英文词表，计算变体关系、提权词频和排序指标
+- `src/main.py`：读取源文件、解析格式、调用纯函数、写出生成文件、按需部署Weasel、按需同步git
+- `src/utils/py_sc.py`：过滤拼音反查行并按`weight`降序输出`(code, text)`
+- `src/utils/tiger.py`：过滤虎码单字、处理同字多码、整理中文附加词、按码长合并附加词
+- `src/utils/en.py`：基于ESDB拼写集合和`wordfreq`生成英文基础词排序，计算变体关系、提权词频、降权次数和大小写派生词
 
-## 中文词典权重
+## 中文处理
 
-`src/utils/tiger.py`写入主词典时，先按编码长度排序，再用前缀局部权重控制同前缀候选的排序。码长分组规则是：1码、2码、3码各自成组，4码及以上统一视为4码组
+`main.py`按上游文件顺序读取`upstream/tiger/tiger.dict.yaml`正文，并丢弃第三列`weight`。该源文件必须保持上游`weight`自上而下递减，因为`utils/tiger.py`会把输入顺序视为权重顺序
 
-基础权重：
+`main.py`读取`upstream/SC2013/level-1.txt`、`level-2.txt`、`level-3.txt`并直接合并为规范汉字集合，随后传给`utils/py_sc.py`和`utils/tiger.py`过滤词条
 
-- 1码：`300`
-- 2码：`200`
-- 3码：`100`
-- 4码及以上：`0`
+`upstream/tiger/PY_c.dict.yaml`如果出现被折成两行的记录，`main.py`会把没有制表符的连续行拼回上一条拼音词条，再继续解析
 
-对于2码及以上词条，同一码长组内按`code[:-1]`统计局部前缀序号，并额外加上从`99`递减到`0`的局部权重。若某个局部前缀超过100个候选，脚本会中止，避免权重溢出
+`utils/tiger.py`只保留`text`在《通用规范汉字表（2013）》集合中的单字。同一个字出现多个编码时：
 
-## 附加词条
+- 先接受上游更靠前的编码
+- 后续若出现更短编码，且该短码未被已选中的更高权重条目占用，则替换为短码，并把该字移动到当前短码所在位置
+- 若短码已经被已选中的更高权重条目占用，继续保留原编码
+- 码长相同或后续编码更长时，继续保留原编码
 
-`tiger_sha1_add_zh.tsv`第一行固定为`code<TAB>text`。`utils/add.py`会跳过空行，要求其余行严格为两列TSV；读取后检查重复`text`并输出警告。写回时排序规则为：
+中文附加词来自`tiger_sha1_add_zh.tsv`，第一行固定为`code<TAB>text`。空行会被跳过，其余行必须严格为两列TSV。`utils/tiger.py`会按以下规则稳定排序后由`main.py`写回：
 
 1. `code`长度升序
 2. `code.casefold()`升序
-3. Python稳定排序保留相同`code`的原始先后顺序
+3. 相同排序键保留原始先后顺序
+
+基础虎码和中文附加词按码长分层合并：每个码长组中先放基础虎码，再追加同码长附加词；1码、2码、3码各自成组，4码及以上归为4码组
+
+`tiger_sha1_zh.dict.yaml`写出为`code<TAB>text`两列，排序由生成顺序决定，不再写入weight列
 
 ## 英文处理
 
-### 英文附加词表
-
-`tiger_sha1_add_en.txt`是一行一词的纯文本文件。`utils/en.py`会跳过空行，检查完全相同的重复词并输出警告。写回时排序规则为：
+`tiger_sha1_add_en.txt`是一行一词的纯文本文件。空行会被跳过，完全相同的重复词会输出警告。排序规则为：
 
 1. 单词长度升序
 2. `word.casefold()`升序
-3. Python稳定排序保留相同`word.casefold()`的原始先后顺序
+3. 相同排序键保留原始先后顺序
 
 排序后的附加词会原样放在`lua/en_dict.txt`顶部。若基础英文词表包含完全相同的词，主流程会跳过基础词表里的重复项，避免最终英文词表重复
 
-### 英文词表来源
+基础英文候选来源是`upstream/ESDB.txt`拼写集合与`wordfreq`英语词频库的交集。ESDB只作为无序拼写白名单，不参与排序。生成时会过滤掉：
 
-英文候选来源是`upstream/ESDB.txt`拼写库与`wordfreq`英语词频库的交集。生成时会过滤掉：
-
-- 非ASCII词
-- 含非英文字母字符的词
+- 含非ASCII英文字母字符的词
 - 长度小于3的词
 - 无法在`wordfreq`中匹配到词频的词
 
-同一个单词存在多种大小写形式时，`dedupe_case_variants()`按逐字符比较保留更偏小写的形式；基础排序完成后，主流程只保留长度至少为`MIN_WORD_LEN = 4`的词，再追加大小写变体
+同一个单词存在多种大小写形式时，`dedupe_case_variants()`按逐字符比较保留更偏小写的形式；仍无法区分时按词面排序保证确定性。基础排序完成后，主流程只保留长度至少为`MIN_WORD_LEN = 4`的词，再追加大小写变体
 
-### 英文排序术语
+## 英文变体排序
 
-当词A可以通过一次变体得到词B，则称A为B的直接基本形式，B为A的直接变体；当词A可以通过多次变体得到词B，则称A为B的间接基本形式，B为A的间接变体。直接变体和间接变体统称变体，直接基本形式和间接基本形式统称基本形式
+当词A可以通过一次变体得到词B，则称A为B的直接基本形式，B为A的直接变体；当词A可以通过多次变体得到词B，则称A为B的间接基本形式，B为A的间接变体
 
-当词A不是任何词的变体，则称A为最基本形式；当词A是最基本形式且词B是词A的变体，则称A为B的最基本形式。当词B没有任何变体，则称B为最终变体；当词B是最终变体且是词A的变体，则称B为A的最终变体
+每个词最多选择一个直接基本形式。多个候选同时存在时，按规则优先级、基本形式词频降序、基本形式词面升序确定唯一结果
 
-若词A是词B的基本形式且词A的词频比词B高，则称A是B的高频基本形式，B是A的低频变体；反之类似
-
-一个词及其所有低频变体的词频之和为其提权词频。该过程中，该词为提权词，其低频变体称为降权词。一个词可能既是提权词也是降权词，且可能有多次提权和降权次数，但其自身的提权词频是唯一固定的属性
-
-### 英文变体排序
-
-变体函数必须满足：任何词的变体不可能是其自身；任何词最多只有一个直接基本形式。此时所有变体关系可视为多棵由单一最基本形式长出的树
-
-实现上，每个词最多选择一个直接基本形式。多个候选同时存在时，按规则优先级、基本形式词频降序、ESDB输入顺序升序确定唯一结果
-
-目前考虑的后缀变体规则（由于本方案的功能是英语输入，变体基于文本字面量而非实际语义）：
+目前考虑的后缀变体规则（基于文本字面量，不做语义判断）：
 
 - 复数/第三人称：`s`、`es`、`-y+ies`
 - 过去式：`d`、`ed`、`-y+ied`、双写辅音形式
@@ -88,13 +76,17 @@
 - 名词化：`ment`、`ness`、`-y+iness`
 - 形容词：`able`、`-e+able`
 
-排序键为：
+一个词及其所有低频变体的词频之和为其提权词频。若某个祖先基本形式的词频高于当前词，当前词的降权次数加1
+
+基础英文排序键为：
 
 1. 降权次数升序
 2. 提权词频降序
-3. ESDB输入顺序升序
+3. 原始`wordfreq`词频降序
+4. `word.casefold()`升序
+5. `word`升序
 
-### 英文大小写变体
+## 英文大小写变体
 
 `add_case_variants()`在基础词表之后追加派生大小写形式：
 
@@ -102,11 +94,12 @@
 - 非全小写的词会追加全大写版本
 - 已存在的词不会重复追加
 
-`lua/en_dict.txt`是一行一词的纯文本文件，Lua translator按该文件顺序惰性产出英文候选。若执行`uv run src/main.py --en_dict`，脚本会额外输出`temp/en_dict.tsv`用于审查排序结果
+`lua/en_dict.txt`是一行一词的纯文本文件，Lua translator按该文件顺序惰性产出英文候选。若执行`uv run src/main.py --en_dict`，脚本会额外输出`temp/en_dict.tsv`用于审查英文排序指标
 
 ## 输出文件
 
-- `tiger_sha1.dict.yaml`：主词典
+- `tiger_sha1_weasel.dict.yaml`：主方案词典壳，导入`alphabet`和`tiger_sha1_zh`
+- `tiger_sha1_zh.dict.yaml`：中文基础词典
 - `tiger_sha1_py.dict.yaml`：拼音反查词典
 - `lua/en_dict.txt`：英文词表
-- `temp/en_dict.tsv`：保留完整数据的英文词表（仅在传入`--en_dict`时生成）
+- `temp/en_dict.tsv`：保留完整排序指标的英文词表（仅在传入`--en_dict`时生成）
