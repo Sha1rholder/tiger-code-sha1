@@ -45,7 +45,6 @@ engine:
     - table_translator
     - lua_translator@*en_weight_translate
   filters:
-    - lua_filter@*hide_en_comment
     - uniquifier
 
 speller:

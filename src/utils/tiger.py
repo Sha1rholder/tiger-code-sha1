@@ -1,5 +1,5 @@
 def code_len_group(code: str) -> int:
-	"""返回码长分组，4码及以上归为4。"""
+	"""返回码长分组，4码及以上归为4"""
 	return min(len(code), 4)
 
 
@@ -49,7 +49,7 @@ def combine_tiger_add(
 	tiger_rows: list[tuple[str, str]],
 	zh_add_rows: list[tuple[str, str]],
 ) -> list[tuple[str, str]]:
-	"""按码长分层合并虎码基础词和中文附加词。"""
+	"""按码长分层合并虎码基础词和中文附加词"""
 	rows: list[tuple[str, str]] = []
 	for group in (1, 2, 3, 4):
 		rows.extend(row for row in tiger_rows if code_len_group(row[0]) == group)
@@ -58,11 +58,11 @@ def combine_tiger_add(
 
 
 def sort_zh_add(rows: list[tuple[str, str]]) -> list[tuple[str, str]]:
-	"""返回按编码长度和字母顺序稳定排序后的附加词条(code, text)列表。"""
+	"""返回按编码长度和字母顺序稳定排序后的附加词条(code, text)列表"""
 	seen_text: set[str] = set()
 	for _code, text in rows:
 		if text in seen_text:
-			print(f"警告：中文附加词 text '{text}' 重复")
+			print(f"警告：中文附加词text='{text}'重复")
 		else:
 			seen_text.add(text)
 

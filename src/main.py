@@ -1,23 +1,10 @@
-from collections.abc import Iterable
 import argparse
 import os
 import subprocess
+from collections.abc import Iterable
 from pathlib import Path
 
 from utils import en, py_sc, tiger
-
-WEASEL_DICT_HEADER = """---
-name: tiger_sha1_weasel
-version: placeholder
-sort: original
-columns:
-  - code
-  - text
-import_tables:
-  - alphabet
-  - tiger_sha1_zh
-...
-"""
 
 ZH_DICT_HEADER = """---
 name: tiger_sha1_zh
@@ -41,11 +28,12 @@ columns:
 
 
 def read_lines(filename: str) -> list[str]:
+	"""读取UTF-8文本并按行返回"""
 	return Path(filename).read_text(encoding="utf-8").splitlines()
 
 
 def get_sc2013(levels: Iterable[Iterable[str]]) -> set[str]:
-	"""返回《通用规范汉字表》多个级别合并后的汉字集合。"""
+	"""合并《通用规范汉字表》多个级别为汉字集合"""
 	sc2013: set[str] = set()
 	for lines in levels:
 		for line in lines:
@@ -57,10 +45,12 @@ def get_sc2013(levels: Iterable[Iterable[str]]) -> set[str]:
 
 
 def read_tiger_dict(filename: str) -> list[tuple[str, str]]:
-	"""读取虎码上游词典正文，返回(code, text)，舍弃weight列。"""
+	"""读取虎码上游词典正文，返回(code, text)，舍弃weight列"""
 	rows: list[tuple[str, str]] = []
 	after_sep = False
-	for line_number, line in enumerate(Path(filename).read_text(encoding="utf-8").splitlines(), 1):
+	for line_number, line in enumerate(
+		Path(filename).read_text(encoding="utf-8").splitlines(), 1
+	):
 		if line.strip() == "...":
 			after_sep = True
 			continue
@@ -77,12 +67,14 @@ def read_tiger_dict(filename: str) -> list[tuple[str, str]]:
 
 
 def read_py_dict(filename: str) -> list[tuple[str, int, str]]:
-	"""读取拼音上游词典正文，返回(code, weight, text)。"""
+	"""读取拼音上游词典正文，返回(code, weight, text)"""
 	rows: list[tuple[str, int, str]] = []
 	after_sep = False
 	pending_text_parts: list[str] = []
 	pending_start_line: int | None = None
-	for line_number, line in enumerate(Path(filename).read_text(encoding="utf-8").splitlines(), 1):
+	for line_number, line in enumerate(
+		Path(filename).read_text(encoding="utf-8").splitlines(), 1
+	):
 		if line.strip() == "...":
 			after_sep = True
 			continue
@@ -117,9 +109,11 @@ def read_py_dict(filename: str) -> list[tuple[str, int, str]]:
 
 
 def read_zh_add(filename: str) -> list[tuple[str, str]]:
-	"""读取中文附加词TSV，返回(code, text)。"""
+	"""读取中文附加词TSV，返回(code, text)"""
 	rows: list[tuple[str, str]] = []
-	for line_number, line in enumerate(Path(filename).read_text(encoding="utf-8").splitlines(), 1):
+	for line_number, line in enumerate(
+		Path(filename).read_text(encoding="utf-8").splitlines(), 1
+	):
 		if not line:
 			continue
 
@@ -134,7 +128,7 @@ def read_zh_add(filename: str) -> list[tuple[str, str]]:
 
 
 def read_words(filename: str) -> list[str]:
-	"""读取一行一词的纯文本词表。"""
+	"""读取一行一词的纯文本词表"""
 	words: list[str] = []
 	for line in Path(filename).read_text(encoding="utf-8").splitlines():
 		word = line.strip()
@@ -144,7 +138,7 @@ def read_words(filename: str) -> list[str]:
 
 
 def read_esdb_words(filename: str) -> set[str]:
-	"""读取ESDB正文为拼写集合。"""
+	"""读取ESDB正文为拼写集合"""
 	words: set[str] = set()
 	after_sep = False
 	for line in Path(filename).read_text(encoding="utf-8").splitlines():
@@ -160,12 +154,8 @@ def read_esdb_words(filename: str) -> set[str]:
 	return words
 
 
-def write_weasel_dict(filename: str) -> None:
-	with open(filename, "w", encoding="utf-8", newline="") as f:
-		f.write(WEASEL_DICT_HEADER)
-
-
 def write_rows(filename: str, dict_header: str, rows: list[tuple[str, str]]) -> None:
+	"""写出带词典头的(code, text)词典"""
 	with open(filename, "w", encoding="utf-8", newline="") as f:
 		f.write(dict_header)
 		for code, text in rows:
@@ -173,6 +163,7 @@ def write_rows(filename: str, dict_header: str, rows: list[tuple[str, str]]) -> 
 
 
 def write_zh_add(filename: str, rows: list[tuple[str, str]]) -> None:
+	"""写出中文附加词TSV"""
 	with open(filename, "w", encoding="utf-8", newline="") as f:
 		f.write("code\ttext\n")
 		for code, text in rows:
@@ -180,12 +171,14 @@ def write_zh_add(filename: str, rows: list[tuple[str, str]]) -> None:
 
 
 def write_words(filename: str, words: list[str]) -> None:
+	"""写出一行一词的纯文本词表"""
 	with open(filename, "w", encoding="utf-8", newline="") as f:
 		for word in words:
 			f.write(f"{word}\n")
 
 
 def write_en_review_tsv(filename: str, entries: list[en.RankedWord]) -> None:
+	"""写出英文词表审查TSV"""
 	path = Path(filename)
 	if path.parent != Path("."):
 		path.parent.mkdir(parents=True, exist_ok=True)
@@ -201,6 +194,7 @@ def write_en_review_tsv(filename: str, entries: list[en.RankedWord]) -> None:
 
 
 def warn_duplicate_entries(rows: list[tuple[str, str]]) -> None:
+	"""检查并警告重复词条"""
 	seen: set[tuple[str, str]] = set()
 	duplicates = 0
 	for code, text in rows:
@@ -215,6 +209,7 @@ def warn_duplicate_entries(rows: list[tuple[str, str]]) -> None:
 
 
 def main(*, write_en_dict_review: bool = False) -> None:
+	"""更新中文、拼音和英文词典并按需写出审查文件"""
 	sc2013_set = get_sc2013(
 		[
 			read_lines("upstream/SC2013/level-1.txt"),
@@ -237,7 +232,6 @@ def main(*, write_en_dict_review: bool = False) -> None:
 	write_zh_add("tiger_sha1_add_zh.tsv", zh_add_rows)
 
 	zh_rows = tiger.combine_tiger_add(tiger_rows, zh_add_rows)
-	write_weasel_dict("tiger_sha1_weasel.dict.yaml")
 	write_rows("tiger_sha1_zh.dict.yaml", ZH_DICT_HEADER, zh_rows)
 
 	en_add_words = en.sort_add_words(read_words("tiger_sha1_add_en.txt"))
@@ -259,7 +253,7 @@ def main(*, write_en_dict_review: bool = False) -> None:
 
 
 def git_sync() -> None:
-	"""Stage all changes, commit with user input, and push if on main."""
+	"""暂存、提交并在main分支时推送"""
 	print("Running git add .")
 	subprocess.run(["git", "add", "."], check=True)
 
@@ -287,6 +281,7 @@ def git_sync() -> None:
 
 
 def parse_args() -> argparse.Namespace:
+	"""解析命令行参数"""
 	parser = argparse.ArgumentParser(description="Update Rime dictionaries")
 	parser.add_argument(
 		"--deploy",
@@ -307,7 +302,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def deploy() -> None:
-	"""WeaselDeploy"""
+	"""调用WeaselDeployer执行部署"""
 	deployer = r"C:\Program Files\Rime\weasel-0.17.4\WeaselDeployer.exe"
 	print(f"Running {deployer} ...")
 	subprocess.run([deployer, "/deploy"], check=True)

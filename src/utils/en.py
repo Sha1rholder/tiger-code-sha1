@@ -23,7 +23,7 @@ class WordInfo:
 
 
 def get_result(esdb_words: set[str]) -> list[str]:
-	"""返回按自定义顺序排列的英文单词列表，保留ESDB大小写。"""
+	"""返回按自定义顺序排列的英文单词列表，保留ESDB大小写"""
 	return add_case_variants(
 		[
 			entry.word
@@ -34,13 +34,13 @@ def get_result(esdb_words: set[str]) -> list[str]:
 
 
 def sort_add_words(words: list[str]) -> list[str]:
-	"""返回按单词长度和字母顺序稳定排序后的英文附加词。"""
+	"""返回按单词长度和字母顺序稳定排序后的英文附加词"""
 	clean_words = [word for word in words if word]
 
 	seen: set[str] = set()
 	for word in clean_words:
 		if word in seen:
-			print(f"警告：英文附加词 '{word}' 重复")
+			print(f"警告：英文附加词'{word}'重复")
 		else:
 			seen.add(word)
 
@@ -48,7 +48,7 @@ def sort_add_words(words: list[str]) -> list[str]:
 
 
 def get_base_ranked_entries(esdb_words: set[str]) -> list[RankedWord]:
-	"""返回未过滤码长且不含派生大小写词条的英文词条排序指标。"""
+	"""返回未过滤码长且不含派生大小写词条的英文词条排序指标"""
 	esdb = dedupe_case_variants(esdb_words)
 	en_freq = get_frequency_dict("en")
 
@@ -71,7 +71,7 @@ def get_base_ranked_entries(esdb_words: set[str]) -> list[RankedWord]:
 
 
 def rank_base_entries(infos: list[WordInfo]) -> list[RankedWord]:
-	"""按降权次数、提权词频、原词频和词面排序。"""
+	"""按降权次数、提权词频、原词频和词面排序"""
 	infos_by_key = {info.key: info for info in infos}
 	parent_by_key = build_parent_map(infos_by_key)
 
@@ -110,7 +110,7 @@ def rank_base_entries(infos: list[WordInfo]) -> list[RankedWord]:
 
 
 def build_parent_map(infos_by_key: dict[str, WordInfo]) -> dict[str, str]:
-	"""为每个词选择唯一直接基本形式。"""
+	"""为每个词选择唯一直接基本形式"""
 	parent_by_key: dict[str, str] = {}
 	for key in infos_by_key:
 		candidates = [
@@ -135,7 +135,7 @@ def build_parent_map(infos_by_key: dict[str, WordInfo]) -> dict[str, str]:
 
 
 def iter_base_candidates(word: str):
-	"""按规则顺序产出直接基本形式候选。"""
+	"""按规则顺序产出直接基本形式候选"""
 	rules = [
 		lambda value: strip_suffix(value, "s"),
 		lambda value: strip_suffix(value, "es"),
@@ -169,14 +169,14 @@ def iter_base_candidates(word: str):
 
 
 def strip_suffix(word: str, suffix: str) -> str | None:
-	"""去掉指定后缀，无法去掉时返回None。"""
+	"""去掉指定后缀，无法去掉时返回None"""
 	if len(word) <= len(suffix) or not word.endswith(suffix):
 		return None
 	return word[: -len(suffix)]
 
 
 def replace_suffix(word: str, suffix: str, replacement: str) -> str | None:
-	"""将指定后缀替换为另一段文本，无法替换时返回None。"""
+	"""将指定后缀替换为另一段文本，无法替换时返回None"""
 	base = strip_suffix(word, suffix)
 	if base is None:
 		return None
@@ -184,7 +184,7 @@ def replace_suffix(word: str, suffix: str, replacement: str) -> str | None:
 
 
 def strip_doubled_consonant_suffix(word: str, suffix: str) -> str | None:
-	"""去掉后缀和词尾双写辅音，无法匹配时返回None。"""
+	"""去掉后缀和词尾双写辅音，无法匹配时返回None"""
 	base = strip_suffix(word, suffix)
 	if base is None or len(base) < 2:
 		return None
@@ -194,7 +194,7 @@ def strip_doubled_consonant_suffix(word: str, suffix: str) -> str | None:
 
 
 def dedupe_case_variants(words: Iterable[str]) -> list[str]:
-	"""同一单词有多种大小写形式时，逐位优先保留更偏小写的形式。"""
+	"""同一单词有多种大小写形式时，逐位优先保留更偏小写的形式"""
 	groups: dict[str, list[str]] = {}
 	for word in words:
 		groups.setdefault(word.casefold(), []).append(word)
@@ -206,13 +206,15 @@ def dedupe_case_variants(words: Iterable[str]) -> list[str]:
 
 
 def case_variant_sort_key(word: str) -> tuple[tuple[int, ...], str]:
-	"""小写字符优先，其次用词面保证确定性。"""
-	char_key = tuple(0 if char.islower() else 1 if char.isupper() else 2 for char in word)
+	"""小写字符优先，其次用词面保证确定性"""
+	char_key = tuple(
+		0 if char.islower() else 1 if char.isupper() else 2 for char in word
+	)
 	return char_key, word
 
 
 def add_case_variants(en_dict: list[str]) -> list[str]:
-	"""为首字母小写词生成首字母大写版本，为非全小写词生成全大写版本。"""
+	"""为首字母小写词生成首字母大写版本，为非全小写词生成全大写版本"""
 	initial_caps: list[str] = []
 	all_caps: list[str] = []
 	seen = set(en_dict)
