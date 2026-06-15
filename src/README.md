@@ -96,7 +96,7 @@
 
 ## 输出文件
 
-- `tiger_sha1.dict.yaml`：主词典。保留原文件`...`之前的头部，只替换词典正文
-- `tiger_sha1_py.dict.yaml`：拼音反查词典。保留原文件`...`之前的头部，只替换词典正文
-- `lua/en_dict.txt`：英文词表，一行一个词
-- `temp/en_dict.tsv`：英文排序审查文件，仅在传入`--en_dict`时生成
+- `tiger_sha1.dict.yaml`：主词典
+- `tiger_sha1_py.dict.yaml`：拼音反查词典
+- `lua/en_dict.txt`：英文词表
+- `temp/en_dict.tsv`：保留完整数据的英文词表（仅在传入`--en_dict`时生成）

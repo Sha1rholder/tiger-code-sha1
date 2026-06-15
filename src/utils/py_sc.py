@@ -1,3 +1,14 @@
+DICT_HEADER = """---
+name: tiger_sha1_py
+version: 2026.06.07
+sort: original
+columns:
+  - code
+  - text
+...
+"""
+
+
 def get_result(sc2013: set[str]) -> list[tuple[str, str]]:
 	"""返回按词频降序排列并过滤后的拼音单字(code, text)列表。"""
 	# 从`upstream/tiger/PY_c.dict.yaml`的tsv部分提取(text, code, weight)列表py_raw
@@ -37,19 +48,9 @@ def get_result(sc2013: set[str]) -> list[tuple[str, str]]:
 
 
 def write_result(filename: str, rows: list[tuple[str, str]]) -> None:
-	"""替换Rime拼音反查词典tsv正文。"""
-	with open(filename, encoding="utf-8") as f:
-		lines = f.readlines()
-
-	for index, line in enumerate(lines):
-		if line.strip() == "...":
-			header = lines[: index + 1]
-			break
-	else:
-		raise SystemExit(f"{filename}中找不到词典正文分隔符：...")
-
+	"""写入完整Rime拼音反查词典。"""
 	with open(filename, "w", encoding="utf-8", newline="") as f:
-		f.writelines(header)
+		f.write(DICT_HEADER)
 		for code, text in rows:
 			f.write(f"{code}\t{text}\n")
 

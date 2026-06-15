@@ -5,6 +5,16 @@ LENGTH_WEIGHT_BASE = {
 	3: 100,
 	4: 0,
 }
+DICT_HEADER = """---
+name: tiger_sha1
+version: 2026.06.08
+sort: by_weight
+columns:
+  - code
+  - weight
+  - text
+...
+"""
 
 
 def get_result(sc2013: set[str], tiger_dict: str) -> list[tuple[str, str]]:
@@ -79,22 +89,12 @@ def write_result(
 	filename: str,
 	rows: list[tuple[str, str]],
 ) -> list[tuple[str, str, int]]:
-	"""替换Rime虎码主词典tsv正文，并返回写入的加权行。"""
+	"""写入完整Rime虎码主词典，并返回写入的加权行。"""
 	sorted_rows = sorted(rows, key=lambda item: len(item[0]))
 	weighted_rows = add_prefix_local_weights(sorted_rows)
 
-	with open(filename, encoding="utf-8") as f:
-		lines = f.readlines()
-
-	for index, line in enumerate(lines):
-		if line.strip() == "...":
-			header = lines[: index + 1]
-			break
-	else:
-		raise SystemExit(f"{filename}中找不到词典正文分隔符：...")
-
 	with open(filename, "w", encoding="utf-8", newline="") as f:
-		f.writelines(header)
+		f.write(DICT_HEADER)
 		for code, text, weight in weighted_rows:
 			f.write(f"{code}\t{weight}\t{text}\n")
 
