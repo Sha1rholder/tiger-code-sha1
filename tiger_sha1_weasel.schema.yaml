@@ -26,7 +26,7 @@ switches:
 engine:
   processors:
     - ascii_composer
-    - lua_processor@*commit_raw_before_symbol
+    - lua_processor@*commit_raw_symbol
     - recognizer
     - key_binder
     - speller
@@ -98,3 +98,4 @@ recognizer:
 
 punctuator:
   import_preset: symbols
+  digit_separators: ""
