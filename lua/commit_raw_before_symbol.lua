@@ -7,6 +7,9 @@
 local kAccepted = 1
 local kNoop = 2
 
+---判断键码是否为ASCII符号（排除字母和数字）
+---@param keycode number 键码
+---@return boolean 是ASCII符号返回true，否则返回false
 local function is_ascii_symbol_code(keycode)
 	if type(keycode) ~= "number" then
 		return false
@@ -20,6 +23,9 @@ local function is_ascii_symbol_code(keycode)
 	return false
 end
 
+---判断按键是否为不带修饰键的纯符号键
+---@param key KeyEvent 按键事件
+---@return boolean 是纯符号键返回true，否则返回false
 local function is_plain_symbol_key(key)
 	if key:release() or key:ctrl() or key:alt() or key:super() then
 		return false
@@ -33,6 +39,10 @@ local function is_plain_symbol_key(key)
 	return repr ~= nil and repr ~= "" and repr:match("^[!-/%:-@%[-`{-~]$") ~= nil
 end
 
+---Rime处理器入口：当编码串全为英文字母且按下符号键时，自动上屏当前编码并重新处理该符号键
+---@param key KeyEvent 按键事件
+---@param env Environment Rime环境对象
+---@return integer kAccepted表示按键已被处理，kNoop表示未处理
 local function processor(key, env)
 	local engine = env.engine
 	local context = engine.context
