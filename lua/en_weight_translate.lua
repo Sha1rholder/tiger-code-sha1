@@ -1,5 +1,41 @@
 ---@diagnostic disable: undefined-global
 
+---@class KeyEvent Rime按键事件
+---@field keycode number 键码
+---@field release fun(self: KeyEvent): boolean 是否为释放事件
+---@field ctrl fun(self: KeyEvent): boolean 是否按下Ctrl
+---@field alt fun(self: KeyEvent): boolean 是否按下Alt
+---@field super fun(self: KeyEvent): boolean 是否按下Super
+---@field repr fun(self: KeyEvent): string? 按键的字符串表示
+
+---@class Environment Rime环境对象
+---@field engine Engine
+
+---@class Engine Rime引擎
+---@field context Context
+---@field commit_text fun(self: Engine, text: string) 上屏文本
+---@field process_key fun(self: Engine, key: KeyEvent): integer 处理按键
+---@field schema Schema
+
+---@class Context Rime上下文
+---@field input string 编码串
+---@field clear fun(self: Context) 清空编码串
+
+---@class Schema Rime方案
+---@field config Config
+
+---@class Config Rime配置
+---@field get_bool fun(self: Config, path: string): boolean
+
+---@class Segment Rime分段对象
+---@field start integer
+---@field _start integer
+---@field _end integer
+---@field end integer
+
+---@class Candidate Rime候选
+---@field quality integer
+
 ---按lua/en_dict.txt懒加载英文候选
 ---当输入不是任何主码表编码前缀时，先产出原始输入，方便直接上屏未知英文词
 ---英文候选整体排在主码表候选之后，但在本translator内保持英文词表顺序
@@ -21,6 +57,7 @@ local main_prefixes = {}
 local loading_main_dicts = {}
 local append_space_to_en_candidates = DEFAULT_APPEND_SPACE_TO_EN_CANDIDATES
 
+---获取用户数据目录
 local function data_dir()
 	if rime_api ~= nil and rime_api.get_user_data_dir ~= nil then
 		return rime_api.get_user_data_dir()
@@ -28,6 +65,9 @@ local function data_dir()
 	return "."
 end
 
+---打开文件，先在数据目录查找，失败则尝试当前目录
+---@param filename string 文件名
+---@return file*? 文件句柄，打开失败返回nil
 local function open_file(filename)
 	local file = io.open(data_dir() .. "/" .. filename, "r")
 	if file ~= nil then
@@ -36,10 +76,17 @@ local function open_file(filename)
 	return io.open(filename, "r")
 end
 
+---判断字符串是否以指定前缀开头
+---@param text string 文本
+---@param prefix string 前缀
+---@return boolean
 local function starts_with(text, prefix)
 	return text:sub(1, #prefix) == prefix
 end
 
+---将词条按编码前缀分桶存储，支持1~4码前缀索引
+---长输入再在桶内过滤，避免每次全表扫描
+---@param entry table 含code/text/rank字段的词条
 local function add_entry(entry)
 	-- 同一词条挂到1~4码前缀桶，长输入再在桶内过滤，避免每次全表扫描
 	local max_len = math.min(MAX_PREFIX_LEN, #entry.code)
@@ -54,6 +101,8 @@ local function add_entry(entry)
 	end
 end
 
+---记录主码表所有编码前缀，用于判断raw input是否会干扰中文候选
+---@param code string 主码表编码
 local function add_main_code(code)
 	-- 记录主码表所有编码前缀，用于判断raw input是否会干扰中文候选
 	for len = 1, #code do
@@ -61,6 +110,9 @@ local function add_main_code(code)
 	end
 end
 
+---按制表符分割行，返回字段数组
+---@param line string 行文本
+---@return string[] 字段列表
 local function split_tabs(line)
 	local fields = {}
 	local start = 1
@@ -76,6 +128,9 @@ local function split_tabs(line)
 	return fields
 end
 
+---补全字典文件名，确保以.dict.yaml结尾
+---@param dict_name string 字典名
+---@return string 补全后的文件名
 local function dict_filename(dict_name)
 	if dict_name:match("%.dict%.yaml$") then
 		return dict_name
@@ -85,12 +140,16 @@ end
 
 local load_main_dict
 
+---加载导入的码表
+---@param import_tables string[] 导入表名称列表
 local function load_imported_tables(import_tables)
 	for _, dict_name in ipairs(import_tables) do
 		load_main_dict(dict_filename(dict_name))
 	end
 end
 
+---递归加载主码表，解析columns和import_tables，提取编码前缀
+---@param filename string 文件名
 load_main_dict = function(filename)
 	-- 递归加载主码表避免环形引用
 	if loading_main_dicts[filename] == true then
@@ -156,6 +215,7 @@ load_main_dict = function(filename)
 	load_imported_tables(import_tables)
 end
 
+---懒加载主码表所有编码前缀集合
 local function load_main_prefixes()
 	if main_loaded then
 		return
@@ -167,6 +227,7 @@ local function load_main_prefixes()
 	load_main_dict(MAIN_DICT_NAME)
 end
 
+---懒加载英文词典，每行一个词条，顺序即权重
 local function load_entries()
 	if en_loaded then
 		return
@@ -205,6 +266,11 @@ local function load_entries()
 	end
 end
 
+---从schema配置中读取布尔值
+---@param env Environment Rime环境对象
+---@param path string 配置路径
+---@param default boolean? 默认值
+---@return boolean
 local function get_config_bool(env, path, default)
 	if default == nil then
 		default = false
@@ -226,14 +292,24 @@ local function get_config_bool(env, path, default)
 	return ok and value == true
 end
 
+---获取segment起始位置
+---@param segment Segment 分段对象
+---@return integer
 local function segment_start(segment)
 	return segment.start or segment._start or 0
 end
 
+---获取segment结束位置
+---@param segment Segment 分段对象
+---@param input string 输入串
+---@return integer
 local function segment_end(segment, input)
 	return segment._end or segment["end"] or (segment_start(segment) + #input)
 end
 
+---构造英文候选文本，可按配置追加尾随空格
+---@param text string 词条文本
+---@return string
 local function en_candidate_text(text)
 	if append_space_to_en_candidates then
 		return text .. EN_CANDIDATE_SUFFIX
@@ -241,6 +317,11 @@ local function en_candidate_text(text)
 	return text
 end
 
+---构造英文候选，quality取负rank使候选排在主码表之后
+---@param segment Segment 分段对象
+---@param input string 输入串
+---@param entry table 词条
+---@return Candidate
 local function make_candidate(segment, input, entry)
 	local cand = Candidate("english", segment_start(segment), segment_end(segment, input), en_candidate_text(entry.text),
 		" ")
@@ -249,6 +330,10 @@ local function make_candidate(segment, input, entry)
 	return cand
 end
 
+---构造原始输入候选，用于输入不再可能命中中文码表时直接上屏
+---@param segment Segment 分段对象
+---@param input string 输入串
+---@return Candidate
 local function make_raw_candidate(segment, input)
 	local cand = Candidate("raw_input", segment_start(segment), segment_end(segment, input), en_candidate_text(input),
 		" ")
@@ -256,6 +341,10 @@ local function make_raw_candidate(segment, input)
 	return cand
 end
 
+---Rime translator入口：按前缀桶查找英文候选并yield
+---@param input string 输入串
+---@param segment Segment 分段对象
+---@param env Environment Rime环境对象
 local function translator(input, segment, env)
 	load_entries()
 	load_main_prefixes()

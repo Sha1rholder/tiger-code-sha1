@@ -17,34 +17,33 @@
 
 ```text
 Rime/
-├ tiger_sha1_weasel.schema.yaml		# 主输入方案
-├ tiger_sha1_weasel.dict.yaml		# 主方案词典壳，导入alphabet和tiger_sha1_zh
-├ tiger_sha1_zh.dict.yaml			# 中文基础词典（机器生成）
-├ tiger_sha1_py.schema.yaml			# 拼音反查伪方案
-├ tiger_sha1_py.dict.yaml			# 拼音反查词典（机器生成）
-├ tiger_sha1_add_zh.tsv				# 中文附加词条，生成时自动排序并写回
-├ tiger_sha1_add_en.txt				# 英文附加词条，生成时自动排序并写回
-├ alphabet.dict.yaml				# 大写字母表
-├ symbols.yaml						# 符号表
-├ weasel.custom.yaml				# 小狼毫界面定制
+├ tiger_sha1_weasel.schema.yaml	# 主输入方案
+├ tiger_sha1_weasel.dict.yaml	# 主方案词典壳，导入alphabet和tiger_sha1_zh
+├ tiger_sha1_zh.dict.yaml		# 中文基础词典（机器生成）
+├ tiger_sha1_py.schema.yaml		# 拼音反查伪方案
+├ tiger_sha1_py.dict.yaml		# 拼音反查词典（机器生成）
+├ tiger_sha1_add_zh.tsv			# 中文附加词条，生成时自动排序并写回
+├ tiger_sha1_add_en.txt			# 英文附加词条，生成时自动排序并写回
+├ alphabet.dict.yaml			# 大写字母表
+├ symbols.yaml					# 符号表
+├ weasel.custom.yaml			# 小狼毫界面定制
 ├ lua/
-│	├ clear_buffer_on_ctrl.lua		# 按Ctrl清空buffer
-│	├ commit_raw_before_symbol.lua	# 符号键提交buffer
-│	├ en_dict.txt					# 英文词表（机器生成）
-│	└ en_weight_translate.lua		# 英文候选按词表顺序惰性产出
+│	├ commit_raw_symbol.lua		# 有buffer时符号键直接提交ASCII
+│	├ en_weight_translate.lua	# 英文候选按词表顺序惰性产出
+│	└ en_dict.txt				# 英文词表（机器生成）
 ├ src/
-│	├ main.py						# 读取源数据、解析格式、合并SC2013、调用utils、写出词典、部署、同步
-│	├ README.md						# 开发文档
+│	├ main.py					# 读取源数据、解析格式、合并SC2013、调用utils、写出词典、部署、同步
+│	├ README.md					# 开发文档
 │	└ utils/
-│		├ en.py						# 英文排序和大小写变体
-│		├ py_sc.py					# 拼音反查过滤和排序
-│		└ tiger.py					# 虎码过滤和中文附加词整理
+│		├ en.py					# 英文排序和大小写变体
+│		├ py_sc.py				# 拼音反查过滤和排序
+│		└ tiger.py				# 虎码过滤和中文附加词整理
 └ upstream/
-	├ tiger/						# 虎码原始数据
-	│	├ tiger.dict.yaml			# 秃版虎码字表
-	│	└ PY_c.dict.yaml			# 秃版拼音表
-	├ SC2013/						# 通用规范汉字表
-	└ ESDB.txt						# English Speller Database
+	├ tiger/					# 虎码原始数据
+	│	├ tiger.dict.yaml		# 秃版虎码字表
+	│	└ PY_c.dict.yaml		# 秃版拼音表
+	├ SC2013/					# 通用规范汉字表
+	└ ESDB.txt					# English Speller Database
 ```
 
 ## 使用方法

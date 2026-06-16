@@ -8,7 +8,6 @@ Update `README.md` after implementing new features or modifying behaviors.
 
 Code Style:
 - Always use hard tabs for indentation and alignment.
-- Do not add spaces between Chinese and English.
-- Do not add spaces between Chinese and backticks.
+- Do not add space between Chinese characters and English words, backticks, or numbers.
 - All functions must have docstrings written in Chinese.
 - Omit the Chinese period `。` at the end of paragraphs and docstrings.
