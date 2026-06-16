@@ -203,7 +203,7 @@ def main(*, write_en_dict_review: bool = False) -> None:
 		]
 	)
 
-	py_rows = py_sc.get_result(
+	py_rows = py_sc.get_py_sc(
 		read_py_dict("upstream/tiger/PY_c.dict.yaml"),
 		sc2013_set,
 	)

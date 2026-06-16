@@ -22,17 +22,6 @@ class WordInfo:
 	frequency: float
 
 
-def get_result(esdb_words: set[str]) -> list[str]:
-	"""返回按自定义顺序排列的英文单词列表，保留ESDB大小写"""
-	return add_case_variants(
-		[
-			entry.word
-			for entry in get_base_ranked_entries(esdb_words)
-			if len(entry.word) >= MIN_WORD_LEN
-		]
-	)
-
-
 def sort_add_words(words: list[str]) -> list[str]:
 	"""返回按单词长度和字母顺序稳定排序后的英文附加词"""
 	clean_words = [word for word in words if word]

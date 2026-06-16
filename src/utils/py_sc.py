@@ -1,4 +1,4 @@
-def get_result(
+def get_py_sc(
 	upstream_py_dict: list[tuple[str, int, str]],
 	sc2013: set[str],
 ) -> list[tuple[str, str]]:
