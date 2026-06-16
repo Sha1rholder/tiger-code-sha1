@@ -7,8 +7,8 @@
 1. 读取`upstream/SC2013/level-1.txt`、`level-2.txt`、`level-3.txt`，交给`main.py`合并为`set[str]`
 2. 读取`upstream/tiger/PY_c.dict.yaml`正文为`list[tuple[code, weight, text]]`，交给`utils/py_sc.py`过滤并按词频降序生成拼音反查词典
 3. 读取`upstream/tiger/tiger.dict.yaml`正文为`list[tuple[code, text]]`，交给`utils/tiger.py`过滤、单一化编码并合并中文附加词
-4. 读取`tiger_sha1_add_zh.tsv`，交给`utils/tiger.py`检查重复`text`并排序，然后由`main.py`写回
-5. 读取`upstream/ESDB.txt`为`set[str]`，读取`tiger_sha1_add_en.txt`为`list[str]`，交给`utils/en.py`生成英文排序和大小写变体，然后由`main.py`写回
+4. 读取`add/0.Sha1rholder.zh.tsv`，交给`utils/tiger.py`检查重复`text`并排序，然后由`main.py`写回
+5. 读取`upstream/ESDB.txt`为`set[str]`，读取`add/0.Sha1rholder.en.txt`为`list[str]`，交给`utils/en.py`生成英文排序和大小写变体，然后由`main.py`写回
 
 ## 模块职责
 
@@ -32,7 +32,7 @@
 - 若短码已经被已选中的更高权重条目占用，继续保留原编码
 - 码长相同或后续编码更长时，继续保留原编码
 
-中文附加词来自`tiger_sha1_add_zh.tsv`，第一行固定为`code<TAB>text`。空行会被跳过，其余行必须严格为两列TSV。`utils/tiger.py`会按以下规则稳定排序后由`main.py`写回：
+中文附加词来自`add/0.Sha1rholder.zh.tsv`，第一行固定为`code<TAB>text`。空行会被跳过，其余行必须严格为两列TSV。`utils/tiger.py`会按以下规则稳定排序后由`main.py`写回：
 
 1. `code`长度升序
 2. `code.casefold()`升序
@@ -44,7 +44,7 @@
 
 ## 英文处理
 
-`tiger_sha1_add_en.txt`是一行一词的纯文本文件。空行会被跳过，完全相同的重复词会输出警告。排序规则为：
+`add/0.Sha1rholder.en.txt`是一行一词的纯文本文件。空行会被跳过，完全相同的重复词会输出警告。排序规则为：
 
 1. 单词长度升序
 2. `word.casefold()`升序

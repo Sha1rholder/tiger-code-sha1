@@ -213,14 +213,14 @@ def main(*, write_en_dict_review: bool = False) -> None:
 		read_tiger_dict("upstream/tiger/tiger.dict.yaml"),
 		sc2013_set,
 	)
-	zh_add_rows = tiger.sort_zh_add(read_zh_add("tiger_sha1_add_zh.tsv"))
-	write_zh_add("tiger_sha1_add_zh.tsv", zh_add_rows)
+	zh_add_rows = tiger.sort_zh_add(read_zh_add("add/0.Sha1rholder.zh.tsv"))
+	write_zh_add("add/0.Sha1rholder.zh.tsv", zh_add_rows)
 
 	zh_rows = tiger.combine_tiger_add(tiger_rows, zh_add_rows)
 	write_rows("tiger_sha1_zh.dict.yaml", ZH_DICT_HEADER, zh_rows)
 
-	en_add_words = en.sort_add_words(read_words("tiger_sha1_add_en.txt"))
-	write_words("tiger_sha1_add_en.txt", en_add_words)
+	en_add_words = en.sort_add_words(read_words("add/0.Sha1rholder.en.txt"))
+	write_words("add/0.Sha1rholder.en.txt", en_add_words)
 
 	en_base_entries = en.get_base_ranked_entries(read_esdb_words("upstream/ESDB.txt"))
 	en_add_seen = set(en_add_words)

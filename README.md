@@ -22,8 +22,9 @@ Rime/
 ├ tiger_sha1_zh.dict.yaml		# 中文基础词典（机器生成）
 ├ tiger_sha1_py.schema.yaml		# 拼音反查伪方案
 ├ tiger_sha1_py.dict.yaml		# 拼音反查词典（机器生成）
-├ tiger_sha1_add_zh.tsv			# 中文附加词条，生成时自动排序并写回
-├ tiger_sha1_add_en.txt			# 英文附加词条，生成时自动排序并写回
+├ add/
+│	├ 0.Sha1rholder.zh.tsv		# 中文附加词条，生成时自动排序并写回
+│	└ 0.Sha1rholder.en.txt		# 英文附加词条，生成时自动排序并写回
 ├ alphabet.dict.yaml			# 大写字母表
 ├ symbols.yaml					# 符号表
 ├ weasel.custom.yaml			# 小狼毫界面定制
@@ -57,7 +58,7 @@ Rime/
 3. 执行`git clone --depth=1 https://github.com/Sha1rholder/tiger-code-sha1.git "$env:APPDATA\Rime"; uv run "$env:APPDATA\Rime\src\main.py" --deploy`
 4. 在Weasel控制面板中选择`tiger_sha1_weasel`
 
-若要加减词，请编辑`tiger_sha1_add_zh.tsv`或`tiger_sha1_add_en.txt`，然后执行`uv run src/main.py --deploy`。不需要手动整理附加词表，脚本会自动排序并写回
+若要加减词，请编辑`add/0.Sha1rholder.zh.tsv`或`add/0.Sha1rholder.en.txt`，然后执行`uv run src/main.py --deploy`。不需要手动整理附加词表，脚本会自动排序并写回
 
 `src/main.py`可用参数：
 
