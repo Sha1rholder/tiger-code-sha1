@@ -7,8 +7,8 @@
 1. 读取`upstream/SC2013/level-1.txt`、`level-2.txt`、`level-3.txt`，交给`main.py`合并为`set[str]`
 2. 读取`upstream/tiger/PY_c.dict.yaml`正文为`list[tuple[code, weight, text]]`，交给`utils/py_sc.py`过滤并按词频降序生成拼音反查词典
 3. 读取`upstream/tiger/tiger.dict.yaml`正文为`list[tuple[code, text]]`，交给`utils/tiger.py`过滤、单一化编码并合并中文附加词
-4. 读取`add/0.Sha1rholder.zh.tsv`，交给`utils/tiger.py`检查重复`text`并排序，然后由`main.py`写回
-5. 读取`upstream/ESDB.txt`为`set[str]`，读取`add/0.Sha1rholder.en.txt`为`list[str]`，交给`utils/en.py`生成英文排序和大小写变体，然后由`main.py`写回
+4. 读取`add/`中参与生成的`.tsv`中文附加词表，逐文件交给`utils/tiger.py`检查重复`text`并排序，然后由`main.py`写回
+5. 读取`upstream/ESDB.txt`为`set[str]`，读取`add/`中参与生成的`.txt`英文附加词表为`list[str]`，逐文件交给`utils/en.py`排序并写回，再生成英文排序和大小写变体
 
 ## 模块职责
 
@@ -32,11 +32,13 @@
 - 若短码已经被已选中的更高权重条目占用，继续保留原编码
 - 码长相同或后续编码更长时，继续保留原编码
 
-中文附加词来自`add/0.Sha1rholder.zh.tsv`，第一行固定为`code<TAB>text`。空行会被跳过，其余行必须严格为两列TSV。`utils/tiger.py`会按以下规则稳定排序后由`main.py`写回：
+中文附加词来自`add/`中参与生成的`.tsv`文件，第一行固定为`code<TAB>text`。空行会被跳过，其余行必须严格为两列TSV。文件名以`-`或`.-`开头的词表会被生成逻辑忽略；以`.`开头的词表会被`.gitignore`忽略。`utils/tiger.py`会按以下规则稳定排序后由`main.py`逐文件写回：
 
 1. `code`长度升序
 2. `code.casefold()`升序
 3. 相同排序键保留原始先后顺序
+
+逐文件排序写回后，`main.py`会按文件名字符顺序拼接全部中文附加词，再按同一规则整体排序。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/zh_add.tsv`和`temp/zh_add.txt`用于审查合并后的中文附加词中间态
 
 基础虎码和中文附加词按码长分层合并：每个码长组中先放基础虎码，再追加同码长附加词；1码、2码、3码各自成组，4码及以上归为4码组
 
@@ -44,13 +46,13 @@
 
 ## 英文处理
 
-`add/0.Sha1rholder.en.txt`是一行一词的纯文本文件。空行会被跳过，完全相同的重复词会输出警告。排序规则为：
+英文附加词来自`add/`中参与生成的`.txt`文件，一行一词。文件名以`-`或`.-`开头的词表会被生成逻辑忽略。空行会被跳过，完全相同的重复词会输出警告。排序规则为：
 
 1. 单词长度升序
 2. `word.casefold()`升序
 3. 相同排序键保留原始先后顺序
 
-排序后的附加词会原样放在`lua/en_dict.txt`顶部。若基础英文词表包含完全相同的词，主流程会跳过基础词表里的重复项，避免最终英文词表重复
+逐文件排序写回后，`main.py`会按文件名字符顺序拼接全部英文附加词，再按同一规则整体排序。排序后的附加词会原样放在`lua/en_dict.txt`顶部。若基础英文词表包含完全相同的词，主流程会跳过基础词表里的重复项，避免最终英文词表重复
 
 基础英文候选来源是`upstream/ESDB.txt`拼写集合与`wordfreq`英语词频库的交集。ESDB只作为无序拼写白名单，不参与排序。生成时会过滤掉：
 
@@ -94,7 +96,7 @@
 - 非全小写的词会追加全大写版本
 - 已存在的词不会重复追加
 
-`lua/en_dict.txt`是一行一词的纯文本文件，Lua translator按该文件顺序惰性产出英文候选。若执行`uv run src/main.py --en_dict`，脚本会额外输出`temp/en_dict.tsv`用于审查英文排序指标
+`lua/en_dict.txt`是一行一词的纯文本文件，Lua translator按该文件顺序惰性产出英文候选。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/en_dict.tsv`用于审查英文排序指标
 
 ## 输出文件
 
@@ -102,4 +104,6 @@
 - `tiger_sha1_zh.dict.yaml`：中文基础词典
 - `tiger_sha1_py.dict.yaml`：拼音反查词典
 - `lua/en_dict.txt`：英文词表
-- `temp/en_dict.tsv`：保留完整排序指标的英文词表（仅在传入`--en_dict`时生成）
+- `temp/zh_add.tsv`：合并排序后的中文附加词TSV（仅在传入`--debug`时生成）
+- `temp/zh_add.txt`：合并排序后的中文附加词词面（仅在传入`--debug`时生成）
+- `temp/en_dict.tsv`：保留完整排序指标的英文词表（仅在传入`--debug`时生成）

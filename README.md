@@ -22,12 +22,18 @@ Rime/
 ├ tiger_sha1_zh.dict.yaml		# 中文基础词典（机器生成）
 ├ tiger_sha1_py.schema.yaml		# 拼音反查伪方案
 ├ tiger_sha1_py.dict.yaml		# 拼音反查词典（机器生成）
-├ add/
-│	├ 0.Sha1rholder.zh.tsv		# 中文附加词条，生成时自动排序并写回
-│	└ 0.Sha1rholder.en.txt		# 英文附加词条，生成时自动排序并写回
 ├ alphabet.dict.yaml			# 大写字母表
 ├ symbols.yaml					# 符号表
 ├ weasel.custom.yaml			# 小狼毫界面定制
+├ add/
+│	├ *.tsv						# 中文自定义词表
+│	├ *.txt						# 英文自定义词表
+│	├ -*.tsv					# 中文自定义词表（禁用）
+│	├ -*.txt					# 英文自定义词表（禁用）
+│	├ .*.tsv					# 中文自定义词表（gitignore）
+│	├ .*.txt					# 英文自定义词表（gitignore）
+│	├ .-*.tsv					# 中文自定义词表（禁用且gitignore）
+│	└ .-*.txt					# 英文自定义词表（禁用且gitignore）
 ├ lua/
 │	├ commit_raw_symbol.lua		# 有buffer时符号键直接提交ASCII
 │	├ en_weight_translate.lua	# 英文候选按词表顺序惰性产出
@@ -40,37 +46,36 @@ Rime/
 │		├ py_sc.py				# 拼音反查过滤和排序
 │		└ tiger.py				# 虎码过滤和中文附加词整理
 └ upstream/
+	├ ESDB.txt					# English Speller Database
 	├ tiger/					# 虎码原始数据
 	│	├ tiger.dict.yaml		# 秃版虎码字表
 	│	└ PY_c.dict.yaml		# 秃版拼音表
-	├ SC2013/					# 通用规范汉字表
-	└ ESDB.txt					# English Speller Database
+	└ SC2013/					# 通用规范汉字表
 ```
 
 ## 使用方法
 
 1. 安装依赖
-	- [Weasel小狼毫](https://rime.im/)
+	- [Weasel小狼毫](https://rime.im/)（请使用默认路径）
 	- [Git](https://git-scm.com/)
 	- [Astral uv](https://docs.astral.sh/uv/)
 	- [Noto Sans SC字体](https://fonts.google.com/noto/specimen/Noto+Sans+SC)
-2. 中止Weasel程序并清空用户文件夹
+2. 终止Weasel程序并清空用户文件夹
 3. 执行`git clone --depth=1 https://github.com/Sha1rholder/tiger-code-sha1.git "$env:APPDATA\Rime"; uv run "$env:APPDATA\Rime\src\main.py" --deploy`
 4. 在Weasel控制面板中选择`tiger_sha1_weasel`
 
-若要加减词，请编辑`add/0.Sha1rholder.zh.tsv`或`add/0.Sha1rholder.en.txt`，然后执行`uv run src/main.py --deploy`。不需要手动整理附加词表，脚本会自动排序并写回
-
-`src/main.py`可用参数：
-
-- `--deploy`：更新词典后自动重新部署Weasel
-- `--en_dict`：更新词典时额外输出`temp/en_dict.tsv`供审查英文词表
-- `--sync`：更新词典后自动执行`git add .`、`git commit`、`git push`以同步到上游（仅在main分支时触发push，需要先配置git repo）
+若要加减词，请编辑`add/`中的`.tsv`中文词表或`.txt`英文词表，然后执行`uv run src/main.py --deploy`。不需要手动整理附加词表，脚本会先按单文件排序并写回，再按文件名字符顺序拼接，最后对合并结果再次排序。`add/`中以`-`或`.-`开头的词表会被生成逻辑忽略；以`.`开头的词表会被`.gitignore`忽略
 
 若要使英文候选默认带尾随空格，可将`tiger_sha1_weasel.schema.yaml > en_weight_translate > append_space_to_candidates`的值改为`true`后重新部署
 
 ## 开发
 
-实现细节见`src/README.md`。设计约束是：`src/main.py`负责所有项目文件读写、格式解析和SC2013合并，`src/utils/`中的模块只接收结构化数据并返回结构化数据
+实现细节见`src/README.md`
+
+`src/main.py`可用参数：
+- `--deploy`：更新词典后自动重新部署Weasel
+- `--debug`：更新词典时额外在`temp/`中输出`add.tsv` `add.txt` `en_dict.tsv`供审查中间词表
+- `--sync`：更新词典后自动执行`git add .`、`git commit`、`git push`以同步到上游（仅在main分支触发push）
 
 ## 致谢
 

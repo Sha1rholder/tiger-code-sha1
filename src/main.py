@@ -154,6 +154,31 @@ def read_esdb_words(filename: str) -> set[str]:
 	return words
 
 
+def is_ignored_add_file(path: Path) -> bool:
+	"""判断附加词文件是否应被生成逻辑忽略"""
+	return path.name.startswith("-") or path.name.startswith(".-")
+
+
+def get_add_files(suffix: str) -> list[Path]:
+	"""按文件名字符顺序返回指定后缀的附加词文件"""
+	return sorted(
+		(
+			path
+			for path in Path("add").iterdir()
+			if path.is_file()
+			and path.suffix == suffix
+			and not is_ignored_add_file(path)
+		),
+		key=lambda path: path.name,
+	)
+
+
+def ensure_parent_dir(path: Path) -> None:
+	"""确保目标文件父目录存在"""
+	if path.parent != Path("."):
+		path.parent.mkdir(parents=True, exist_ok=True)
+
+
 def write_rows(filename: str, dict_header: str, rows: list[tuple[str, str]]) -> None:
 	"""写出带词典头的(code, text)词典"""
 	with open(filename, "w", encoding="utf-8", newline="") as f:
@@ -164,7 +189,9 @@ def write_rows(filename: str, dict_header: str, rows: list[tuple[str, str]]) -> 
 
 def write_zh_add(filename: str, rows: list[tuple[str, str]]) -> None:
 	"""写出中文附加词TSV"""
-	with open(filename, "w", encoding="utf-8", newline="") as f:
+	path = Path(filename)
+	ensure_parent_dir(path)
+	with path.open("w", encoding="utf-8", newline="") as f:
 		f.write("code\ttext\n")
 		for code, text in rows:
 			f.write(f"{code}\t{text}\n")
@@ -172,7 +199,9 @@ def write_zh_add(filename: str, rows: list[tuple[str, str]]) -> None:
 
 def write_words(filename: str, words: list[str]) -> None:
 	"""写出一行一词的纯文本词表"""
-	with open(filename, "w", encoding="utf-8", newline="") as f:
+	path = Path(filename)
+	ensure_parent_dir(path)
+	with path.open("w", encoding="utf-8", newline="") as f:
 		for word in words:
 			f.write(f"{word}\n")
 
@@ -180,8 +209,7 @@ def write_words(filename: str, words: list[str]) -> None:
 def write_en_review_tsv(filename: str, entries: list[en.RankedWord]) -> None:
 	"""写出英文词表审查TSV"""
 	path = Path(filename)
-	if path.parent != Path("."):
-		path.parent.mkdir(parents=True, exist_ok=True)
+	ensure_parent_dir(path)
 	with path.open("w", encoding="utf-8", newline="") as f:
 		f.write("word\tfrequency\tboosted_frequency\tdemotion_count\n")
 		for entry in entries:
@@ -193,8 +221,30 @@ def write_en_review_tsv(filename: str, entries: list[en.RankedWord]) -> None:
 			)
 
 
-def main(*, write_en_dict_review: bool = False) -> None:
-	"""更新中文、拼音和英文词典并按需写出审查文件"""
+def sort_zh_add_files() -> list[tuple[str, str]]:
+	"""排序写回所有中文附加词文件并返回合并排序后的词条"""
+	rows: list[tuple[str, str]] = []
+	for path in get_add_files(".tsv"):
+		file_rows = tiger.sort_zh_add(read_zh_add(str(path)))
+		write_zh_add(str(path), file_rows)
+		rows.extend(file_rows)
+
+	return tiger.sort_zh_add(rows)
+
+
+def sort_en_add_files() -> list[str]:
+	"""排序写回所有英文附加词文件并返回合并排序后的词表"""
+	words: list[str] = []
+	for path in get_add_files(".txt"):
+		file_words = en.sort_add_words(read_words(str(path)))
+		write_words(str(path), file_words)
+		words.extend(file_words)
+
+	return en.sort_add_words(words)
+
+
+def main(*, debug: bool = False) -> None:
+	"""更新中文、拼音和英文词典并按需写出调试文件"""
 	sc2013_set = get_sc2013(
 		[
 			read_lines("upstream/SC2013/level-1.txt"),
@@ -213,14 +263,15 @@ def main(*, write_en_dict_review: bool = False) -> None:
 		read_tiger_dict("upstream/tiger/tiger.dict.yaml"),
 		sc2013_set,
 	)
-	zh_add_rows = tiger.sort_zh_add(read_zh_add("add/0.Sha1rholder.zh.tsv"))
-	write_zh_add("add/0.Sha1rholder.zh.tsv", zh_add_rows)
+	zh_add_rows = sort_zh_add_files()
+	if debug:
+		write_zh_add("temp/zh_add.tsv", zh_add_rows)
+		write_words("temp/zh_add.txt", [text for _code, text in zh_add_rows])
 
 	zh_rows = tiger.combine_tiger_add(tiger_rows, zh_add_rows)
 	write_rows("tiger_sha1_zh.dict.yaml", ZH_DICT_HEADER, zh_rows)
 
-	en_add_words = en.sort_add_words(read_words("add/0.Sha1rholder.en.txt"))
-	write_words("add/0.Sha1rholder.en.txt", en_add_words)
+	en_add_words = sort_en_add_files()
 
 	en_base_entries = en.get_base_ranked_entries(read_esdb_words("upstream/ESDB.txt"))
 	en_add_seen = set(en_add_words)
@@ -231,7 +282,7 @@ def main(*, write_en_dict_review: bool = False) -> None:
 	]
 	en_dict = en_add_words + en.add_case_variants(en_base_words)
 	write_words("lua/en_dict.txt", en_dict)
-	if write_en_dict_review:
+	if debug:
 		write_en_review_tsv("temp/en_dict.tsv", en_base_entries)
 
 
@@ -272,9 +323,9 @@ def parse_args() -> argparse.Namespace:
 		help="Run WeaselDeployer.exe after updating dictionaries",
 	)
 	parser.add_argument(
-		"--en_dict",
+		"--debug",
 		action="store_true",
-		help="Also write temp/en_dict.tsv for English dictionary review",
+		help="Also write temp debug files for dictionary review",
 	)
 	parser.add_argument(
 		"--sync",
@@ -296,7 +347,7 @@ if __name__ == "__main__":
 	os.chdir(Path(__file__).resolve().parent.parent)
 
 	args = parse_args()
-	main(write_en_dict_review=args.en_dict)
+	main(debug=args.debug)
 	if args.deploy:
 		deploy()
 	if args.sync:
