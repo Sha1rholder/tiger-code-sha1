@@ -5,8 +5,10 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from utils import en, py_sc, tiger
+from utils.types import CodeText, CodeWeightText, DictHeader, FilePath
 
-ZH_DICT_HEADER = """---
+ZH_DICT_HEADER: DictHeader = DictHeader("""\
+---
 name: tiger_sha1_zh
 version: placeholder
 sort: original
@@ -14,9 +16,10 @@ columns:
   - code
   - text
 ...
-"""
+""")
 
-PY_DICT_HEADER = """---
+PY_DICT_HEADER: DictHeader = DictHeader("""\
+---
 name: tiger_sha1_py
 version: placeholder
 sort: original
@@ -24,10 +27,10 @@ columns:
   - code
   - text
 ...
-"""
+""")
 
 
-def read_lines(filename: str) -> list[str]:
+def read_lines(filename: FilePath) -> list[str]:
 	"""读取UTF-8文本并按行返回"""
 	return Path(filename).read_text(encoding="utf-8").splitlines()
 
@@ -44,9 +47,9 @@ def get_sc2013(levels: Iterable[Iterable[str]]) -> set[str]:
 	return sc2013
 
 
-def read_tiger_dict(filename: str) -> list[tuple[str, str]]:
-	"""读取虎码上游词典正文，返回(code, text)，舍弃weight列"""
-	rows: list[tuple[str, str]] = []
+def read_tiger_dict(filename: FilePath) -> list[CodeText]:
+	"""读取虎码上游词典正文，返回CodeText列表，舍弃weight列"""
+	rows: list[CodeText] = []
 	after_sep = False
 	for line_number, line in enumerate(
 		Path(filename).read_text(encoding="utf-8").splitlines(), 1
@@ -61,14 +64,14 @@ def read_tiger_dict(filename: str) -> list[tuple[str, str]]:
 		if len(parts) < 2:
 			raise SystemExit(f"第{line_number}行不是有效的TSV行：{line}")
 		text, code = parts[:2]
-		rows.append((code, text))
+		rows.append(CodeText(code=code, text=text))
 
 	return rows
 
 
-def read_py_dict(filename: str) -> list[tuple[str, int, str]]:
-	"""读取拼音上游词典正文，返回(code, weight, text)"""
-	rows: list[tuple[str, int, str]] = []
+def read_py_dict(filename: FilePath) -> list[CodeWeightText]:
+	"""读取拼音上游词典正文，返回CodeWeightText列表"""
+	rows: list[CodeWeightText] = []
 	after_sep = False
 	pending_text_parts: list[str] = []
 	pending_start_line: int | None = None
@@ -99,7 +102,7 @@ def read_py_dict(filename: str) -> list[tuple[str, int, str]]:
 			weight = int(weight_text)
 		except ValueError as error:
 			raise SystemExit(f"第{line_number}行weight不是整数：{line}") from error
-		rows.append((code, weight, text))
+		rows.append(CodeWeightText(code=code, weight=weight, text=text))
 
 	if pending_text_parts:
 		pending_text = "".join(pending_text_parts)
@@ -108,9 +111,9 @@ def read_py_dict(filename: str) -> list[tuple[str, int, str]]:
 	return rows
 
 
-def read_zh_add(filename: str) -> list[tuple[str, str]]:
-	"""读取中文附加词TSV，返回(code, text)"""
-	rows: list[tuple[str, str]] = []
+def read_zh_add(filename: FilePath) -> list[CodeText]:
+	"""读取中文附加词TSV，返回CodeText列表"""
+	rows: list[CodeText] = []
 	for line_number, line in enumerate(
 		Path(filename).read_text(encoding="utf-8").splitlines(), 1
 	):
@@ -122,12 +125,12 @@ def read_zh_add(filename: str) -> list[tuple[str, str]]:
 			continue
 		if len(parts) != 2:
 			raise SystemExit(f"第{line_number}行不是有效的TSV行：{line}")
-		rows.append((parts[0], parts[1]))
+		rows.append(CodeText(code=parts[0], text=parts[1]))
 
 	return rows
 
 
-def read_words(filename: str) -> list[str]:
+def read_words(filename: FilePath) -> list[str]:
 	"""读取一行一词的纯文本词表"""
 	words: list[str] = []
 	for line in Path(filename).read_text(encoding="utf-8").splitlines():
@@ -137,7 +140,7 @@ def read_words(filename: str) -> list[str]:
 	return words
 
 
-def read_esdb_words(filename: str) -> set[str]:
+def read_esdb_words(filename: FilePath) -> set[str]:
 	"""读取ESDB正文为拼写集合"""
 	words: set[str] = set()
 	after_sep = False
@@ -179,25 +182,27 @@ def ensure_parent_dir(path: Path) -> None:
 		path.parent.mkdir(parents=True, exist_ok=True)
 
 
-def write_rows(filename: str, dict_header: str, rows: list[tuple[str, str]]) -> None:
-	"""写出带词典头的(code, text)词典"""
+def write_rows(
+	filename: FilePath, dict_header: DictHeader, rows: list[CodeText]
+) -> None:
+	"""写出带词典头的CodeText词典"""
 	with open(filename, "w", encoding="utf-8", newline="") as f:
 		f.write(dict_header)
-		for code, text in rows:
-			f.write(f"{code}\t{text}\n")
+		for row in rows:
+			f.write(f"{row.code}\t{row.text}\n")
 
 
-def write_zh_add(filename: str, rows: list[tuple[str, str]]) -> None:
+def write_zh_add(filename: FilePath, rows: list[CodeText]) -> None:
 	"""写出中文附加词TSV"""
 	path = Path(filename)
 	ensure_parent_dir(path)
 	with path.open("w", encoding="utf-8", newline="") as f:
 		f.write("code\ttext\n")
-		for code, text in rows:
-			f.write(f"{code}\t{text}\n")
+		for row in rows:
+			f.write(f"{row.code}\t{row.text}\n")
 
 
-def write_words(filename: str, words: list[str]) -> None:
+def write_words(filename: FilePath, words: list[str]) -> None:
 	"""写出一行一词的纯文本词表"""
 	path = Path(filename)
 	ensure_parent_dir(path)
@@ -206,7 +211,7 @@ def write_words(filename: str, words: list[str]) -> None:
 			f.write(f"{word}\n")
 
 
-def write_en_review_tsv(filename: str, entries: list[en.RankedWord]) -> None:
+def write_en_review_tsv(filename: FilePath, entries: list[en.RankedWord]) -> None:
 	"""写出英文词表审查TSV"""
 	path = Path(filename)
 	ensure_parent_dir(path)
@@ -221,12 +226,12 @@ def write_en_review_tsv(filename: str, entries: list[en.RankedWord]) -> None:
 			)
 
 
-def sort_zh_add_files() -> list[tuple[str, str]]:
+def sort_zh_add_files() -> list[CodeText]:
 	"""排序写回所有中文附加词文件并返回合并排序后的词条"""
-	rows: list[tuple[str, str]] = []
+	rows: list[CodeText] = []
 	for path in get_add_files(".tsv"):
-		file_rows = tiger.sort_zh_add(read_zh_add(str(path)))
-		write_zh_add(str(path), file_rows)
+		file_rows = tiger.sort_zh_add(read_zh_add(FilePath(str(path))))
+		write_zh_add(FilePath(str(path)), file_rows)
 		rows.extend(file_rows)
 
 	return tiger.sort_zh_add(rows)
@@ -236,8 +241,8 @@ def sort_en_add_files() -> list[str]:
 	"""排序写回所有英文附加词文件并返回合并排序后的词表"""
 	words: list[str] = []
 	for path in get_add_files(".txt"):
-		file_words = en.sort_add_words(read_words(str(path)))
-		write_words(str(path), file_words)
+		file_words = en.sort_add_words(read_words(FilePath(str(path))))
+		write_words(FilePath(str(path)), file_words)
 		words.extend(file_words)
 
 	return en.sort_add_words(words)
@@ -247,33 +252,35 @@ def main(*, debug: bool = False) -> None:
 	"""更新中文、拼音和英文词典并按需写出调试文件"""
 	sc2013_set = get_sc2013(
 		[
-			read_lines("upstream/SC2013/level-1.txt"),
-			read_lines("upstream/SC2013/level-2.txt"),
-			read_lines("upstream/SC2013/level-3.txt"),
+			read_lines(FilePath("upstream/SC2013/level-1.txt")),
+			read_lines(FilePath("upstream/SC2013/level-2.txt")),
+			read_lines(FilePath("upstream/SC2013/level-3.txt")),
 		]
 	)
 
 	py_rows = py_sc.get_py_sc(
-		read_py_dict("upstream/tiger/PY_c.dict.yaml"),
+		read_py_dict(FilePath("upstream/tiger/PY_c.dict.yaml")),
 		sc2013_set,
 	)
-	write_rows("tiger_sha1_py.dict.yaml", PY_DICT_HEADER, py_rows)
+	write_rows(FilePath("tiger_sha1_py.dict.yaml"), PY_DICT_HEADER, py_rows)
 
 	tiger_rows = tiger.filter_tiger(
-		read_tiger_dict("upstream/tiger/tiger.dict.yaml"),
+		read_tiger_dict(FilePath("upstream/tiger/tiger.dict.yaml")),
 		sc2013_set,
 	)
 	zh_add_rows = sort_zh_add_files()
 	if debug:
-		write_zh_add("temp/zh_add.tsv", zh_add_rows)
-		write_words("temp/zh_add.txt", [text for _code, text in zh_add_rows])
+		write_zh_add(FilePath("temp/zh_add.tsv"), zh_add_rows)
+		write_words(FilePath("temp/zh_add.txt"), [row.text for row in zh_add_rows])
 
 	zh_rows = tiger.combine_tiger_add(tiger_rows, zh_add_rows)
-	write_rows("tiger_sha1_zh.dict.yaml", ZH_DICT_HEADER, zh_rows)
+	write_rows(FilePath("tiger_sha1_zh.dict.yaml"), ZH_DICT_HEADER, zh_rows)
 
 	en_add_words = sort_en_add_files()
 
-	en_base_entries = en.get_base_ranked_entries(read_esdb_words("upstream/ESDB.txt"))
+	en_base_entries = en.get_base_ranked_entries(
+		read_esdb_words(FilePath("upstream/ESDB.txt"))
+	)
 	en_add_seen = set(en_add_words)
 	en_base_words = [
 		entry.word
@@ -281,9 +288,9 @@ def main(*, debug: bool = False) -> None:
 		if len(entry.word) >= en.MIN_WORD_LEN and entry.word not in en_add_seen
 	]
 	en_dict = en_add_words + en.add_case_variants(en_base_words)
-	write_words("lua/en_dict.txt", en_dict)
+	write_words(FilePath("lua/en_dict.txt"), en_dict)
 	if debug:
-		write_en_review_tsv("temp/en_dict.tsv", en_base_entries)
+		write_en_review_tsv(FilePath("temp/en_dict.tsv"), en_base_entries)
 
 
 def git_sync() -> None:
