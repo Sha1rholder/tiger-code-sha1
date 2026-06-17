@@ -19,7 +19,7 @@
 ---@field input string 编码串
 ---@field clear fun(self: Context) 清空编码串
 
----有输入buffer时直接提交当前编码和后续ASCII符号
+---有输入buffer且末尾是英文字母时直接提交当前编码和后续ASCII符号
 
 local kAccepted = 1
 local kNoop = 2
@@ -63,7 +63,7 @@ local function plain_ascii_symbol_from_key(key)
 	return nil
 end
 
----Rime处理器入口：有输入buffer且按下ASCII符号键时，直接上屏当前编码和该符号
+---Rime处理器入口：有输入buffer且输入buffer末尾是英文字母时，直接上屏当前编码和该符号
 ---@param key KeyEvent 按键事件
 ---@param env Environment Rime环境对象
 ---@return integer kAccepted表示按键已被处理，kNoop表示未处理
@@ -73,7 +73,7 @@ local function processor(key, env)
 	local input = context.input or ""
 	local symbol = plain_ascii_symbol_from_key(key)
 
-	if input ~= "" and symbol ~= nil then
+	if input ~= "" and symbol ~= nil and input:sub(-1):match("[a-zA-Z]") then
 		engine:commit_text(input .. symbol)
 		context:clear()
 		return kAccepted
