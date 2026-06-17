@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from wordfreq import get_frequency_dict
 
 MIN_WORD_LEN = 4
-CONSONANTS = set("bcdfghjklmnpqrstvwxyz")
+CONSONANTS: set[str] = set("bcdfghjklmnpqrstvwxyz")
 
 
 @dataclass(frozen=True)
@@ -24,7 +24,7 @@ class WordInfo:
 
 def sort_add_words(words: list[str]) -> list[str]:
 	"""返回按单词长度和字母顺序稳定排序后的英文附加词"""
-	clean_words = [word for word in words if word]
+	clean_words: list[str] = [word for word in words if word]
 
 	seen: set[str] = set()
 	for word in clean_words:
@@ -38,10 +38,10 @@ def sort_add_words(words: list[str]) -> list[str]:
 
 def get_base_ranked_entries(esdb_words: set[str]) -> list[RankedWord]:
 	"""返回未过滤码长且不含派生大小写词条的英文词条排序指标"""
-	esdb = dedupe_case_variants(esdb_words)
-	en_freq = get_frequency_dict("en")
+	esdb: list[str] = dedupe_case_variants(esdb_words)
+	en_freq: dict[str, float] = get_frequency_dict("en")
 
-	infos = [
+	infos: list[WordInfo] = [
 		WordInfo(
 			word=word,
 			key=word.casefold(),
@@ -203,17 +203,17 @@ def case_variant_sort_key(word: str) -> tuple[tuple[int, ...], str]:
 
 
 def add_case_variants(en_dict: list[str]) -> list[str]:
-	"""为首字母小写词生成首字母大写版本，为非全小写词生成全大写版本"""
+	"""为全小写词生成首字母大写版本，为非全小写词生成全大写版本"""
 	initial_caps: list[str] = []
 	all_caps: list[str] = []
 	seen = set(en_dict)
 	for word in en_dict:
-		if word[0].islower():
+		if word.islower():
 			initial_cap = word[0].upper() + word[1:]
 			if initial_cap not in seen:
 				initial_caps.append(initial_cap)
 				seen.add(initial_cap)
-		if not word.islower():
+		if not word.isupper():
 			all_cap = word.upper()
 			if all_cap not in seen:
 				all_caps.append(all_cap)

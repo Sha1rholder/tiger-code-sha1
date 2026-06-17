@@ -92,8 +92,8 @@
 
 `add_case_variants()`在基础词表之后追加派生大小写形式：
 
-- 首字母小写的词会追加首字母大写版本
-- 非全小写的词会追加全大写版本
+- 只有全小写的词会增加首字母大写版本
+- 非全大写的词会追加全大写版本
 - 已存在的词不会重复追加
 
 `lua/en_dict.txt`是一行一词的纯文本文件，Lua translator按该文件顺序惰性产出英文候选。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/en_dict.tsv`用于审查英文排序指标
@@ -104,6 +104,6 @@
 - `tiger_sha1_zh.dict.yaml`：中文基础词典
 - `tiger_sha1_py.dict.yaml`：拼音反查词典
 - `lua/en_dict.txt`：英文词表
-- `temp/zh_add.tsv`：合并排序后的中文附加词TSV（仅在传入`--debug`时生成）
-- `temp/zh_add.txt`：合并排序后的中文附加词词面（仅在传入`--debug`时生成）
+- `temp/add.tsv`：合并排序后的中文附加词TSV（仅在传入`--debug`时生成）
+- `temp/add.txt`：合并排序后的英文附加词（仅在传入`--debug`时生成）
 - `temp/en_dict.tsv`：保留完整排序指标的英文词表（仅在传入`--debug`时生成）
