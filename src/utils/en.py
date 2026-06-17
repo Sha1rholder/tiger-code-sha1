@@ -1,32 +1,18 @@
 from collections.abc import Iterable
-from dataclasses import dataclass
 
 from wordfreq import get_frequency_dict
+
+from utils.types import Text
 
 MIN_WORD_LEN = 4
 CONSONANTS: set[str] = set("bcdfghjklmnpqrstvwxyz")
 
 
-@dataclass(frozen=True)
-class RankedWord:
-	word: str
-	frequency: float
-	boosted_frequency: float
-	demotion_count: int
-
-
-@dataclass(frozen=True)
-class WordInfo:
-	word: str
-	key: str
-	frequency: float
-
-
-def sort_add_words(words: list[str]) -> list[str]:
+def sort_add_words(words: list[Text]) -> list[Text]:
 	"""返回按单词长度和字母顺序稳定排序后的英文附加词"""
-	clean_words: list[str] = [word for word in words if word]
+	clean_words: list[Text] = [word for word in words if word]
 
-	seen: set[str] = set()
+	seen: set[Text] = set()
 	for word in clean_words:
 		if word in seen:
 			print(f"警告：英文附加词'{word}'重复")
@@ -36,17 +22,15 @@ def sort_add_words(words: list[str]) -> list[str]:
 	return sorted(clean_words, key=lambda word: (len(word), word.casefold()))
 
 
-def get_base_ranked_entries(esdb_words: set[str]) -> list[RankedWord]:
+def get_base_ranked_entries(
+	esdb_words: set[str],
+) -> list[tuple[Text, float, float, int]]:
 	"""返回未过滤码长且不含派生大小写词条的英文词条排序指标"""
 	esdb: list[str] = dedupe_case_variants(esdb_words)
 	en_freq: dict[str, float] = get_frequency_dict("en")
 
-	infos: list[WordInfo] = [
-		WordInfo(
-			word=word,
-			key=word.casefold(),
-			frequency=en_freq[word.casefold()],
-		)
+	infos: list[tuple[Text, Text, float]] = [
+		(Text(word), Text(word.casefold()), en_freq[word.casefold()])
 		for word in esdb
 		if (
 			word.isascii()
@@ -59,51 +43,50 @@ def get_base_ranked_entries(esdb_words: set[str]) -> list[RankedWord]:
 	return rank_base_entries(infos)
 
 
-def rank_base_entries(infos: list[WordInfo]) -> list[RankedWord]:
+def rank_base_entries(
+	infos: list[tuple[Text, Text, float]],
+) -> list[tuple[Text, float, float, int]]:
 	"""按降权次数、提权词频、原词频和词面排序"""
-	infos_by_key = {info.key: info for info in infos}
+	infos_by_key = {info[1]: info for info in infos}
 	parent_by_key = build_parent_map(infos_by_key)
 
-	boosted_frequency = {info.key: info.frequency for info in infos}
-	demotion_count = {info.key: 0 for info in infos}
+	boosted_frequency = {info[1]: info[2] for info in infos}
+	demotion_count = {info[1]: 0 for info in infos}
 
 	for info in infos:
-		ancestor_key = parent_by_key.get(info.key)
+		ancestor_key = parent_by_key.get(info[1])
 		while ancestor_key is not None:
 			ancestor = infos_by_key[ancestor_key]
-			if ancestor.frequency > info.frequency:
-				boosted_frequency[ancestor_key] += info.frequency
-				demotion_count[info.key] += 1
+			if ancestor[2] > info[2]:
+				boosted_frequency[ancestor_key] += info[2]
+				demotion_count[info[1]] += 1
 			ancestor_key = parent_by_key.get(ancestor_key)
 
 	entries = [
-		RankedWord(
-			word=info.word,
-			frequency=info.frequency,
-			boosted_frequency=boosted_frequency[info.key],
-			demotion_count=demotion_count[info.key],
-		)
+		(Text(info[0]), info[2], boosted_frequency[info[1]], demotion_count[info[1]])
 		for info in infos
 	]
 
 	entries.sort(
 		key=lambda entry: (
-			entry.demotion_count,
-			-entry.boosted_frequency,
-			-entry.frequency,
-			entry.word.casefold(),
-			entry.word,
+			entry[3],
+			-entry[2],
+			-entry[1],
+			entry[0].casefold(),
+			entry[0],
 		),
 	)
 	return entries
 
 
-def build_parent_map(infos_by_key: dict[str, WordInfo]) -> dict[str, str]:
+def build_parent_map(
+	infos_by_key: dict[Text, tuple[Text, Text, float]],
+) -> dict[Text, Text]:
 	"""为每个词选择唯一直接基本形式"""
-	parent_by_key: dict[str, str] = {}
+	parent_by_key: dict[Text, Text] = {}
 	for key in infos_by_key:
 		candidates = [
-			(priority, base_key)
+			(priority, Text(base_key))
 			for priority, base_key in iter_base_candidates(key)
 			if base_key != key and base_key in infos_by_key
 		]
@@ -114,7 +97,7 @@ def build_parent_map(infos_by_key: dict[str, WordInfo]) -> dict[str, str]:
 			candidates,
 			key=lambda candidate: (
 				candidate[0],
-				-infos_by_key[candidate[1]].frequency,
+				-infos_by_key[candidate[1]][2],
 				candidate[1],
 			),
 		)
@@ -202,19 +185,19 @@ def case_variant_sort_key(word: str) -> tuple[tuple[int, ...], str]:
 	return char_key, word
 
 
-def add_case_variants(en_dict: list[str]) -> list[str]:
+def add_case_variants(en_dict: list[Text]) -> list[Text]:
 	"""为全小写词生成首字母大写版本，为非全小写词生成全大写版本"""
-	initial_caps: list[str] = []
-	all_caps: list[str] = []
+	initial_caps: list[Text] = []
+	all_caps: list[Text] = []
 	seen = set(en_dict)
 	for word in en_dict:
 		if word.islower():
-			initial_cap = word[0].upper() + word[1:]
+			initial_cap = Text(word[0].upper() + word[1:])
 			if initial_cap not in seen:
 				initial_caps.append(initial_cap)
 				seen.add(initial_cap)
 		if not word.isupper():
-			all_cap = word.upper()
+			all_cap = Text(word.upper())
 			if all_cap not in seen:
 				all_caps.append(all_cap)
 				seen.add(all_cap)
