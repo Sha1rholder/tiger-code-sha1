@@ -1,32 +1,5 @@
 ---@diagnostic disable: undefined-global
 
----@class KeyEvent Rime按键事件
----@field keycode number 键码
----@field release fun(self: KeyEvent): boolean 是否为释放事件
----@field ctrl fun(self: KeyEvent): boolean 是否按下Ctrl
----@field alt fun(self: KeyEvent): boolean 是否按下Alt
----@field super fun(self: KeyEvent): boolean 是否按下Super
----@field repr fun(self: KeyEvent): string? 按键的字符串表示
-
----@class Environment Rime环境对象
----@field engine Engine
-
----@class Engine Rime引擎
----@field context Context
----@field commit_text fun(self: Engine, text: string) 上屏文本
----@field process_key fun(self: Engine, key: KeyEvent): integer 处理按键
----@field schema Schema
-
----@class Context Rime上下文
----@field input string 编码串
----@field clear fun(self: Context) 清空编码串
-
----@class Schema Rime方案
----@field config Config
-
----@class Config Rime配置
----@field get_bool fun(self: Config, path: string): boolean
-
 ---@class Segment Rime分段对象
 ---@field start integer
 ---@field _start integer
@@ -38,24 +11,18 @@
 
 ---按lua/en_dict.txt懒加载英文候选
 ---当输入不是任何主码表编码前缀时，先产出原始输入，方便直接上屏未知英文词
----英文候选整体排在主码表候选之后，但在本translator内保持英文词表顺序
----Lua产出的英文候选默认带尾随空格，便于连续输入英文
+---英文候选整体排在主码表候选之后，但在本translator内保持英文词典顺序
 
 local MAX_PREFIX_LEN = 4
 local EN_DICT_NAME = "lua/en_dict.txt"
 local MAIN_DICT_NAME = "tiger_sha1_weasel.dict.yaml"
 local LOG_PREFIX = "en_weight_translate"
-local PERF_LOG_CONFIG = "en_weight_translate/enable_perf_log"
-local APPEND_SPACE_CONFIG = "en_weight_translate/append_space_to_candidates"
-local DEFAULT_APPEND_SPACE_TO_EN_CANDIDATES = true
-local EN_CANDIDATE_SUFFIX = " "
 
 local en_loaded = false
 local entries_by_prefix = {}
 local main_loaded = false
 local main_prefixes = {}
 local loading_main_dicts = {}
-local append_space_to_en_candidates = DEFAULT_APPEND_SPACE_TO_EN_CANDIDATES
 
 ---获取用户数据目录
 local function data_dir()
@@ -247,7 +214,7 @@ local function load_entries()
 	local count = 0
 	local rank = 0
 	for line in file:lines() do
-		-- 英文词表格式：一行一词，顺序即权重
+		-- 英文词典格式：一行一词，顺序即权重
 		if line ~= "" then
 			rank = rank + 1
 			count = count + 1
@@ -266,32 +233,6 @@ local function load_entries()
 	end
 end
 
----从schema配置中读取布尔值
----@param env Environment Rime环境对象
----@param path string 配置路径
----@param default boolean? 默认值
----@return boolean
-local function get_config_bool(env, path, default)
-	if default == nil then
-		default = false
-	end
-
-	local engine = env ~= nil and env.engine or nil
-	local schema = engine ~= nil and engine.schema or nil
-	local config = schema ~= nil and schema.config or nil
-	if config == nil or config.get_bool == nil then
-		return default
-	end
-
-	local ok, value = pcall(function()
-		return config:get_bool(path)
-	end)
-	if not ok or value == nil then
-		return default
-	end
-	return ok and value == true
-end
-
 ---获取segment起始位置
 ---@param segment Segment 分段对象
 ---@return integer
@@ -307,23 +248,13 @@ local function segment_end(segment, input)
 	return segment._end or segment["end"] or (segment_start(segment) + #input)
 end
 
----构造英文候选文本，可按配置追加尾随空格
----@param text string 词条文本
----@return string
-local function en_candidate_text(text)
-	if append_space_to_en_candidates then
-		return text .. EN_CANDIDATE_SUFFIX
-	end
-	return text
-end
-
 ---构造英文候选，quality取负rank使候选排在主码表之后
 ---@param segment Segment 分段对象
 ---@param input string 输入串
 ---@param entry table 词条
 ---@return Candidate
 local function make_candidate(segment, input, entry)
-	local cand = Candidate("english", segment_start(segment), segment_end(segment, input), en_candidate_text(entry.text),
+	local cand = Candidate("english", segment_start(segment), segment_end(segment, input), entry.text,
 		" ")
 	-- 使英文候选词排在码表候选词之后，同时在translator内部保持词典顺序
 	cand.quality = -entry.rank
@@ -335,7 +266,7 @@ end
 ---@param input string 输入串
 ---@return Candidate
 local function make_raw_candidate(segment, input)
-	local cand = Candidate("raw_input", segment_start(segment), segment_end(segment, input), en_candidate_text(input),
+	local cand = Candidate("raw_input", segment_start(segment), segment_end(segment, input), input,
 		" ")
 	cand.quality = 0
 	return cand
@@ -344,8 +275,7 @@ end
 ---Rime translator入口：按前缀桶查找英文候选并yield
 ---@param input string 输入串
 ---@param segment Segment 分段对象
----@param env Environment Rime环境对象
-local function translator(input, segment, env)
+local function translator(input, segment)
 	load_entries()
 	load_main_prefixes()
 
@@ -353,30 +283,11 @@ local function translator(input, segment, env)
 		return
 	end
 
-	local start_time = nil
-	local perf_log_enabled = get_config_bool(env, PERF_LOG_CONFIG)
-	if perf_log_enabled and os ~= nil and os.clock ~= nil then
-		start_time = os.clock()
-	end
-
 	local lookup_input = input
 	local bucket_key = lookup_input:sub(1, math.min(MAX_PREFIX_LEN, #lookup_input))
 	local bucket = entries_by_prefix[bucket_key] or {}
 	-- 4码以内直接用对应前缀桶；大于等于4码为一桶
 	local needs_filter = #lookup_input > MAX_PREFIX_LEN
-
-	if perf_log_enabled and log ~= nil and log.info ~= nil and start_time ~= nil then
-		local elapsed_ms = (os.clock() - start_time) * 1000
-		log.info(
-			LOG_PREFIX
-			.. ": input="
-			.. input
-			.. " bucket="
-			.. tostring(#bucket)
-			.. " prepare_ms="
-			.. string.format("%.3f", elapsed_ms)
-		)
-	end
 
 	if not main_prefixes[input] then
 		-- 输入不再可能命中中文码表时，先给原始英文，避免未知词只能选补全项
@@ -392,11 +303,6 @@ end
 
 return {
 	init = function(env)
-		append_space_to_en_candidates = get_config_bool(
-			env,
-			APPEND_SPACE_CONFIG,
-			DEFAULT_APPEND_SPACE_TO_EN_CANDIDATES
-		)
 		load_entries()
 		load_main_prefixes()
 	end,
