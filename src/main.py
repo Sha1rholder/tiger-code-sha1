@@ -131,7 +131,7 @@ def read_zh_add(filename: FilePath) -> list[tuple[Code, Text]]:
 
 
 def read_words(filename: FilePath) -> list[Text]:
-	"""读取一行一词的纯文本词表"""
+	"""读取一行一词的纯文本词典"""
 	words: list[Text] = []
 	for line in Path(filename).read_text(encoding="utf-8").splitlines():
 		word = line.strip()
@@ -203,7 +203,7 @@ def write_zh_add(filename: FilePath, rows: list[tuple[Code, Text]]) -> None:
 
 
 def write_words(filename: FilePath, words: list[Text]) -> None:
-	"""写出一行一词的纯文本词表"""
+	"""写出一行一词的纯文本词典"""
 	path = Path(filename)
 	ensure_parent_dir(path)
 	with path.open("w", encoding="utf-8", newline="") as f:
@@ -214,18 +214,13 @@ def write_words(filename: FilePath, words: list[Text]) -> None:
 def write_en_review_tsv(
 	filename: FilePath, entries: list[tuple[Text, float, float, int]]
 ) -> None:
-	"""写出英文词表审查TSV"""
+	"""写出英文词典审查TSV"""
 	path = Path(filename)
 	ensure_parent_dir(path)
 	with path.open("w", encoding="utf-8", newline="") as f:
 		f.write("word\tfrequency\tboosted_frequency\tdemotion_count\n")
 		for entry in entries:
-			f.write(
-				f"{entry[0]}\t"
-				f"{entry[1]:.17g}\t"
-				f"{entry[2]:.17g}\t"
-				f"{entry[3]}\n"
-			)
+			f.write(f"{entry[0]}\t{entry[1]:.17g}\t{entry[2]:.17g}\t{entry[3]}\n")
 
 
 def sort_zh_add_files() -> list[tuple[Code, Text]]:
@@ -240,14 +235,14 @@ def sort_zh_add_files() -> list[tuple[Code, Text]]:
 
 
 def sort_en_add_files() -> list[Text]:
-	"""排序写回所有英文附加词文件并返回合并排序后的词表"""
+	"""排序写回所有英文附加词文件并返回合并排序后的词典"""
 	words: list[Text] = []
 	for path in get_add_files(".txt"):
 		file_words = en.sort_add_words(read_words(FilePath(str(path))))
 		write_words(FilePath(str(path)), file_words)
 		words.extend(file_words)
 
-	return en.sort_add_words(words)
+	return words
 
 
 def main(*, debug: bool = False) -> None:

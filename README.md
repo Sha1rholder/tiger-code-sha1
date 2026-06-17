@@ -9,9 +9,9 @@
 - **中英混输**：没有自动上屏，支持中文和英文混合输入，无需切换ASCII模式
 - **拼音反查**：通过`|`前缀触发拼音反查功能
 - **简化字表**：默认仅收录国标简体字，每个字仅保留一个编码
-- **英文词表**：以ESDB作为拼写集合，结合wordfreq词频、英文后缀变体关系和附加词生成候选顺序
+- **英文词典**：以ESDB作为拼写集合，结合wordfreq词频、英文后缀变体关系和附加词生成候选顺序
 - **更多符号**：全角模式自带一些常用特殊符号和emoji
-- **自动整理**：脚本化更新词表、整理附加词、部署和同步
+- **自动整理**：脚本化更新词典、整理附加词、部署和同步
 
 ## 文件结构
 
@@ -26,25 +26,19 @@ Rime/
 ├ symbols.yaml					# 符号表
 ├ weasel.custom.yaml			# 小狼毫界面定制
 ├ add/
-│	├ *.tsv						# 中文自定义词表
-│	├ *.txt						# 英文自定义词表
-│	├ -*.tsv					# 中文自定义词表（禁用）
-│	├ -*.txt					# 英文自定义词表（禁用）
-│	├ .*.tsv					# 中文自定义词表（gitignore）
-│	├ .*.txt					# 英文自定义词表（gitignore）
-│	├ .-*.tsv					# 中文自定义词表（禁用且gitignore）
-│	└ .-*.txt					# 英文自定义词表（禁用且gitignore）
+│	├ *.tsv						# 自定义中文词典
+│	└ *.txt						# 自定义英文词典
 ├ lua/
 │	├ commit_raw_symbol.lua		# 有buffer时符号键直接提交ASCII
-│	├ en_weight_translate.lua	# 英文候选按词表顺序惰性产出
-│	└ en_dict.txt				# 英文词表（机器生成）
+│	├ en_weight_translate.lua	# 英文候选按词典顺序惰性产出
+│	└ en_dict.txt				# 英文词典（机器生成）
 ├ src/
 │	├ main.py					# 读取源数据、解析格式、合并SC2013、调用utils、写出词典、部署、同步
 │	├ README.md					# 开发文档
 │	└ utils/
-│		├ en.py					# 英文排序和大小写变体
-│		├ py_sc.py				# 拼音反查过滤和排序
-│		└ tiger.py				# 虎码过滤和中文附加词整理
+│		├ en.py					# 英文词典生成器
+│		├ py_sc.py				# 拼音反查生成器
+│		└ tiger.py				# 中文词典生成器
 └ upstream/
 	├ ESDB.txt					# English Speller Database
 	├ tiger/					# 虎码原始数据
@@ -64,9 +58,7 @@ Rime/
 3. 执行`git clone --depth=1 https://github.com/Sha1rholder/tiger-code-sha1.git "$env:APPDATA\Rime"; uv run "$env:APPDATA\Rime\src\main.py" --deploy`
 4. 在Weasel控制面板中选择`tiger_sha1_weasel`
 
-若要加减词，请编辑`add/`中的`.tsv`中文词表或`.txt`英文词表，然后执行`uv run src/main.py --deploy`。不需要手动整理附加词表，脚本会先按单文件排序并写回，再按文件名字符顺序拼接，最后对合并结果再次排序。`add/`中以`-`或`.-`开头的词表会被生成逻辑忽略；以`.`开头的词表会被`.gitignore`忽略
-
-若要使英文候选默认带尾随空格，可将`tiger_sha1_weasel.schema.yaml > en_weight_translate > append_space_to_candidates`的值改为`true`后重新部署
+若要加减词，请编辑`add/`中的`.tsv`中文词典或`.txt`英文词典，然后执行`uv run src/main.py --deploy`。不需要手动整理附加词典，脚本会先按单文件排序并写回，再按文件名字符顺序拼接，最后对合并结果再次排序。`add/`中以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略
 
 ## 开发
 
@@ -74,7 +66,7 @@ Rime/
 
 `src/main.py`可用参数：
 - `--deploy`：更新词典后自动重新部署Weasel
-- `--debug`：更新词典时额外在`temp/`中输出`add.tsv` `add.txt` `en_dict.tsv`供审查中间词表
+- `--debug`：更新词典时额外在`temp/`中输出`add.tsv` `add.txt` `en_dict.tsv`供审查中间词典
 - `--sync`：更新词典后自动执行`git add .`、`git commit`、`git push`以同步到上游（仅在main分支触发push）
 
 ## 致谢

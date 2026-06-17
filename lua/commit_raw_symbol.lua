@@ -1,5 +1,24 @@
 ---@diagnostic disable: undefined-global
 
+---@class KeyEvent Rime按键事件
+---@field keycode number 键码
+---@field release fun(self: KeyEvent): boolean 是否为释放事件
+---@field ctrl fun(self: KeyEvent): boolean 是否按下Ctrl
+---@field alt fun(self: KeyEvent): boolean 是否按下Alt
+---@field super fun(self: KeyEvent): boolean 是否按下Super
+---@field repr fun(self: KeyEvent): string? 按键的字符串表示
+
+---@class Environment Rime环境对象
+---@field engine Engine
+
+---@class Engine Rime引擎
+---@field context Context
+---@field commit_text fun(self: Engine, text: string) 上屏文本
+
+---@class Context Rime上下文
+---@field input string 编码串
+---@field clear fun(self: Context) 清空编码串
+
 ---有输入buffer时直接提交当前编码和后续ASCII符号
 
 local kAccepted = 1

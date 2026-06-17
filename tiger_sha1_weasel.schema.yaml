@@ -57,10 +57,6 @@ translator:
   comment_format:
     - xform/~//
 
-en_weight_translate:
-  enable_perf_log: false
-  append_space_to_candidates: false
-
 reverse_lookup:
   dictionary: tiger_sha1_py
   prefix: "|"

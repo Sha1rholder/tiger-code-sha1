@@ -7,8 +7,8 @@
 1. 读取`upstream/SC2013/level-1.txt`、`level-2.txt`、`level-3.txt`，交给`main.py`合并为`set[str]`
 2. 读取`upstream/tiger/PY_c.dict.yaml`正文为`list[tuple[code, weight, text]]`，交给`utils/py_sc.py`过滤并按词频降序生成拼音反查词典
 3. 读取`upstream/tiger/tiger.dict.yaml`正文为`list[tuple[code, text]]`，交给`utils/tiger.py`过滤、单一化编码并合并中文附加词
-4. 读取`add/`中参与生成的`.tsv`中文附加词表，逐文件交给`utils/tiger.py`检查重复`text`并排序，然后由`main.py`写回
-5. 读取`upstream/ESDB.txt`为`set[str]`，读取`add/`中参与生成的`.txt`英文附加词表为`list[str]`，逐文件交给`utils/en.py`排序并写回，再生成英文排序和大小写变体
+4. 读取`add/`中参与生成的`.tsv`中文附加词典，逐文件交给`utils/tiger.py`检查重复`text`并排序，然后由`main.py`写回
+5. 读取`upstream/ESDB.txt`为`set[str]`，读取`add/`中参与生成的`.txt`英文附加词典为`list[str]`，逐文件交给`utils/en.py`排序并写回，再生成英文排序和大小写变体
 
 ## 模块职责
 
@@ -32,7 +32,7 @@
 - 若短码已经被已选中的更高权重条目占用，继续保留原编码
 - 码长相同或后续编码更长时，继续保留原编码
 
-中文附加词来自`add/`中参与生成的`.tsv`文件，第一行固定为`code<TAB>text`。空行会被跳过，其余行必须严格为两列TSV。文件名以`-`或`.-`开头的词表会被生成逻辑忽略；以`.`开头的词表会被`.gitignore`忽略。`utils/tiger.py`会按以下规则稳定排序后由`main.py`逐文件写回：
+中文附加词来自`add/`中参与生成的`.tsv`文件，第一行固定为`code<TAB>text`。空行会被跳过，其余行必须严格为两列TSV。文件名以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略。`utils/tiger.py`会按以下规则稳定排序后由`main.py`逐文件写回：
 
 1. `code`长度升序
 2. `code.casefold()`升序
@@ -46,13 +46,13 @@
 
 ## 英文处理
 
-英文附加词来自`add/`中参与生成的`.txt`文件，一行一词。文件名以`-`或`.-`开头的词表会被生成逻辑忽略。空行会被跳过，完全相同的重复词会输出警告。排序规则为：
+英文附加词来自`add/`中参与生成的`.txt`文件，一行一词。文件名以`-`或`.-`开头的词典会被生成逻辑忽略。空行会被跳过，完全相同的重复词会输出警告。排序规则为：
 
 1. 单词长度升序
 2. `word.casefold()`升序
 3. 相同排序键保留原始先后顺序
 
-逐文件排序写回后，`main.py`会按文件名字符顺序拼接全部英文附加词，再按同一规则整体排序。排序后的附加词会原样放在`lua/en_dict.txt`顶部。若基础英文词表包含完全相同的词，主流程会跳过基础词表里的重复项，避免最终英文词表重复
+逐文件排序写回后，`main.py`会按文件名字符顺序拼接全部英文附加词，再按同一规则整体排序。排序后的附加词会原样放在`lua/en_dict.txt`顶部。若基础英文词典包含完全相同的词，主流程会跳过基础词典里的重复项，避免最终英文词典重复
 
 基础英文候选来源是`upstream/ESDB.txt`拼写集合与`wordfreq`英语词频库的交集。ESDB只作为无序拼写白名单，不参与排序。生成时会过滤掉：
 
@@ -90,7 +90,7 @@
 
 ## 英文大小写变体
 
-`add_case_variants()`在基础词表之后追加派生大小写形式：
+`add_case_variants()`在基础词典之后追加派生大小写形式：
 
 - 只有全小写的词会增加首字母大写版本
 - 非全大写的词会追加全大写版本
@@ -103,7 +103,7 @@
 - `tiger_sha1_weasel.dict.yaml`：主方案词典壳，导入`alphabet`和`tiger_sha1_zh`
 - `tiger_sha1_zh.dict.yaml`：中文基础词典
 - `tiger_sha1_py.dict.yaml`：拼音反查词典
-- `lua/en_dict.txt`：英文词表
+- `lua/en_dict.txt`：英文词典
 - `temp/add.tsv`：合并排序后的中文附加词TSV（仅在传入`--debug`时生成）
 - `temp/add.txt`：合并排序后的英文附加词（仅在传入`--debug`时生成）
-- `temp/en_dict.tsv`：保留完整排序指标的英文词表（仅在传入`--debug`时生成）
+- `temp/en_dict.tsv`：保留完整排序指标的英文词典（仅在传入`--debug`时生成）
