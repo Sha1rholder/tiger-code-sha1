@@ -1,12 +1,15 @@
+from utils.types import CodeText, CodeWeightText
+
+
 def get_py_sc(
-	upstream_py_dict: list[tuple[str, int, str]],
+	upstream_py_dict: list[CodeWeightText],
 	sc2013: set[str],
-) -> list[tuple[str, str]]:
-	"""返回按词频降序排列并过滤后的拼音(code, text)列表"""
+) -> list[CodeText]:
+	"""返回按词频降序排列并过滤后的拼音CodeText列表"""
 	rows = [
-		(code, weight, text)
-		for code, weight, text in upstream_py_dict
-		if all(char in sc2013 for char in text)
+		entry
+		for entry in upstream_py_dict
+		if all(char in sc2013 for char in entry.text)
 	]
-	rows.sort(key=lambda row: row[1], reverse=True)
-	return [(code, text) for code, _weight, text in rows]
+	rows.sort(key=lambda row: row.weight, reverse=True)
+	return [CodeText(code=entry.code, text=entry.text) for entry in rows]
