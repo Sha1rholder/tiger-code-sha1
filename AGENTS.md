@@ -1,8 +1,9 @@
-`uv run src/main.py` to update dictionaries.
+`uv run src/main.py --deploy` to update dictionaries and redeploy Weasel. Weasel log files are stored in `%TEMP%\rime.weasel\`.
 
-`uv run src/main.py --deploy` to update dictionaries and redeploy Weasel.
-
-Weasel's log files are stored in `%TEMP%\rime.weasel\`.
+`uv run src/main.py --debug` to update dictionaries and write debug files to `temp/`:
+- `temp/add.tsv` — merged and sorted Chinese additional entries
+- `temp/add.txt` — Chinese additional entries as plain text
+- `temp/en_dict.tsv` — English base entries with ranking metrics (word, frequency, boosted_frequency, demotion_count) for reviewing sort order and derivation logic
 
 Update `README.md` after implementing new features or modifying behaviors.
 

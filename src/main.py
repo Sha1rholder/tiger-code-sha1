@@ -270,8 +270,8 @@ def main(*, debug: bool = False) -> None:
 	)
 	zh_add_rows = sort_zh_add_files()
 	if debug:
-		write_zh_add(FilePath("temp/zh_add.tsv"), zh_add_rows)
-		write_words(FilePath("temp/zh_add.txt"), [row.text for row in zh_add_rows])
+		write_zh_add(FilePath("temp/add.tsv"), zh_add_rows)
+		write_words(FilePath("temp/add.txt"), [row.text for row in zh_add_rows])
 
 	zh_rows = tiger.combine_tiger_add(tiger_rows, zh_add_rows)
 	write_rows(FilePath("tiger_sha1_zh.dict.yaml"), ZH_DICT_HEADER, zh_rows)

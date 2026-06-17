@@ -6,7 +6,7 @@ def get_py_sc(
 	sc2013: set[str],
 ) -> list[CodeText]:
 	"""返回按词频降序排列并过滤后的拼音CodeText列表"""
-	rows = [
+	rows: list[CodeWeightText] = [
 		entry
 		for entry in upstream_py_dict
 		if all(char in sc2013 for char in entry.text)
