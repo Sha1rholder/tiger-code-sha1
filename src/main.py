@@ -271,7 +271,6 @@ def main(*, debug: bool = False) -> None:
 	zh_add_rows = sort_zh_add_files()
 	if debug:
 		write_zh_add(FilePath("temp/add.tsv"), zh_add_rows)
-		write_words(FilePath("temp/add.txt"), [row.text for row in zh_add_rows])
 
 	zh_rows = tiger.combine_tiger_add(tiger_rows, zh_add_rows)
 	write_rows(FilePath("tiger_sha1_zh.dict.yaml"), ZH_DICT_HEADER, zh_rows)
@@ -290,6 +289,7 @@ def main(*, debug: bool = False) -> None:
 	en_dict = en_add_words + en.add_case_variants(en_base_words)
 	write_words(FilePath("lua/en_dict.txt"), en_dict)
 	if debug:
+		write_words(FilePath("temp/add.txt"), en_add_words)
 		write_en_review_tsv(FilePath("temp/en_dict.tsv"), en_base_entries)
 
 
