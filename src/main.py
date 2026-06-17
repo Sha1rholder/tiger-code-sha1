@@ -220,12 +220,7 @@ def write_en_review_tsv(
 	with path.open("w", encoding="utf-8", newline="") as f:
 		f.write("word\tfrequency\tboosted_frequency\tdemotion_count\n")
 		for entry in entries:
-			f.write(
-				f"{entry[0]}\t"
-				f"{entry[1]:.17g}\t"
-				f"{entry[2]:.17g}\t"
-				f"{entry[3]}\n"
-			)
+			f.write(f"{entry[0]}\t{entry[1]:.17g}\t{entry[2]:.17g}\t{entry[3]}\n")
 
 
 def sort_zh_add_files() -> list[tuple[Code, Text]]:
@@ -247,7 +242,7 @@ def sort_en_add_files() -> list[Text]:
 		write_words(FilePath(str(path)), file_words)
 		words.extend(file_words)
 
-	return en.sort_add_words(words)
+	return words
 
 
 def main(*, debug: bool = False) -> None:
