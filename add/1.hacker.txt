@@ -7,7 +7,9 @@ dataframe
 docstring
 gitignore
 Rustacean
+WebSocket
 Cloudflare
+javascript
 Kubernetes
 Rustaceans
 gitattributes
