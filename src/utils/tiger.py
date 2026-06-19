@@ -47,6 +47,14 @@ def filter_tiger(
 	return [row for row in selected if row is not None]
 
 
+def get_debug_zh_dict_rows(
+	rows: list[tuple[Code, Text]],
+	sc2013: set[Text],
+) -> list[tuple[Code, Text]]:
+	"""返回只包含简体中文单字的调试词条"""
+	return [row for row in rows if len(row[1]) == 1 and row[1] in sc2013]
+
+
 def combine_tiger_add(
 	tiger_rows: list[tuple[Code, Text]],
 	zh_add_rows: list[tuple[Code, Text]],

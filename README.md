@@ -65,9 +65,9 @@ Rime/
 实现细节见`src/README.md`
 
 `src/main.py`可用参数：
-- `--deploy`：更新词典后自动重新部署Weasel
-- `--debug`：更新词典时额外在`temp/`中输出`add.tsv` `add.txt` `en_dict.tsv`供审查中间词典
-- `--sync`：更新词典后自动执行`git add .`、`git commit`、`git push`以同步到上游（仅在main分支触发push）
+- `--deploy`：自动重新部署Weasel
+- `--debug`：额外在`temp/`中输出`zh_dict.tsv`、`add.tsv`、`add.txt`、`en_dict.tsv`供审查中间词典
+- `--sync`：自动执行`git add .`、`git commit`、`git push`以同步到上游（仅在main分支触发push）
 
 ## 致谢
 

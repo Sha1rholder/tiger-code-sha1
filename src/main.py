@@ -193,7 +193,7 @@ def write_rows(
 
 
 def write_zh_add(filename: FilePath, rows: list[tuple[Code, Text]]) -> None:
-	"""写出中文附加词TSV"""
+	"""写出(code, text)两列TSV"""
 	path = Path(filename)
 	ensure_parent_dir(path)
 	with path.open("w", encoding="utf-8", newline="") as f:
@@ -267,6 +267,10 @@ def main(*, debug: bool = False) -> None:
 	)
 	zh_add_rows = sort_zh_add_files()
 	if debug:
+		write_zh_add(
+			FilePath("temp/zh_dict.tsv"),
+			tiger.get_debug_zh_dict_rows(tiger_rows, sc2013_set),
+		)
 		write_zh_add(FilePath("temp/add.tsv"), zh_add_rows)
 
 	zh_rows = tiger.combine_tiger_add(tiger_rows, zh_add_rows)

@@ -38,7 +38,7 @@
 2. `code.casefold()`升序
 3. 相同排序键保留原始先后顺序
 
-逐文件排序写回后，`main.py`会按文件名字符顺序拼接全部中文附加词，再按同一规则整体排序。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/zh_add.tsv`和`temp/zh_add.txt`用于审查合并后的中文附加词中间态
+逐文件排序写回后，`main.py`会按文件名字符顺序拼接全部中文附加词，再按同一规则整体排序。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/zh_dict.tsv`用于审查只包含简体中文单字的基础虎码词典，并输出`temp/add.tsv`用于审查合并后的中文附加词中间态
 
 基础虎码和中文附加词按码长分层合并：每个码长组中先放基础虎码，再追加同码长附加词；1码、2码、3码各自成组，4码及以上归为4码组
 
@@ -104,6 +104,7 @@
 - `tiger_sha1_zh.dict.yaml`：中文基础词典
 - `tiger_sha1_py.dict.yaml`：拼音反查词典
 - `lua/en_dict.txt`：英文词典
-- `temp/add.tsv`：合并排序后的中文附加词TSV（仅在传入`--debug`时生成）
-- `temp/add.txt`：合并排序后的英文附加词（仅在传入`--debug`时生成）
-- `temp/en_dict.tsv`：保留完整排序指标的英文词典（仅在传入`--debug`时生成）
+- `temp/zh_dict.tsv`：只包含简体中文单字的基础虎码词典TSV
+- `temp/add.tsv`：合并排序后的中文附加词TSV
+- `temp/add.txt`：合并排序后的英文附加词
+- `temp/en_dict.tsv`：保留完整排序指标的英文词典
