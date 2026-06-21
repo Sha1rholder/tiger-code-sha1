@@ -301,7 +301,7 @@ def main(*, debug: bool = False) -> None:
 	write_words(FilePath("lua/en_dict.txt"), en_dict)
 	if debug:
 		write_words(FilePath("temp/add.txt"), en_add_words)
-		write_en_review_tsv(FilePath("temp/en_dict.tsv"), en_base_entries)
+		write_en_review_tsv(FilePath("temp/en_freq.tsv"), en_base_entries)
 
 
 def git_sync() -> None:
