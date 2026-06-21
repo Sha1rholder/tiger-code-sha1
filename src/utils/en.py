@@ -1,4 +1,4 @@
-from collections.abc import Iterable
+from collections.abc import Callable
 
 from wordfreq import get_frequency_dict
 
@@ -19,28 +19,44 @@ def sort_add_words(words: list[Text]) -> list[Text]:
 		else:
 			seen.add(word)
 
-	return sorted(clean_words, key=lambda word: (len(word), word.casefold()))
+	return sorted(clean_words, key=lambda word: (len(word), word.lower()))
 
 
 def get_base_ranked_entries(
-	esdb_words: set[str],
+	esdb_words: set[Text],
 ) -> list[tuple[Text, float, float, int]]:
-	"""返回未过滤码长且不含派生大小写词条的英文词条排序指标"""
-	esdb: list[str] = dedupe_case_variants(esdb_words)
+	"""返回未过滤码长的英文词条排序指标"""
+	esdb = expand_esdb_case_variants(esdb_words)
 	en_freq: dict[str, float] = get_frequency_dict("en")
 
 	infos: list[tuple[Text, Text, float]] = [
-		(Text(word), Text(word.casefold()), en_freq[word.casefold()])
-		for word in esdb
+		(Text(word), Text(word), en_freq[word.lower()])
+		for word in sorted(esdb, key=lambda value: (value.lower(), value))
 		if (
 			word.isascii()
 			and word.isalpha()
 			and len(word) >= 3
-			and word.casefold() in en_freq
+			and word.lower() in en_freq
 		)
 	]
 
 	return rank_base_entries(infos)
+
+
+def expand_esdb_case_variants(words: set[Text]) -> set[Text]:
+	"""按ESDB词面扩增大小写变体"""
+	expanded = set(words)
+	for word in words:
+		if not word:
+			continue
+		if word.islower():
+			expanded.add(Text(word.upper()))
+			expanded.add(Text(word[0].upper() + word[1:]))
+		else:
+			expanded.add(Text(word.upper()))
+			expanded.add(Text(word.lower()))
+
+	return expanded
 
 
 def rank_base_entries(
@@ -72,7 +88,7 @@ def rank_base_entries(
 			entry[3],
 			-entry[2],
 			-entry[1],
-			entry[0].casefold(),
+			entry[0].lower(),
 			entry[0],
 		),
 	)
@@ -110,28 +126,51 @@ def iter_base_candidates(word: str):
 	"""按规则顺序产出直接基本形式候选"""
 	rules = [
 		lambda value: strip_suffix(value, "s"),
+		lambda value: strip_suffix(value, "S"),
 		lambda value: strip_suffix(value, "es"),
+		lambda value: strip_suffix(value, "ES"),
 		lambda value: replace_suffix(value, "ies", "y"),
+		lambda value: replace_suffix(value, "IES", "Y"),
 		lambda value: strip_suffix(value, "d"),
+		lambda value: strip_suffix(value, "D"),
 		lambda value: strip_suffix(value, "ed"),
+		lambda value: strip_suffix(value, "ED"),
 		lambda value: replace_suffix(value, "ied", "y"),
+		lambda value: replace_suffix(value, "IED", "Y"),
 		lambda value: strip_doubled_consonant_suffix(value, "ed"),
+		lambda value: strip_doubled_consonant_suffix(value, "ED"),
 		lambda value: strip_suffix(value, "ing"),
+		lambda value: strip_suffix(value, "ING"),
 		lambda value: replace_suffix(value, "ing", "e"),
+		lambda value: replace_suffix(value, "ING", "E"),
 		lambda value: strip_doubled_consonant_suffix(value, "ing"),
+		lambda value: strip_doubled_consonant_suffix(value, "ING"),
 		lambda value: strip_suffix(value, "ly"),
+		lambda value: strip_suffix(value, "LY"),
 		lambda value: replace_suffix(value, "ily", "y"),
+		lambda value: replace_suffix(value, "ILY", "Y"),
 		lambda value: strip_suffix(value, "er"),
+		lambda value: strip_suffix(value, "ER"),
 		lambda value: strip_suffix(value, "est"),
+		lambda value: strip_suffix(value, "EST"),
 		lambda value: replace_suffix(value, "ier", "y"),
+		lambda value: replace_suffix(value, "IER", "Y"),
 		lambda value: replace_suffix(value, "iest", "y"),
+		lambda value: replace_suffix(value, "IEST", "Y"),
 		lambda value: strip_doubled_consonant_suffix(value, "er"),
+		lambda value: strip_doubled_consonant_suffix(value, "ER"),
 		lambda value: strip_doubled_consonant_suffix(value, "est"),
+		lambda value: strip_doubled_consonant_suffix(value, "EST"),
 		lambda value: strip_suffix(value, "ment"),
+		lambda value: strip_suffix(value, "MENT"),
 		lambda value: strip_suffix(value, "ness"),
+		lambda value: strip_suffix(value, "NESS"),
 		lambda value: replace_suffix(value, "iness", "y"),
+		lambda value: replace_suffix(value, "INESS", "Y"),
 		lambda value: strip_suffix(value, "able"),
+		lambda value: strip_suffix(value, "ABLE"),
 		lambda value: replace_suffix(value, "able", "e"),
+		lambda value: replace_suffix(value, "ABLE", "E"),
 	]
 
 	for priority, rule in enumerate(rules):
@@ -160,46 +199,39 @@ def strip_doubled_consonant_suffix(word: str, suffix: str) -> str | None:
 	base = strip_suffix(word, suffix)
 	if base is None or len(base) < 2:
 		return None
-	if base[-1] != base[-2] or base[-1] not in CONSONANTS:
+	if base[-1] != base[-2] or base[-1].lower() not in CONSONANTS:
 		return None
 	return base[:-1]
 
 
-def dedupe_case_variants(words: Iterable[str]) -> list[str]:
-	"""同一单词有多种大小写形式时，逐位优先保留更偏小写的形式"""
-	groups: dict[str, list[str]] = {}
+def reorder_case_variants(words: list[Text]) -> list[Text]:
+	"""把首字母大写词稳定移到末尾，再把前两字母大写词稳定移到末尾"""
+	return move_matching_to_end(
+		move_matching_to_end(words, is_initial_upper),
+		is_second_initial_upper,
+	)
+
+
+def move_matching_to_end(
+	words: list[Text], predicate: Callable[[Text], bool]
+) -> list[Text]:
+	"""把满足条件的词稳定移动到列表末尾"""
+	unmatched: list[Text] = []
+	matched: list[Text] = []
 	for word in words:
-		groups.setdefault(word.casefold(), []).append(word)
+		if predicate(word):
+			matched.append(word)
+		else:
+			unmatched.append(word)
 
-	return sorted(
-		(min(group, key=case_variant_sort_key) for group in groups.values()),
-		key=lambda word: (word.casefold(), word),
-	)
-
-
-def case_variant_sort_key(word: str) -> tuple[tuple[int, ...], str]:
-	"""小写字符优先，其次用词面保证确定性"""
-	char_key = tuple(
-		0 if char.islower() else 1 if char.isupper() else 2 for char in word
-	)
-	return char_key, word
+	return unmatched + matched
 
 
-def add_case_variants(en_dict: list[Text]) -> list[Text]:
-	"""为全小写词生成首字母大写版本，为非全小写词生成全大写版本"""
-	initial_caps: list[Text] = []
-	all_caps: list[Text] = []
-	seen = set(en_dict)
-	for word in en_dict:
-		if word.islower():
-			initial_cap = Text(word[0].upper() + word[1:])
-			if initial_cap not in seen:
-				initial_caps.append(initial_cap)
-				seen.add(initial_cap)
-		if not word.isupper():
-			all_cap = Text(word.upper())
-			if all_cap not in seen:
-				all_caps.append(all_cap)
-				seen.add(all_cap)
+def is_initial_upper(word: Text) -> bool:
+	"""判断首字母是否为大写"""
+	return bool(word) and word[0].isupper()
 
-	return en_dict + initial_caps + all_caps
+
+def is_second_initial_upper(word: Text) -> bool:
+	"""判断首字母和第二个字母是否都为大写"""
+	return len(word) > 1 and word[0].isupper() and word[1].isupper()
