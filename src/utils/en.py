@@ -23,7 +23,7 @@ def sort_add_words(words: list[Text]) -> list[Text]:
 
 
 def get_base_ranked_entries(
-	esdb_words: set[str],
+	esdb_words: set[Text],
 ) -> list[tuple[Text, float, float, int]]:
 	"""返回未过滤码长且不含派生大小写词条的英文词条排序指标"""
 	esdb: list[str] = dedupe_case_variants(esdb_words)

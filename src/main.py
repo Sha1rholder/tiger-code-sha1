@@ -140,9 +140,9 @@ def read_words(filename: FilePath) -> list[Text]:
 	return words
 
 
-def read_esdb_words(filename: FilePath) -> set[str]:
+def read_esdb_words(filename: FilePath) -> set[Text]:
 	"""读取ESDB正文为拼写集合"""
-	words: set[str] = set()
+	words: set[Text] = set()
 	after_sep = False
 	for line in Path(filename).read_text(encoding="utf-8").splitlines():
 		if line.strip() == "---":
@@ -153,7 +153,7 @@ def read_esdb_words(filename: FilePath) -> set[str]:
 
 		word = line.strip()
 		if word:
-			words.add(word)
+			words.add(Text(word))
 	return words
 
 
