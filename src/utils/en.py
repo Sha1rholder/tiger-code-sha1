@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 
 from wordfreq import get_frequency_dict
 
@@ -204,27 +204,22 @@ def strip_doubled_consonant_suffix(word: Text, suffix: Text) -> Text | None:
 	return Text(base[:-1])
 
 
-def reorder_case_variants(words: list[Text]) -> list[Text]:
-	"""把首字母大写词稳定移到末尾，再把前两字母大写词稳定移到末尾"""
-	return move_matching_to_end(
-		move_matching_to_end(words, is_initial_upper),
-		is_second_initial_upper,
-	)
-
-
-def move_matching_to_end(
-	words: list[Text], predicate: Callable[[Text], bool]
-) -> list[Text]:
-	"""把满足条件的词稳定移动到列表末尾"""
-	unmatched: list[Text] = []
-	matched: list[Text] = []
+def reorder_case_variants(
+	words: list[Text],
+) -> tuple[list[Text], list[Text], list[Text]]:
+	"""按最终排序顺序返回基础词、首字母大写词和前两字母大写词"""
+	base_words: list[Text] = []
+	initial_upper_words: list[Text] = []
+	second_initial_upper_words: list[Text] = []
 	for word in words:
-		if predicate(word):
-			matched.append(word)
+		if is_second_initial_upper(word):
+			second_initial_upper_words.append(word)
+		elif is_initial_upper(word):
+			initial_upper_words.append(word)
 		else:
-			unmatched.append(word)
+			base_words.append(word)
 
-	return unmatched + matched
+	return base_words, initial_upper_words, second_initial_upper_words
 
 
 def is_initial_upper(word: Text) -> bool:
