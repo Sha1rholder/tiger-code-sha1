@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 
 from wordfreq import get_frequency_dict
 
@@ -122,55 +122,55 @@ def build_parent_map(
 	return parent_by_key
 
 
-def iter_base_candidates(word: str):
+def iter_base_candidates(word: Text) -> Iterator[tuple[int, Text]]:
 	"""按规则顺序产出直接基本形式候选"""
 	rules = [
-		lambda value: strip_suffix(value, "s"),
-		lambda value: strip_suffix(value, "S"),
-		lambda value: strip_suffix(value, "es"),
-		lambda value: strip_suffix(value, "ES"),
-		lambda value: replace_suffix(value, "ies", "y"),
-		lambda value: replace_suffix(value, "IES", "Y"),
-		lambda value: strip_suffix(value, "d"),
-		lambda value: strip_suffix(value, "D"),
-		lambda value: strip_suffix(value, "ed"),
-		lambda value: strip_suffix(value, "ED"),
-		lambda value: replace_suffix(value, "ied", "y"),
-		lambda value: replace_suffix(value, "IED", "Y"),
-		lambda value: strip_doubled_consonant_suffix(value, "ed"),
-		lambda value: strip_doubled_consonant_suffix(value, "ED"),
-		lambda value: strip_suffix(value, "ing"),
-		lambda value: strip_suffix(value, "ING"),
-		lambda value: replace_suffix(value, "ing", "e"),
-		lambda value: replace_suffix(value, "ING", "E"),
-		lambda value: strip_doubled_consonant_suffix(value, "ing"),
-		lambda value: strip_doubled_consonant_suffix(value, "ING"),
-		lambda value: strip_suffix(value, "ly"),
-		lambda value: strip_suffix(value, "LY"),
-		lambda value: replace_suffix(value, "ily", "y"),
-		lambda value: replace_suffix(value, "ILY", "Y"),
-		lambda value: strip_suffix(value, "er"),
-		lambda value: strip_suffix(value, "ER"),
-		lambda value: strip_suffix(value, "est"),
-		lambda value: strip_suffix(value, "EST"),
-		lambda value: replace_suffix(value, "ier", "y"),
-		lambda value: replace_suffix(value, "IER", "Y"),
-		lambda value: replace_suffix(value, "iest", "y"),
-		lambda value: replace_suffix(value, "IEST", "Y"),
-		lambda value: strip_doubled_consonant_suffix(value, "er"),
-		lambda value: strip_doubled_consonant_suffix(value, "ER"),
-		lambda value: strip_doubled_consonant_suffix(value, "est"),
-		lambda value: strip_doubled_consonant_suffix(value, "EST"),
-		lambda value: strip_suffix(value, "ment"),
-		lambda value: strip_suffix(value, "MENT"),
-		lambda value: strip_suffix(value, "ness"),
-		lambda value: strip_suffix(value, "NESS"),
-		lambda value: replace_suffix(value, "iness", "y"),
-		lambda value: replace_suffix(value, "INESS", "Y"),
-		lambda value: strip_suffix(value, "able"),
-		lambda value: strip_suffix(value, "ABLE"),
-		lambda value: replace_suffix(value, "able", "e"),
-		lambda value: replace_suffix(value, "ABLE", "E"),
+		lambda value: strip_suffix(value, Text("s")),
+		lambda value: strip_suffix(value, Text("S")),
+		lambda value: strip_suffix(value, Text("es")),
+		lambda value: strip_suffix(value, Text("ES")),
+		lambda value: replace_suffix(value, Text("ies"), Text("y")),
+		lambda value: replace_suffix(value, Text("IES"), Text("Y")),
+		lambda value: strip_suffix(value, Text("d")),
+		lambda value: strip_suffix(value, Text("D")),
+		lambda value: strip_suffix(value, Text("ed")),
+		lambda value: strip_suffix(value, Text("ED")),
+		lambda value: replace_suffix(value, Text("ied"), Text("y")),
+		lambda value: replace_suffix(value, Text("IED"), Text("Y")),
+		lambda value: strip_doubled_consonant_suffix(value, Text("ed")),
+		lambda value: strip_doubled_consonant_suffix(value, Text("ED")),
+		lambda value: strip_suffix(value, Text("ing")),
+		lambda value: strip_suffix(value, Text("ING")),
+		lambda value: replace_suffix(value, Text("ing"), Text("e")),
+		lambda value: replace_suffix(value, Text("ING"), Text("E")),
+		lambda value: strip_doubled_consonant_suffix(value, Text("ing")),
+		lambda value: strip_doubled_consonant_suffix(value, Text("ING")),
+		lambda value: strip_suffix(value, Text("ly")),
+		lambda value: strip_suffix(value, Text("LY")),
+		lambda value: replace_suffix(value, Text("ily"), Text("y")),
+		lambda value: replace_suffix(value, Text("ILY"), Text("Y")),
+		lambda value: strip_suffix(value, Text("er")),
+		lambda value: strip_suffix(value, Text("ER")),
+		lambda value: strip_suffix(value, Text("est")),
+		lambda value: strip_suffix(value, Text("EST")),
+		lambda value: replace_suffix(value, Text("ier"), Text("y")),
+		lambda value: replace_suffix(value, Text("IER"), Text("Y")),
+		lambda value: replace_suffix(value, Text("iest"), Text("y")),
+		lambda value: replace_suffix(value, Text("IEST"), Text("Y")),
+		lambda value: strip_doubled_consonant_suffix(value, Text("er")),
+		lambda value: strip_doubled_consonant_suffix(value, Text("ER")),
+		lambda value: strip_doubled_consonant_suffix(value, Text("est")),
+		lambda value: strip_doubled_consonant_suffix(value, Text("EST")),
+		lambda value: strip_suffix(value, Text("ment")),
+		lambda value: strip_suffix(value, Text("MENT")),
+		lambda value: strip_suffix(value, Text("ness")),
+		lambda value: strip_suffix(value, Text("NESS")),
+		lambda value: replace_suffix(value, Text("iness"), Text("y")),
+		lambda value: replace_suffix(value, Text("INESS"), Text("Y")),
+		lambda value: strip_suffix(value, Text("able")),
+		lambda value: strip_suffix(value, Text("ABLE")),
+		lambda value: replace_suffix(value, Text("able"), Text("e")),
+		lambda value: replace_suffix(value, Text("ABLE"), Text("E")),
 	]
 
 	for priority, rule in enumerate(rules):
@@ -179,29 +179,29 @@ def iter_base_candidates(word: str):
 			yield priority, base
 
 
-def strip_suffix(word: str, suffix: str) -> str | None:
+def strip_suffix(word: Text, suffix: Text) -> Text | None:
 	"""去掉指定后缀，无法去掉时返回None"""
 	if len(word) <= len(suffix) or not word.endswith(suffix):
 		return None
-	return word[: -len(suffix)]
+	return Text(word[: -len(suffix)])
 
 
-def replace_suffix(word: str, suffix: str, replacement: str) -> str | None:
+def replace_suffix(word: Text, suffix: Text, replacement: Text) -> Text | None:
 	"""将指定后缀替换为另一段文本，无法替换时返回None"""
 	base = strip_suffix(word, suffix)
 	if base is None:
 		return None
-	return base + replacement
+	return Text(base + replacement)
 
 
-def strip_doubled_consonant_suffix(word: str, suffix: str) -> str | None:
+def strip_doubled_consonant_suffix(word: Text, suffix: Text) -> Text | None:
 	"""去掉后缀和词尾双写辅音，无法匹配时返回None"""
 	base = strip_suffix(word, suffix)
 	if base is None or len(base) < 2:
 		return None
 	if base[-1] != base[-2] or base[-1].lower() not in CONSONANTS:
 		return None
-	return base[:-1]
+	return Text(base[:-1])
 
 
 def reorder_case_variants(words: list[Text]) -> list[Text]:
