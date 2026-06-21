@@ -19,7 +19,7 @@ def sort_add_words(words: list[Text]) -> list[Text]:
 		else:
 			seen.add(word)
 
-	return sorted(clean_words, key=lambda word: (len(word), word.casefold()))
+	return sorted(clean_words, key=lambda word: (len(word), word.lower()))
 
 
 def get_base_ranked_entries(
@@ -30,13 +30,13 @@ def get_base_ranked_entries(
 	en_freq: dict[str, float] = get_frequency_dict("en")
 
 	infos: list[tuple[Text, Text, float]] = [
-		(Text(word), Text(word.casefold()), en_freq[word.casefold()])
+		(Text(word), Text(word.lower()), en_freq[word.lower()])
 		for word in esdb
 		if (
 			word.isascii()
 			and word.isalpha()
 			and len(word) >= 3
-			and word.casefold() in en_freq
+			and word.lower() in en_freq
 		)
 	]
 
@@ -72,7 +72,7 @@ def rank_base_entries(
 			entry[3],
 			-entry[2],
 			-entry[1],
-			entry[0].casefold(),
+			entry[0].lower(),
 			entry[0],
 		),
 	)
@@ -169,11 +169,11 @@ def dedupe_case_variants(words: Iterable[str]) -> list[str]:
 	"""同一单词有多种大小写形式时，逐位优先保留更偏小写的形式"""
 	groups: dict[str, list[str]] = {}
 	for word in words:
-		groups.setdefault(word.casefold(), []).append(word)
+		groups.setdefault(word.lower(), []).append(word)
 
 	return sorted(
 		(min(group, key=case_variant_sort_key) for group in groups.values()),
-		key=lambda word: (word.casefold(), word),
+		key=lambda word: (word.lower(), word),
 	)
 
 
