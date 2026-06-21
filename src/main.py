@@ -287,7 +287,7 @@ def main(*, debug: bool = False) -> None:
 		for entry in en_base_entries
 		if len(entry[0]) >= en.MIN_WORD_LEN and entry[0] not in en_add_seen
 	]
-	en_dict = en_add_words + en.add_case_variants(en_base_words)
+	en_dict = en_add_words + en.reorder_case_variants(en_base_words)
 	write_words(FilePath("lua/en_dict.txt"), en_dict)
 	if debug:
 		write_words(FilePath("temp/add.txt"), en_add_words)
