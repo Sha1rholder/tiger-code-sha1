@@ -5,7 +5,7 @@
 - `temp/add.txt` — Chinese additional entries as plain text
 - `temp/en_dict.tsv` — English base entries with ranking metrics (word, frequency, boosted_frequency, demotion_count) for reviewing sort order and derivation logic
 
-Update `README.md` after implementing new features or modifying behaviors.
+Update `README.md` and `src\README.md` after implementing new features or modifying behaviors.
 
 Code Style:
 - Always use hard tabs for indentation and alignment.
