@@ -13,7 +13,8 @@ def build_zh_outputs(
 	list[tuple[Code, Text]],
 ]:
 	"""生成中文附加词、调试词条和最终虎码词典数据"""
-	tiger_rows = filter_tiger(upstream_tiger_dict, sc2013, zh_recodes)
+	tiger_dict = filter_tiger(upstream_tiger_dict, sc2013, zh_recodes)
+	tiger_rows = flatten_tiger(tiger_dict)
 	sorted_zh_add_files_rows = [sort_zh_add(rows) for rows in zh_add_files_rows]
 	zh_add_rows = sort_zh_add(
 		[row for file_rows in sorted_zh_add_files_rows for row in file_rows]
@@ -27,15 +28,15 @@ def filter_tiger(
 	upstream_tiger_dict: list[tuple[Code, Text]],
 	sc2013: set[Text],
 	zh_recodes: list[tuple[Code, Text]],
-) -> list[tuple[Code, Text]]:
-	"""返回过滤并单一化编码后的虎码单字(code, text)列表"""
+) -> dict[Code, list[Text]]:
+	"""返回过滤并单一化编码后的虎码编码到文本列表映射"""
 	recode_by_text = validate_zh_recodes(zh_recodes, sc2013)
 	reserved_codes = set(recode_by_text.values())
 	recoded_texts = set(recode_by_text)
-	seen_recoded_texts: set[str] = set()
+	seen_recoded_texts: set[Text] = set()
 	selected: list[tuple[Code, Text] | None] = []
-	index_by_text: dict[str, int] = {}
-	code_counts: dict[str, int] = {}
+	index_by_text: dict[Text, int] = {}
+	code_counts: dict[Code, int] = {}
 
 	for upstream_code, text in upstream_tiger_dict:
 		if text not in sc2013:
@@ -79,7 +80,19 @@ def filter_tiger(
 	if missing_texts:
 		raise SystemExit(f"单字改码text未在上游虎码中出现：{', '.join(missing_texts)}")
 
-	return [row for row in selected if row is not None]
+	tiger_dict: dict[Code, list[Text]] = {}
+	for row in selected:
+		if row is None:
+			continue
+		code, text = row
+		tiger_dict.setdefault(code, []).append(text)
+
+	return tiger_dict
+
+
+def flatten_tiger(tiger_dict: dict[Code, list[Text]]) -> list[tuple[Code, Text]]:
+	"""展开虎码编码到文本列表映射为(code, text)列表"""
+	return [(code, text) for code, texts in tiger_dict.items() for text in texts]
 
 
 def validate_zh_recodes(
