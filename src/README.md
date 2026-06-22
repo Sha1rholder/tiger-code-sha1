@@ -6,14 +6,14 @@
 
 1. 读取`upstream/SC2013/level-1.txt`、`level-2.txt`、`level-3.txt`和`custom/char.unfilter.txt`，交给`main.py`合并为`set[str]`
 2. 读取`upstream/tiger/PY_c.dict.yaml`正文为`list[tuple[code, weight, text]]`，交给`utils/py_sc.py`过滤并按词频降序生成拼音反查词典
-3. 读取`upstream/tiger/tiger.dict.yaml`正文、`custom/char.recode.tsv`单字改码表和`custom/`中参与生成的`.zh.tsv`中文附加词典，交给`utils/tiger.py`一次性生成逐文件排序结果、调试行和最终中文词典行，再由`main.py`写回
+3. 读取`upstream/tiger/tiger.dict.yaml`正文、`custom/char.recode.tsv`单字改码表和`custom/`中参与生成的`.zh.tsv`手动中文附加词典，交给`utils/tiger.py`一次性生成逐文件排序结果、调试行和最终中文词典行，再由`main.py`写回
 4. 读取`upstream/ESDB.txt`为`set[Text]`，读取`custom/`中参与生成的`.en.tsv`英文附加词典，交给`utils/en.py`一次性生成逐文件排序结果、最终英文词典和审查行，再由`main.py`写回
 
 ## 模块职责
 
 - `src/main.py`：读取源文件、解析格式、调用utils入口、写回附加词和生成文件、按需部署Weasel、按需同步git
 - `src/utils/py_sc.py`：过滤拼音反查行并按`weight`降序输出`(code, text)`
-- `src/utils/tiger.py`：过滤虎码单字、处理基础单字改码、处理同字多码、整理中文附加词，并通过单一入口返回`main.py`写文件所需的数据；基础虎码内部结构为`dict[Code, list[Text]]`
+- `src/utils/tiger.py`：过滤虎码单字、处理基础单字改码、处理同字多码、整理手动中文附加词、生成自动中文加词，并通过单一入口返回`main.py`写文件所需的数据；基础虎码内部结构为`dict[Code, list[Text]]`
 - `src/utils/en.py`：基于ESDB拼写集合和`wordfreq`生成英文基础词排序，计算ESDB大小写扩增、变体关系、提权词频和降权次数，并通过单一入口返回`main.py`写文件所需的数据
 
 ## 中文处理
@@ -35,15 +35,24 @@
 
 `filter_tiger()`返回`dict[Code, list[Text]]`。`Code`按首次最终入选位置保持插入顺序，同一`Code`下的`list[Text]`按文本最终入选顺序排列。若某个字被后续短码替换，会从旧编码移除，并按短码出现位置重新进入对应编码列表
 
-中文附加词来自`custom/`中参与生成的`.zh.tsv`文件，第一行固定为`code<TAB>text`。空行会被跳过，其余行必须严格为两列TSV。文件名以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略。`main.py`读取全部附加词文件后交给`utils/tiger.py`按以下规则稳定排序，再由`main.py`逐文件写回：
+自动中文加词候选来自`wordfreq`中文词频表。`utils/tiger.py`会按`frequency`降序取得`wordfreq_zh_freq: list[tuple[Text, Freq]]`，再依次过滤：
+
+- 丢弃`frequency < 0.00001`的词
+- 丢弃单字词
+- 丢弃含有不在放行汉字集合中的字符的词
+- 丢弃包含过滤后候选集合中任意其它词的词；这个判断不依赖词频高低，因此`A+B`词频高于`A`时仍会因包含`A`被丢弃
+
+过滤完成后生成`wordfreq_zh: list[Text]`并保持原词频顺序。`filter_tiger()`获取单字编码后，`utils/tiger.py`会对每个`(Code, list[Text])`找到`wordfreq_zh`中最靠前、以该编码下任意单字开头的至多`5-len(list[Text])`个词，生成`(Code, Text)`自动中文加词。这里的`Code`保留原单字编码，自动中文加词不会写回`custom/`文件，且即使和手动中文附加词重复也会保留
+
+手动中文附加词来自`custom/`中参与生成的`.zh.tsv`文件，第一行固定为`code<TAB>text`。空行会被跳过，其余行必须严格为两列TSV。文件名以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略。`main.py`读取全部手动附加词文件后交给`utils/tiger.py`按以下规则稳定排序，再由`main.py`逐文件写回：
 
 1. `code`长度升序
 2. `code.casefold()`升序
 3. 相同排序键保留原始先后顺序
 
-逐文件排序数据生成后，`utils/tiger.py`会按文件名字符顺序拼接全部中文附加词，再按同一规则整体排序。基础虎码dict会在写出前扁平化为`code<TAB>text`行，同码候选相邻。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/zh_dict.tsv`用于审查只包含简体中文单字的基础虎码词典，并输出`temp/add.tsv`用于审查合并后的中文附加词中间态
+逐文件排序数据生成后，`utils/tiger.py`会按文件名字符顺序拼接全部手动中文附加词，再按同一规则整体排序。基础虎码dict会在写出前扁平化为`code<TAB>text`行，同码候选相邻。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/zh_dict.tsv`用于审查只包含简体中文单字的基础虎码词典，并输出`temp/add.tsv`用于审查手动中文附加词后接自动中文加词的合并中间态
 
-最终中文词典先写入按编码分组扁平化后的基础虎码单字，再在末尾追加整体排序后的中文附加词
+最终中文词典先写入按编码分组扁平化后的基础虎码单字，再追加整体排序后的手动中文附加词，最后追加自动中文加词
 
 `tiger_sha1_zh.dict.yaml`写出为`code<TAB>text`两列，排序由生成顺序决定，不再写入weight列
 
@@ -112,6 +121,6 @@ ESDB读入为`set[Text]`后扩增大小写形式：若词面全小写，则加�
 - `tiger_sha1_py.dict.yaml`：拼音反查词典
 - `lua/en_dict.txt`：英文词典
 - `temp/zh_dict.tsv`：只包含简体中文单字的基础虎码词典TSV
-- `temp/add.tsv`：合并排序后的中文附加词TSV
+- `temp/add.tsv`：手动中文附加词后接自动中文加词的合并TSV
 - `temp/add.txt`：合并排序后的英文附加词
 - `temp/en_dict.tsv`：保留完整排序指标的英文词典

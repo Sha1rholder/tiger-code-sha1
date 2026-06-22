@@ -1,4 +1,9 @@
-from utils.types import Code, Text
+from wordfreq import get_frequency_dict
+
+from utils.types import Code, Freq, Text
+
+AUTO_ZH_ADD_LIMIT = 5
+MIN_ZH_FREQUENCY = Freq(0.00001)
 
 
 def build_zh_outputs(
@@ -15,10 +20,13 @@ def build_zh_outputs(
 	"""生成中文附加词、调试词条和最终虎码词典数据"""
 	tiger_dict = filter_tiger(upstream_tiger_dict, sc2013, zh_recodes)
 	tiger_rows = flatten_tiger(tiger_dict)
+	wordfreq_zh = get_wordfreq_zh(sc2013)
 	sorted_zh_add_files_rows = [sort_zh_add(rows) for rows in zh_add_files_rows]
-	zh_add_rows = sort_zh_add(
+	manual_zh_add_rows = sort_zh_add(
 		[row for file_rows in sorted_zh_add_files_rows for row in file_rows]
 	)
+	auto_zh_add_rows = get_auto_zh_add_rows(tiger_dict, wordfreq_zh)
+	zh_add_rows = manual_zh_add_rows + auto_zh_add_rows
 	zh_rows = tiger_rows + zh_add_rows
 
 	return sorted_zh_add_files_rows, zh_add_rows, tiger_rows, zh_rows
@@ -93,6 +101,63 @@ def filter_tiger(
 def flatten_tiger(tiger_dict: dict[Code, list[Text]]) -> list[tuple[Code, Text]]:
 	"""展开虎码编码到文本列表映射为(code, text)列表"""
 	return [(code, text) for code, texts in tiger_dict.items() for text in texts]
+
+
+def get_wordfreq_zh(sc2013: set[Text]) -> list[Text]:
+	"""返回按词频降序过滤后的中文自动加词候选词"""
+	wordfreq_zh_freq = get_wordfreq_zh_freq(sc2013)
+	return [entry[0] for entry in wordfreq_zh_freq]
+
+
+def get_wordfreq_zh_freq(sc2013: set[Text]) -> list[tuple[Text, Freq]]:
+	"""返回按词频降序过滤后的中文词频数据"""
+	wordfreq_zh_freq: list[tuple[Text, Freq]] = [
+		(Text(word), Freq(frequency))
+		for word, frequency in sorted(
+			get_frequency_dict("zh").items(),
+			key=lambda entry: -entry[1],
+		)
+		if (
+			frequency >= MIN_ZH_FREQUENCY
+			and len(word) > 1
+			and all(Text(char) in sc2013 for char in word)
+		)
+	]
+
+	return drop_containing_words(wordfreq_zh_freq)
+
+
+def drop_containing_words(
+	entries: list[tuple[Text, Freq]],
+) -> list[tuple[Text, Freq]]:
+	"""丢弃包含其它候选词的中文词频条目"""
+	words = [entry[0] for entry in entries]
+	return [
+		entry
+		for entry in entries
+		if not any(len(other) < len(entry[0]) and other in entry[0] for other in words)
+	]
+
+
+def get_auto_zh_add_rows(
+	tiger_dict: dict[Code, list[Text]], wordfreq_zh: list[Text]
+) -> list[tuple[Code, Text]]:
+	"""按单字编码和词频候选生成自动中文加词"""
+	rows: list[tuple[Code, Text]] = []
+	for code, texts in tiger_dict.items():
+		candidate_limit = AUTO_ZH_ADD_LIMIT - len(texts)
+		if candidate_limit <= 0:
+			continue
+
+		prefixes = tuple(texts)
+		for word in wordfreq_zh:
+			if word.startswith(prefixes):
+				rows.append((code, word))
+				candidate_limit -= 1
+				if candidate_limit == 0:
+					break
+
+	return rows
 
 
 def validate_zh_recodes(
