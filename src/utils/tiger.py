@@ -3,7 +3,7 @@ from wordfreq import get_frequency_dict
 from utils.types import Code, Freq, Text
 
 AUTO_ZH_ADD_LIMIT = 5
-MIN_ZH_FREQUENCY = Freq(0.00001)
+MIN_ZH_FREQUENCY = Freq(0.000001)
 
 
 def build_zh_outputs(
@@ -22,12 +22,14 @@ def build_zh_outputs(
 	tiger_rows = flatten_tiger(tiger_dict)
 	wordfreq_zh = get_wordfreq_zh(sc2013)
 	sorted_zh_add_files_rows = [sort_zh_add(rows) for rows in zh_add_files_rows]
-	manual_zh_add_rows = sort_zh_add(
-		[row for file_rows in sorted_zh_add_files_rows for row in file_rows]
+	manual_zh_add_dict = get_manual_zh_add_dict(
+		[row for file_rows in zh_add_files_rows for row in file_rows]
 	)
-	auto_zh_add_rows = get_auto_zh_add_rows(tiger_dict, wordfreq_zh)
-	zh_add_rows = manual_zh_add_rows + auto_zh_add_rows
-	zh_rows = tiger_rows + zh_add_rows
+	auto_zh_add_dict = get_auto_zh_add_dict(tiger_dict, wordfreq_zh)
+	zh_add_dict = merge_zh_dicts(manual_zh_add_dict, auto_zh_add_dict)
+	zh_dict = merge_zh_dicts(tiger_dict, manual_zh_add_dict, auto_zh_add_dict)
+	zh_add_rows = flatten_tiger(zh_add_dict)
+	zh_rows = flatten_tiger(zh_dict)
 
 	return sorted_zh_add_files_rows, zh_add_rows, tiger_rows, zh_rows
 
@@ -135,16 +137,20 @@ def drop_containing_words(
 	return [
 		entry
 		for entry in entries
-		if not any(len(other) < len(entry[0]) and other in entry[0] for other in words)
+		if not any(
+			len(other) < len(entry[0]) and other in entry[0]
+			for other in words
+		)
 	]
 
 
-def get_auto_zh_add_rows(
+def get_auto_zh_add_dict(
 	tiger_dict: dict[Code, list[Text]], wordfreq_zh: list[Text]
-) -> list[tuple[Code, Text]]:
+) -> dict[Code, list[Text]]:
 	"""按单字编码和词频候选生成自动中文加词"""
-	rows: list[tuple[Code, Text]] = []
+	zh_add_dict: dict[Code, list[Text]] = {}
 	for code, texts in tiger_dict.items():
+		# 下面三行换成 candidate_limit = AUTO_ZH_ADD_LIMIT 对结果无影响，纯是加点速度
 		candidate_limit = AUTO_ZH_ADD_LIMIT - len(texts)
 		if candidate_limit <= 0:
 			continue
@@ -152,12 +158,60 @@ def get_auto_zh_add_rows(
 		prefixes = tuple(texts)
 		for word in wordfreq_zh:
 			if word.startswith(prefixes):
-				rows.append((code, word))
+				zh_add_dict.setdefault(code, []).append(word)
 				candidate_limit -= 1
 				if candidate_limit == 0:
 					break
 
-	return rows
+	return zh_add_dict
+
+
+def get_manual_zh_add_dict(rows: list[tuple[Code, Text]]) -> dict[Code, list[Text]]:
+	"""按编码分组手动中文附加词并报警同码重复文本"""
+	zh_add_dict = rows_to_zh_add_dict(rows)
+	for code, texts in zh_add_dict.items():
+		seen_text: set[Text] = set()
+		for text in texts:
+			if text in seen_text:
+				print(f"警告：中文附加词code='{code}'text='{text}'重复")
+			else:
+				seen_text.add(text)
+
+	return zh_add_dict
+
+
+def rows_to_zh_add_dict(rows: list[tuple[Code, Text]]) -> dict[Code, list[Text]]:
+	"""把(code, text)列表转换为编码到文本列表映射"""
+	zh_add_dict: dict[Code, list[Text]] = {}
+	for code, text in rows:
+		zh_add_dict.setdefault(code, []).append(text)
+
+	return zh_add_dict
+
+
+def merge_zh_dicts(*dicts: dict[Code, list[Text]]) -> dict[Code, list[Text]]:
+	"""合并多个编码到文本列表映射并去重限制同码候选数"""
+	merged: dict[Code, list[Text]] = {}
+	for zh_dict in dicts:
+		for code, texts in zh_dict.items():
+			merged.setdefault(code, []).extend(texts)
+
+	return {code: dedupe_limit_texts(texts) for code, texts in merged.items()}
+
+
+def dedupe_limit_texts(texts: list[Text]) -> list[Text]:
+	"""按首次出现顺序去重并限制文本列表长度"""
+	deduped: list[Text] = []
+	seen_texts: set[Text] = set()
+	for text in texts:
+		if text in seen_texts:
+			continue
+		seen_texts.add(text)
+		deduped.append(text)
+		if len(deduped) == AUTO_ZH_ADD_LIMIT:
+			break
+
+	return deduped
 
 
 def validate_zh_recodes(
@@ -188,11 +242,4 @@ def validate_zh_recodes(
 
 def sort_zh_add(rows: list[tuple[Code, Text]]) -> list[tuple[Code, Text]]:
 	"""返回按编码长度和字母顺序稳定排序后的附加词条(code, text)列表"""
-	seen_text: set[str] = set()
-	for row in rows:
-		if row[1] in seen_text:
-			print(f"警告：中文附加词text='{row[1]}'重复")
-		else:
-			seen_text.add(row[1])
-
-	return sorted(rows, key=lambda item: (len(item[0]), item[0].casefold()))
+	return sorted(rows, key=lambda item: (len(item[0]), item[0].lower()))

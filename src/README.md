@@ -1,6 +1,6 @@
 # 词典生成实现说明
 
-`src/main.py`负责所有项目文件读写、Rime/TSV/TXT格式解析和CLI流程，`src/utils/`中的模块只处理已经读入的结构化数据。中文和英文的排序、过滤、合并编排分别由`utils/tiger.py`和`utils/en.py`的单一入口函数完成
+`src/main.py`负责所有项目文件读写、Rime/TSV/TXT格式解析和CLI流程，`src/utils/`中的模块只处理已经读入的结构化数据。中文和英文的排序、过滤、合并编排分别由`utils/tiger.py`和`utils/en.py`的单一入口函数完成。CLI运行时会打印`[main]...`阶段信息，便于定位当前正在处理的任务
 
 主流程执行顺序：
 
@@ -13,7 +13,7 @@
 
 - `src/main.py`：读取源文件、解析格式、调用utils入口、写回附加词和生成文件、按需部署Weasel、按需同步git
 - `src/utils/py_sc.py`：过滤拼音反查行并按`weight`降序输出`(code, text)`
-- `src/utils/tiger.py`：过滤虎码单字、处理基础单字改码、处理同字多码、整理手动中文附加词、生成自动中文加词，并通过单一入口返回`main.py`写文件所需的数据；基础虎码内部结构为`dict[Code, list[Text]]`
+- `src/utils/tiger.py`：过滤虎码单字、处理基础单字改码、处理同字多码、整理手动中文附加词、生成自动中文加词，并通过单一入口返回`main.py`写文件所需的数据
 - `src/utils/en.py`：基于ESDB拼写集合和`wordfreq`生成英文基础词排序，计算ESDB大小写扩增、变体关系、提权词频和降权次数，并通过单一入口返回`main.py`写文件所需的数据
 
 ## 中文处理
@@ -42,17 +42,19 @@
 - 丢弃含有不在放行汉字集合中的字符的词
 - 丢弃包含过滤后候选集合中任意其它词的词；这个判断不依赖词频高低，因此`A+B`词频高于`A`时仍会因包含`A`被丢弃
 
-过滤完成后生成`wordfreq_zh: list[Text]`并保持原词频顺序。`filter_tiger()`获取单字编码后，`utils/tiger.py`会对每个`(Code, list[Text])`找到`wordfreq_zh`中最靠前、以该编码下任意单字开头的至多`5-len(list[Text])`个词，生成`(Code, Text)`自动中文加词。这里的`Code`保留原单字编码，自动中文加词不会写回`custom/`文件，且即使和手动中文附加词重复也会保留
+过滤完成后生成`wordfreq_zh: list[Text]`并保持原词频顺序。`filter_tiger()`获取单字编码后，`utils/tiger.py`会对每个`(Code, list[Text])`找到`wordfreq_zh`中最靠前、以该编码下任意单字开头的至多5个词，生成`dict[Code, list[Text]]`自动中文加词。这里的`Code`保留原单字编码，自动中文加词不会写回`custom/`文件，最终是否保留由同码合并去重和5候选上限决定
 
-手动中文附加词来自`custom/`中参与生成的`.zh.tsv`文件，第一行固定为`code<TAB>text`。空行会被跳过，其余行必须严格为两列TSV。文件名以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略。`main.py`读取全部手动附加词文件后交给`utils/tiger.py`按以下规则稳定排序，再由`main.py`逐文件写回：
+手动中文附加词来自`custom/`中参与生成的`.zh.tsv`文件，第一行固定为`code<TAB>text`。空行会被跳过，其余行必须严格为两列TSV。文件名以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略。`main.py`读取全部手动附加词文件后交给`utils/tiger.py`按以下规则稳定排序，再由`main.py`逐文件写回。这个排序只用于让加词文件便于阅读，不作为最终候选顺序的来源：
 
 1. `code`长度升序
-2. `code.casefold()`升序
+2. `code.lower()`升序
 3. 相同排序键保留原始先后顺序
 
-逐文件排序数据生成后，`utils/tiger.py`会按文件名字符顺序拼接全部手动中文附加词，再按同一规则整体排序。基础虎码dict会在写出前扁平化为`code<TAB>text`行，同码候选相邻。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/zh_dict.tsv`用于审查只包含简体中文单字的基础虎码词典，并输出`temp/add.tsv`用于审查手动中文附加词后接自动中文加词的合并中间态
+手动中文附加词按文件名字符顺序和文件内原始顺序读入`dict[Code, list[Text]]`。重复报警只检查同一`Code`对应的`list[Text]`内是否重复；相同`Text`出现在不同`Code`下不会报警
 
-最终中文词典先写入按编码分组扁平化后的基础虎码单字，再追加整体排序后的手动中文附加词，最后追加自动中文加词
+多个中文dict合并时按传入顺序处理，同`Code`键名会把`list[Text]`完整拼接，再按首次出现顺序去重，最后最多保留前5个`Text`。基础虎码dict会在写出前扁平化为`code<TAB>text`行，同码候选相邻。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/zh_dict.tsv`用于审查只包含简体中文单字的基础虎码词典，并输出`temp/add.tsv`用于审查手动中文附加词和自动中文加词合并后的扁平化中间态
+
+最终中文词典由基础虎码单字、手动中文附加词和自动中文加词三个dict依次合并后再扁平化返回`main.py`写出。同码候选顺序固定为基础单字、手动加词、自动加词，并受同码去重和5候选上限限制
 
 `tiger_sha1_zh.dict.yaml`写出为`code<TAB>text`两列，排序由生成顺序决定，不再写入weight列
 
