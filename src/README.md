@@ -4,27 +4,29 @@
 
 主流程执行顺序：
 
-1. 读取`upstream/SC2013/level-1.txt`、`level-2.txt`、`level-3.txt`，交给`main.py`合并为`set[str]`
+1. 读取`upstream/SC2013/level-1.txt`、`level-2.txt`、`level-3.txt`和`custom/char.unfilter.txt`，交给`main.py`合并为`set[str]`
 2. 读取`upstream/tiger/PY_c.dict.yaml`正文为`list[tuple[code, weight, text]]`，交给`utils/py_sc.py`过滤并按词频降序生成拼音反查词典
-3. 读取`upstream/tiger/tiger.dict.yaml`正文和`custom/`中参与生成的`.zh.tsv`中文附加词典，交给`utils/tiger.py`一次性生成逐文件排序结果、调试行和最终中文词典行，再由`main.py`写回
+3. 读取`upstream/tiger/tiger.dict.yaml`正文、`custom/char.recode.tsv`单字改码表和`custom/`中参与生成的`.zh.tsv`中文附加词典，交给`utils/tiger.py`一次性生成逐文件排序结果、调试行和最终中文词典行，再由`main.py`写回
 4. 读取`upstream/ESDB.txt`为`set[Text]`，读取`custom/`中参与生成的`.en.tsv`英文附加词典，交给`utils/en.py`一次性生成逐文件排序结果、最终英文词典和审查行，再由`main.py`写回
 
 ## 模块职责
 
 - `src/main.py`：读取源文件、解析格式、调用utils入口、写回附加词和生成文件、按需部署Weasel、按需同步git
 - `src/utils/py_sc.py`：过滤拼音反查行并按`weight`降序输出`(code, text)`
-- `src/utils/tiger.py`：过滤虎码单字、处理同字多码、整理中文附加词、按码长合并附加词，并通过单一入口返回`main.py`写文件所需的数据
+- `src/utils/tiger.py`：过滤虎码单字、处理基础单字改码、处理同字多码、整理中文附加词、按码长合并附加词，并通过单一入口返回`main.py`写文件所需的数据
 - `src/utils/en.py`：基于ESDB拼写集合和`wordfreq`生成英文基础词排序，计算ESDB大小写扩增、变体关系、提权词频和降权次数，并通过单一入口返回`main.py`写文件所需的数据
 
 ## 中文处理
 
 `main.py`按上游文件顺序读取`upstream/tiger/tiger.dict.yaml`正文，并丢弃第三列`weight`。该源文件必须保持上游`weight`自上而下递减，因为`utils/tiger.py`会把输入顺序视为权重顺序
 
-`main.py`读取`upstream/SC2013/level-1.txt`、`level-2.txt`、`level-3.txt`并直接合并为规范汉字集合，随后传给`utils/py_sc.py`和`utils/tiger.py`过滤词条
+`main.py`读取`upstream/SC2013/level-1.txt`、`level-2.txt`、`level-3.txt`和`custom/char.unfilter.txt`并直接合并为放行汉字集合，随后传给`utils/py_sc.py`和`utils/tiger.py`过滤词条
 
 `upstream/tiger/PY_c.dict.yaml`如果出现被折成两行的记录，`main.py`会把没有制表符的连续行拼回上一条拼音词条，再继续解析
 
-`utils/tiger.py`只保留`text`在《通用规范汉字表（2013）》集合中的单字。同一个字出现多个编码时：
+`custom/char.recode.tsv`用于覆盖基础虎码单字编码，第一行固定为`code<TAB>text`。`code`和`text`都必须唯一，`text`必须是已放行的单字。生成基础虎码时，若上游单字出现在改码表中，会使用改码表中的自定义编码；若某个上游编码已被改码表预留给其他字，未改码的原占用字会被跳过。若改码表中的字没有出现在上游虎码中，生成会中止并报错
+
+`utils/tiger.py`只保留`text`在放行汉字集合中的单字。同一个字出现多个编码时：
 
 - 先接受上游更靠前的编码
 - 后续若出现更短编码，且该短码未被已选中的更高权重条目占用，则替换为短码，并把该字移动到当前短码所在位置
