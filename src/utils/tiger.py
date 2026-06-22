@@ -1,6 +1,28 @@
 from utils.types import Code, Text
 
 
+def build_zh_outputs(
+	upstream_tiger_dict: list[tuple[Code, Text]],
+	sc2013: set[Text],
+	zh_add_files_rows: list[list[tuple[Code, Text]]],
+) -> tuple[
+	list[list[tuple[Code, Text]]],
+	list[tuple[Code, Text]],
+	list[tuple[Code, Text]],
+	list[tuple[Code, Text]],
+]:
+	"""生成中文附加词、调试词条和最终虎码词典数据"""
+	tiger_rows = filter_tiger(upstream_tiger_dict, sc2013)
+	sorted_zh_add_files_rows = [sort_zh_add(rows) for rows in zh_add_files_rows]
+	zh_add_rows = sort_zh_add(
+		[row for file_rows in sorted_zh_add_files_rows for row in file_rows]
+	)
+	debug_zh_dict_rows = get_debug_zh_dict_rows(tiger_rows, sc2013)
+	zh_rows = combine_tiger_add(tiger_rows, zh_add_rows)
+
+	return sorted_zh_add_files_rows, zh_add_rows, debug_zh_dict_rows, zh_rows
+
+
 def code_len_group(code: str) -> int:
 	"""返回码长分组，4码及以上归为4"""
 	return min(len(code), 4)

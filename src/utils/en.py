@@ -9,6 +9,39 @@ MIN_WORD_LEN = 4
 CONSONANTS: set[str] = set("bcdfghjklmnpqrstvwxyz")
 
 
+def build_en_outputs(
+	en_add_files_entries: list[list[tuple[Text, int]]],
+	esdb_words: set[Text],
+) -> tuple[
+	list[list[tuple[Text, int]]],
+	list[tuple[Text, int]],
+	list[Text],
+	list[tuple[Text, float, float, int]],
+]:
+	"""生成英文附加词、最终英文词典和审查数据"""
+	sorted_en_add_files_entries = [
+		sort_add_entries(entries) for entries in en_add_files_entries
+	]
+	en_add_entries = sort_add_entries(
+		[entry for entries in sorted_en_add_files_entries for entry in entries],
+		warn_duplicates=False,
+	)
+	en_base_entries = get_base_ranked_entries(esdb_words)
+	en_add_seen = {entry[0] for entry in en_add_entries}
+	en_base_filtered_entries = [
+		entry
+		for entry in en_base_entries
+		if len(entry[0]) >= MIN_WORD_LEN and entry[0] not in en_add_seen
+	]
+	en_words = combine_add_base_words(en_add_entries, en_base_filtered_entries)
+	regular_words, initial_upper_words, second_initial_upper_words = (
+		reorder_case_variants(en_words)
+	)
+	en_dict = regular_words + initial_upper_words + second_initial_upper_words
+
+	return sorted_en_add_files_entries, en_add_entries, en_dict, en_base_entries
+
+
 def sort_add_entries(
 	entries: list[tuple[Text, int]], *, warn_duplicates: bool = True
 ) -> list[tuple[Text, int]]:
