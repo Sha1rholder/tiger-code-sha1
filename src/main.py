@@ -37,7 +37,7 @@ def main(*, debug: bool = False) -> None:
 			read_lines(FilePath("upstream/SC2013/level-1.txt")),
 			read_lines(FilePath("upstream/SC2013/level-2.txt")),
 			read_lines(FilePath("upstream/SC2013/level-3.txt")),
-			read_lines(FilePath("custom/char.txt")),
+			read_lines(FilePath("custom/char.unfilter.txt")),
 		]
 	)
 
@@ -56,6 +56,7 @@ def main(*, debug: bool = False) -> None:
 	) = tiger.build_zh_outputs(
 		read_tiger_dict(FilePath("upstream/tiger/tiger.dict.yaml")),
 		sc2013_set,
+		read_zh_add(FilePath("custom/char.recode.tsv")),
 		[read_zh_add(FilePath(str(path))) for path in zh_add_files],
 	)
 	for path, rows in zip(zh_add_files, sorted_zh_add_files_rows, strict=True):
