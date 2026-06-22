@@ -18,14 +18,9 @@ def build_zh_outputs(
 	zh_add_rows = sort_zh_add(
 		[row for file_rows in sorted_zh_add_files_rows for row in file_rows]
 	)
-	zh_rows = combine_tiger_add(tiger_rows, zh_add_rows)
+	zh_rows = tiger_rows + zh_add_rows
 
 	return sorted_zh_add_files_rows, zh_add_rows, tiger_rows, zh_rows
-
-
-def code_len_group(code: str) -> int:
-	"""返回码长分组，4码及以上归为4"""
-	return min(len(code), 4)
 
 
 def filter_tiger(
@@ -111,18 +106,6 @@ def validate_zh_recodes(
 		text_by_code[code] = text
 
 	return recode_by_text
-
-
-def combine_tiger_add(
-	tiger_rows: list[tuple[Code, Text]],
-	zh_add_rows: list[tuple[Code, Text]],
-) -> list[tuple[Code, Text]]:
-	"""按码长分层合并虎码基础词和中文附加词"""
-	rows: list[tuple[Code, Text]] = []
-	for group in (1, 2, 3, 4):
-		rows.extend(row for row in tiger_rows if code_len_group(row[0]) == group)
-		rows.extend(row for row in zh_add_rows if code_len_group(row[0]) == group)
-	return rows
 
 
 def sort_zh_add(rows: list[tuple[Code, Text]]) -> list[tuple[Code, Text]]:
