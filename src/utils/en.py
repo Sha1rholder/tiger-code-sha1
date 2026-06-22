@@ -3,7 +3,7 @@ import sys
 
 from wordfreq import get_frequency_dict
 
-from utils.types import Text
+from utils.types import Freq, Text
 
 MIN_WORD_LEN = 4
 CONSONANTS: set[str] = set("bcdfghjklmnpqrstvwxyz")
@@ -16,7 +16,7 @@ def build_en_outputs(
 	list[list[tuple[Text, int]]],
 	list[tuple[Text, int]],
 	list[Text],
-	list[tuple[Text, float, float, int]],
+	list[tuple[Text, Freq, Freq, int]],
 ]:
 	"""生成英文附加词、最终英文词典和审查数据"""
 	sorted_en_add_files_entries = [
@@ -72,7 +72,7 @@ def print_warning(message: str) -> None:
 
 def combine_add_base_words(
 	add_entries: list[tuple[Text, int]],
-	base_entries: list[tuple[Text, float, float, int]],
+	base_entries: list[tuple[Text, Freq, Freq, int]],
 ) -> list[Text]:
 	"""按降权次数把英文附加词插入基础词对应分组首部"""
 	add_by_demotion_count: dict[int, list[Text]] = {}
@@ -94,12 +94,15 @@ def combine_add_base_words(
 
 def get_base_ranked_entries(
 	esdb_words: set[Text],
-) -> list[tuple[Text, float, float, int]]:
+) -> list[tuple[Text, Freq, Freq, int]]:
 	"""返回未过滤码长的英文词条排序指标"""
 	esdb = expand_esdb_case_variants(esdb_words)
-	en_freq: dict[str, float] = get_frequency_dict("en")
+	en_freq: dict[str, Freq] = {
+		word: Freq(frequency)
+		for word, frequency in get_frequency_dict("en").items()
+	}
 
-	infos: list[tuple[Text, Text, float]] = [
+	infos: list[tuple[Text, Text, Freq]] = [
 		(Text(word), Text(word), en_freq[word.lower()])
 		for word in sorted(esdb, key=lambda value: (value.lower(), value))
 		if (
@@ -130,8 +133,8 @@ def expand_esdb_case_variants(words: set[Text]) -> set[Text]:
 
 
 def rank_base_entries(
-	infos: list[tuple[Text, Text, float]],
-) -> list[tuple[Text, float, float, int]]:
+	infos: list[tuple[Text, Text, Freq]],
+) -> list[tuple[Text, Freq, Freq, int]]:
 	"""按降权次数、提权词频、原词频和词面排序"""
 	infos_by_key = {info[1]: info for info in infos}
 	parent_by_key = build_parent_map(infos_by_key)
@@ -144,7 +147,9 @@ def rank_base_entries(
 		while ancestor_key is not None:
 			ancestor = infos_by_key[ancestor_key]
 			if ancestor[2] > info[2]:
-				boosted_frequency[ancestor_key] += info[2]
+				boosted_frequency[ancestor_key] = Freq(
+					boosted_frequency[ancestor_key] + info[2]
+				)
 				demotion_count[info[1]] += 1
 			ancestor_key = parent_by_key.get(ancestor_key)
 
@@ -166,7 +171,7 @@ def rank_base_entries(
 
 
 def build_parent_map(
-	infos_by_key: dict[Text, tuple[Text, Text, float]],
+	infos_by_key: dict[Text, tuple[Text, Text, Freq]],
 ) -> dict[Text, Text]:
 	"""为每个词选择唯一直接基本形式"""
 	parent_by_key: dict[Text, Text] = {}
