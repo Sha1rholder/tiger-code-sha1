@@ -9,7 +9,7 @@
 - **中英混输**：没有自动上屏，支持中文和英文混合输入，无需切换ASCII模式
 - **拼音反查**：通过`|`前缀触发拼音反查功能
 - **简化字表**：默认仅收录国标简体字，每个字仅保留一个编码
-- **英文词典**：基于词频数据和标准拼写库自动生成稳定英文词典
+- **英文词典**：基于词频数据和标准拼写库自动生成稳定英文词典，并支持英文附加词按降权次数插入
 - **更多符号**：全角模式自带一些常用特殊符号和emoji
 - **自动整理**：脚本化更新词典、整理附加词、部署和同步
 
@@ -26,8 +26,8 @@ Rime/
 ├ symbols.yaml					# 符号表
 ├ weasel.custom.yaml			# 小狼毫界面定制
 ├ add/
-│	├ *.tsv						# 自定义中文词典
-│	└ *.txt						# 自定义英文词典
+│	├ *.zh.tsv					# 自定义中文词典
+│	└ *.en.tsv					# 自定义英文词典
 ├ lua/
 │	├ commit_raw_symbol.lua		# 有buffer时符号键直接提交ASCII
 │	├ en_weight_translate.lua	# 英文候选按词典顺序惰性产出
@@ -58,7 +58,7 @@ Rime/
 3. 执行`git clone --depth=1 https://github.com/Sha1rholder/tiger-code-sha1.git "$env:APPDATA\Rime"; uv run "$env:APPDATA\Rime\src\main.py" --deploy`
 4. 在Weasel控制面板中选择`tiger_sha1_weasel`
 
-若要加减词，请编辑`add/`中的`.tsv`中文词典或`.txt`英文词典，然后执行`uv run src/main.py --deploy`。不需要手动整理附加词典，脚本会先按单文件排序并写回，再按文件名字符顺序拼接，最后对合并结果再次排序。`add/`中以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略
+若要加减词，请编辑`add/`中的`.zh.tsv`中文词典或`.en.tsv`英文词典，然后执行`uv run src/main.py --deploy`。不需要手动整理附加词典，脚本会先按单文件排序并写回，再按文件名字符顺序拼接，最后对合并结果再次排序。英文附加词的`demotion_count`用于插入基础英文词对应降权分组的首部。`add/`中以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略
 
 ## 开发
 

@@ -130,14 +130,42 @@ def read_zh_add(filename: FilePath) -> list[tuple[Code, Text]]:
 	return rows
 
 
-def read_words(filename: FilePath) -> list[Text]:
-	"""读取一行一词的纯文本词典"""
-	words: list[Text] = []
-	for line in Path(filename).read_text(encoding="utf-8").splitlines():
-		word = line.strip()
-		if word:
-			words.append(Text(word))
-	return words
+def read_en_add(filename: FilePath) -> list[tuple[Text, int]]:
+	"""读取英文附加词TSV，返回(text, demotion_count)列表"""
+	rows: list[tuple[Text, int]] = []
+	header_seen = False
+	for line_number, line in enumerate(
+		Path(filename).read_text(encoding="utf-8").splitlines(), 1
+	):
+		if not line:
+			continue
+
+		parts = line.split("\t")
+		if not header_seen:
+			if parts != ["text", "demotion_count"]:
+				raise SystemExit(f"第{line_number}行不是英文附加词TSV表头：{line}")
+			header_seen = True
+			continue
+		if len(parts) != 2:
+			raise SystemExit(f"第{line_number}行不是有效的TSV行：{line}")
+
+		text = parts[0].strip()
+		if not text:
+			continue
+		try:
+			demotion_count = int(parts[1])
+		except ValueError as error:
+			raise SystemExit(
+				f"第{line_number}行demotion_count不是整数：{line}"
+			) from error
+		if demotion_count < 0:
+			raise SystemExit(f"第{line_number}行demotion_count不能为负数：{line}")
+		rows.append((Text(text), demotion_count))
+
+	if not header_seen:
+		raise SystemExit(f"{filename}缺少英文附加词TSV表头")
+
+	return rows
 
 
 def read_esdb_words(filename: FilePath) -> set[Text]:
@@ -169,7 +197,7 @@ def get_add_files(suffix: str) -> list[Path]:
 			path
 			for path in Path("add").iterdir()
 			if path.is_file()
-			and path.suffix == suffix
+			and path.name.endswith(suffix)
 			and not is_ignored_add_file(path)
 		),
 		key=lambda path: path.name,
@@ -202,6 +230,16 @@ def write_zh_add(filename: FilePath, rows: list[tuple[Code, Text]]) -> None:
 			f.write(f"{code}\t{text}\n")
 
 
+def write_en_add(filename: FilePath, rows: list[tuple[Text, int]]) -> None:
+	"""写出(text, demotion_count)两列TSV"""
+	path = Path(filename)
+	ensure_parent_dir(path)
+	with path.open("w", encoding="utf-8", newline="") as f:
+		f.write("text\tdemotion_count\n")
+		for text, demotion_count in rows:
+			f.write(f"{text}\t{demotion_count}\n")
+
+
 def write_words(filename: FilePath, words: list[Text]) -> None:
 	"""写出一行一词的纯文本词典"""
 	path = Path(filename)
@@ -226,7 +264,7 @@ def write_en_review_tsv(
 def sort_zh_add_files() -> list[tuple[Code, Text]]:
 	"""排序写回所有中文附加词文件并返回合并排序后的词条"""
 	rows: list[tuple[Code, Text]] = []
-	for path in get_add_files(".tsv"):
+	for path in get_add_files(".zh.tsv"):
 		file_rows = tiger.sort_zh_add(read_zh_add(FilePath(str(path))))
 		write_zh_add(FilePath(str(path)), file_rows)
 		rows.extend(file_rows)
@@ -234,15 +272,15 @@ def sort_zh_add_files() -> list[tuple[Code, Text]]:
 	return tiger.sort_zh_add(rows)
 
 
-def sort_en_add_files() -> list[Text]:
-	"""排序写回所有英文附加词文件并返回合并排序后的词典"""
-	words: list[Text] = []
-	for path in get_add_files(".txt"):
-		file_words = en.sort_add_words(read_words(FilePath(str(path))))
-		write_words(FilePath(str(path)), file_words)
-		words.extend(file_words)
+def sort_en_add_files() -> list[tuple[Text, int]]:
+	"""排序写回所有英文附加词文件并返回合并排序后的词条"""
+	rows: list[tuple[Text, int]] = []
+	for path in get_add_files(".en.tsv"):
+		file_rows = en.sort_add_entries(read_en_add(FilePath(str(path))))
+		write_en_add(FilePath(str(path)), file_rows)
+		rows.extend(file_rows)
 
-	return words
+	return en.sort_add_entries(rows, warn_duplicates=False)
 
 
 def main(*, debug: bool = False) -> None:
@@ -276,32 +314,28 @@ def main(*, debug: bool = False) -> None:
 	zh_rows = tiger.combine_tiger_add(tiger_rows, zh_add_rows)
 	write_rows(FilePath("tiger_sha1_zh.dict.yaml"), ZH_DICT_HEADER, zh_rows)
 
-	en_add_words = sort_en_add_files()
+	en_add_entries = sort_en_add_files()
 
 	en_base_entries = en.get_base_ranked_entries(
 		read_esdb_words(FilePath("upstream/ESDB.txt"))
 	)
-	en_add_seen = set(en_add_words)
-	en_base_words = [
-		entry[0]
+	en_add_seen = {entry[0] for entry in en_add_entries}
+	en_base_filtered_entries = [
+		entry
 		for entry in en_base_entries
 		if len(entry[0]) >= en.MIN_WORD_LEN and entry[0] not in en_add_seen
 	]
+	en_words = en.combine_add_base_words(en_add_entries, en_base_filtered_entries)
 	(
 		en_regular_words,
 		en_initial_upper_words,
 		en_second_initial_upper_words,
-	) = en.reorder_case_variants(en_base_words)
-	en_dict = (
-		en_add_words
-		+ en_regular_words
-		+ en_initial_upper_words
-		+ en_second_initial_upper_words
-	)
+	) = en.reorder_case_variants(en_words)
+	en_dict = en_regular_words + en_initial_upper_words + en_second_initial_upper_words
 	write_words(FilePath("lua/en_dict.txt"), en_dict)
 	if debug:
-		write_words(FilePath("temp/add.txt"), en_add_words)
-		write_en_review_tsv(FilePath("temp/en_freq.tsv"), en_base_entries)
+		write_words(FilePath("temp/add.txt"), [entry[0] for entry in en_add_entries])
+		write_en_review_tsv(FilePath("temp/en_dict.tsv"), en_base_entries)
 
 
 def git_sync() -> None:
