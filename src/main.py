@@ -32,7 +32,7 @@ columns:
 
 def main(*, debug: bool = False) -> None:
 	"""更新中文、拼音和英文词典并按需写出调试文件"""
-	log_task("read SC2013 character set")
+	log_task("reading SC2013 character set")
 	sc2013_set = get_sc2013(
 		[
 			read_lines(FilePath("upstream/SC2013/level-1.txt")),
@@ -42,14 +42,14 @@ def main(*, debug: bool = False) -> None:
 		]
 	)
 
-	log_task("build pinyin dictionary")
+	log_task("building pinyin dictionary")
 	py_rows = py_sc.get_py_sc(
 		read_py_dict(FilePath("upstream/tiger/PY_c.dict.yaml")),
 		sc2013_set,
 	)
 	write_rows(FilePath("tiger_sha1_py.dict.yaml"), PY_DICT_HEADER, py_rows)
 
-	log_task("build Chinese tiger dictionary")
+	log_task("building Chinese dictionary")
 	zh_add_files = get_add_files(".zh.tsv")
 	(
 		sorted_zh_add_files_rows,
@@ -65,12 +65,12 @@ def main(*, debug: bool = False) -> None:
 	for path, rows in zip(zh_add_files, sorted_zh_add_files_rows, strict=True):
 		write_zh_add(FilePath(str(path)), rows)
 	if debug:
-		log_task("write Chinese debug files")
+		log_task("writing Chinese debug files")
 		write_zh_add(FilePath("temp/zh_dict.tsv"), debug_zh_dict_rows)
 		write_zh_add(FilePath("temp/add.tsv"), zh_add_rows)
 	write_rows(FilePath("tiger_sha1_zh.dict.yaml"), ZH_DICT_HEADER, zh_rows)
 
-	log_task("build English dictionary")
+	log_task("building English dictionary")
 	en_add_files = get_add_files(".en.tsv")
 	(
 		sorted_en_add_files_entries,
@@ -85,15 +85,15 @@ def main(*, debug: bool = False) -> None:
 		write_en_add(FilePath(str(path)), entries)
 	write_words(FilePath("lua/en_dict.txt"), en_dict)
 	if debug:
-		log_task("write English debug files")
+		log_task("writing English debug files")
 		write_words(FilePath("temp/add.txt"), [entry[0] for entry in en_add_entries])
 		write_en_review_tsv(FilePath("temp/en_dict.tsv"), en_base_entries)
-	log_task("dictionary update complete")
+	log_task("dictionaries update complete")
 
 
 def log_task(message: str) -> None:
 	"""打印当前正在处理的任务"""
-	print(f"[main] {message}", flush=True)
+	print(f"{message}", flush=True)
 
 
 def read_lines(filename: FilePath) -> list[str]:
