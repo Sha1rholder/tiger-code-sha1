@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+import sys
 
 from wordfreq import get_frequency_dict
 
@@ -8,18 +9,54 @@ MIN_WORD_LEN = 4
 CONSONANTS: set[str] = set("bcdfghjklmnpqrstvwxyz")
 
 
-def sort_add_words(words: list[Text]) -> list[Text]:
-	"""返回按单词长度和字母顺序稳定排序后的英文附加词"""
-	clean_words: list[Text] = [word for word in words if word]
+def sort_add_entries(
+	entries: list[tuple[Text, int]], *, warn_duplicates: bool = True
+) -> list[tuple[Text, int]]:
+	"""返回按降权次数、单词长度和字母顺序稳定排序后的英文附加词"""
+	clean_entries: list[tuple[Text, int]] = [entry for entry in entries if entry[0]]
 
-	seen: set[Text] = set()
-	for word in clean_words:
-		if word in seen:
-			print(f"警告：英文附加词'{word}'重复")
-		else:
-			seen.add(word)
+	if warn_duplicates:
+		seen: set[Text] = set()
+		for word, _demotion_count in clean_entries:
+			if word in seen:
+				print_warning(f"警告：英文附加词'{word}'重复")
+			else:
+				seen.add(word)
 
-	return sorted(clean_words, key=lambda word: (len(word), word.lower()))
+	return sorted(
+		clean_entries,
+		key=lambda entry: (entry[1], len(entry[0]), entry[0].lower()),
+	)
+
+
+def print_warning(message: str) -> None:
+	"""输出警告信息并兼容非UTF-8控制台"""
+	try:
+		print(message)
+	except UnicodeEncodeError:
+		sys.stdout.buffer.write(f"{message}\n".encode("utf-8"))
+
+
+def combine_add_base_words(
+	add_entries: list[tuple[Text, int]],
+	base_entries: list[tuple[Text, float, float, int]],
+) -> list[Text]:
+	"""按降权次数把英文附加词插入基础词对应分组首部"""
+	add_by_demotion_count: dict[int, list[Text]] = {}
+	base_by_demotion_count: dict[int, list[Text]] = {}
+	for word, demotion_count in add_entries:
+		add_by_demotion_count.setdefault(demotion_count, []).append(word)
+	for word, _frequency, _boosted_frequency, demotion_count in base_entries:
+		base_by_demotion_count.setdefault(demotion_count, []).append(word)
+
+	words: list[Text] = []
+	for demotion_count in sorted(
+		add_by_demotion_count.keys() | base_by_demotion_count.keys()
+	):
+		words.extend(add_by_demotion_count.get(demotion_count, []))
+		words.extend(base_by_demotion_count.get(demotion_count, []))
+
+	return words
 
 
 def get_base_ranked_entries(
