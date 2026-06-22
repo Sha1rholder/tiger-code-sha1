@@ -18,10 +18,9 @@ def build_zh_outputs(
 	zh_add_rows = sort_zh_add(
 		[row for file_rows in sorted_zh_add_files_rows for row in file_rows]
 	)
-	debug_zh_dict_rows = get_debug_zh_dict_rows(tiger_rows, sc2013)
 	zh_rows = combine_tiger_add(tiger_rows, zh_add_rows)
 
-	return sorted_zh_add_files_rows, zh_add_rows, debug_zh_dict_rows, zh_rows
+	return sorted_zh_add_files_rows, zh_add_rows, tiger_rows, zh_rows
 
 
 def code_len_group(code: str) -> int:
@@ -112,14 +111,6 @@ def validate_zh_recodes(
 		text_by_code[code] = text
 
 	return recode_by_text
-
-
-def get_debug_zh_dict_rows(
-	rows: list[tuple[Code, Text]],
-	sc2013: set[Text],
-) -> list[tuple[Code, Text]]:
-	"""返回只包含简体中文单字的调试词条"""
-	return [row for row in rows if len(row[1]) == 1 and row[1] in sc2013]
 
 
 def combine_tiger_add(
