@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from utils import en, py_sc, tiger
-from utils.types import Code, DictHeader, FilePath, Text, Weight
+from utils.types import Code, DictHeader, FilePath, Freq, Text, Weight
 
 ZH_DICT_HEADER: DictHeader = DictHeader("""\
 ---
@@ -304,7 +304,7 @@ def write_words(filename: FilePath, words: list[Text]) -> None:
 
 
 def write_en_review_tsv(
-	filename: FilePath, entries: list[tuple[Text, float, float, int]]
+	filename: FilePath, entries: list[tuple[Text, Freq, Freq, int]]
 ) -> None:
 	"""写出英文词典审查TSV"""
 	path = Path(filename)
