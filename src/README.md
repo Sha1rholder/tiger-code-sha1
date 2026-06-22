@@ -7,8 +7,8 @@
 1. 读取`upstream/SC2013/level-1.txt`、`level-2.txt`、`level-3.txt`，交给`main.py`合并为`set[str]`
 2. 读取`upstream/tiger/PY_c.dict.yaml`正文为`list[tuple[code, weight, text]]`，交给`utils/py_sc.py`过滤并按词频降序生成拼音反查词典
 3. 读取`upstream/tiger/tiger.dict.yaml`正文为`list[tuple[code, text]]`，交给`utils/tiger.py`过滤、单一化编码并合并中文附加词
-4. 读取`add/`中参与生成的`.zh.tsv`中文附加词典，逐文件交给`utils/tiger.py`检查重复`text`并排序，然后由`main.py`写回
-5. 读取`upstream/ESDB.txt`为`set[Text]`，读取`add/`中参与生成的`.en.tsv`英文附加词典为`list[tuple[text, demotion_count]]`，逐文件交给`utils/en.py`排序并写回，再生成英文排序和ESDB大小写扩增词
+4. 读取`custom/`中参与生成的`.zh.tsv`中文附加词典，逐文件交给`utils/tiger.py`检查重复`text`并排序，然后由`main.py`写回
+5. 读取`upstream/ESDB.txt`为`set[Text]`，读取`custom/`中参与生成的`.en.tsv`英文附加词典为`list[tuple[text, demotion_count]]`，逐文件交给`utils/en.py`排序并写回，再生成英文排序和ESDB大小写扩增词
 
 ## 模块职责
 
@@ -32,7 +32,7 @@
 - 若短码已经被已选中的更高权重条目占用，继续保留原编码
 - 码长相同或后续编码更长时，继续保留原编码
 
-中文附加词来自`add/`中参与生成的`.zh.tsv`文件，第一行固定为`code<TAB>text`。空行会被跳过，其余行必须严格为两列TSV。文件名以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略。`utils/tiger.py`会按以下规则稳定排序后由`main.py`逐文件写回：
+中文附加词来自`custom/`中参与生成的`.zh.tsv`文件，第一行固定为`code<TAB>text`。空行会被跳过，其余行必须严格为两列TSV。文件名以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略。`utils/tiger.py`会按以下规则稳定排序后由`main.py`逐文件写回：
 
 1. `code`长度升序
 2. `code.casefold()`升序
@@ -46,7 +46,7 @@
 
 ## 英文处理
 
-英文附加词来自`add/`中参与生成的`.en.tsv`文件，第一行固定为`text<TAB>demotion_count`。空行会被跳过，其余行必须严格为两列TSV。`demotion_count`必须是非负整数，不限制最大值。文件名以`-`或`.-`开头的词典会被生成逻辑忽略。完全相同的重复词会输出警告。排序规则为：
+英文附加词来自`custom/`中参与生成的`.en.tsv`文件，第一行固定为`text<TAB>demotion_count`。空行会被跳过，其余行必须严格为两列TSV。`demotion_count`必须是非负整数，不限制最大值。文件名以`-`或`.-`开头的词典会被生成逻辑忽略。完全相同的重复词会输出警告。排序规则为：
 
 1. `demotion_count`升序
 2. 单词长度升序

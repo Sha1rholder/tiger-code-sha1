@@ -195,7 +195,7 @@ def get_add_files(suffix: str) -> list[Path]:
 	return sorted(
 		(
 			path
-			for path in Path("add").iterdir()
+			for path in Path("custom").iterdir()
 			if path.is_file()
 			and path.name.endswith(suffix)
 			and not is_ignored_add_file(path)
@@ -290,7 +290,7 @@ def main(*, debug: bool = False) -> None:
 			read_lines(FilePath("upstream/SC2013/level-1.txt")),
 			read_lines(FilePath("upstream/SC2013/level-2.txt")),
 			read_lines(FilePath("upstream/SC2013/level-3.txt")),
-			read_lines(FilePath("add/char.txt")),
+			read_lines(FilePath("custom/char.txt")),
 		]
 	)
 
