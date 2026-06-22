@@ -1,6 +1,7 @@
 import argparse
 import os
 import subprocess
+import time
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -29,10 +30,15 @@ columns:
 ...
 """)
 
+_last_print_time = time.perf_counter()
+
 
 def main(*, debug: bool = False) -> None:
 	"""更新中文、拼音和英文词典并按需写出调试文件"""
-	log_task("reading SC2013 character set")
+	global _last_print_time
+
+	print("Now doing loading SC2013 character set.", flush=True)
+	_last_print_time = time.perf_counter()
 	sc2013_set = get_sc2013(
 		[
 			read_lines(FilePath("upstream/SC2013/level-1.txt")),
@@ -42,14 +48,24 @@ def main(*, debug: bool = False) -> None:
 		]
 	)
 
-	log_task("building pinyin dictionary")
+	now = time.perf_counter()
+	print(
+		f"Completed loading SC2013 character set in {now - _last_print_time:.2f}s. ",
+		flush=True,
+	)
+	_last_print_time = now
 	py_rows = py_sc.get_py_sc(
 		read_py_dict(FilePath("upstream/tiger/PY_c.dict.yaml")),
 		sc2013_set,
 	)
 	write_rows(FilePath("tiger_sha1_py.dict.yaml"), PY_DICT_HEADER, py_rows)
 
-	log_task("building Chinese dictionary")
+	now = time.perf_counter()
+	print(
+		f"Completed building pinyin dictionary in {now - _last_print_time:.2f}s. ",
+		flush=True,
+	)
+	_last_print_time = now
 	zh_add_files = get_add_files(".zh.tsv")
 	(
 		sorted_zh_add_files_rows,
@@ -65,12 +81,31 @@ def main(*, debug: bool = False) -> None:
 	for path, rows in zip(zh_add_files, sorted_zh_add_files_rows, strict=True):
 		write_zh_add(FilePath(str(path)), rows)
 	if debug:
-		log_task("writing Chinese debug files")
+		now = time.perf_counter()
+		print(
+			f"Completed building Chinese dictionary in {now - _last_print_time:.2f}s. ",
+			flush=True,
+		)
+		_last_print_time = now
 		write_zh_add(FilePath("temp/zh_dict.tsv"), debug_zh_dict_rows)
 		write_zh_add(FilePath("temp/add.tsv"), zh_add_rows)
+		now = time.perf_counter()
+		print(
+			f"Completed writing Chinese debug files in {now - _last_print_time:.2f}s. ",
+			flush=True,
+		)
+		_last_print_time = now
 	write_rows(FilePath("tiger_sha1_zh.dict.yaml"), ZH_DICT_HEADER, zh_rows)
 
-	log_task("building English dictionary")
+	now = time.perf_counter()
+	completed_zh_task = (
+		"writing Chinese dictionary" if debug else "building Chinese dictionary"
+	)
+	print(
+		f"Completed {completed_zh_task} in {now - _last_print_time:.2f}s. ",
+		flush=True,
+	)
+	_last_print_time = now
 	en_add_files = get_add_files(".en.tsv")
 	(
 		sorted_en_add_files_entries,
@@ -85,15 +120,25 @@ def main(*, debug: bool = False) -> None:
 		write_en_add(FilePath(str(path)), entries)
 	write_words(FilePath("lua/en_dict.txt"), en_dict)
 	if debug:
-		log_task("writing English debug files")
+		now = time.perf_counter()
+		print(
+			f"Completed building English dictionary in {now - _last_print_time:.2f}s. ",
+			flush=True,
+		)
+		_last_print_time = now
 		write_words(FilePath("temp/add.txt"), [entry[0] for entry in en_add_entries])
 		write_en_review_tsv(FilePath("temp/en_dict.tsv"), en_base_entries)
-	log_task("dictionaries update complete")
-
-
-def log_task(message: str) -> None:
-	"""打印当前正在处理的任务"""
-	print(f"{message}", flush=True)
+	now = time.perf_counter()
+	if debug:
+		print(
+			f"Completed writing English debug files in {now - _last_print_time:.2f}s. ",
+			flush=True,
+		)
+	else:
+		print(
+			f"Completed building English dictionary in {now - _last_print_time:.2f}s. ",
+			flush=True,
+		)
 
 
 def read_lines(filename: FilePath) -> list[str]:

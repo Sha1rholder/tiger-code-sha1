@@ -74,7 +74,7 @@ Rime/
 - `--debug`：额外在`temp/`中输出`zh_dict.tsv`、`add.tsv`、`add.txt`、`en_dict.tsv`供审查中间词典
 - `--sync`：自动执行`git add .`、`git commit`、`git push`以同步到上游（仅在main分支触发push）
 
-运行时会打印`[main]...`阶段信息，用于确认当前正在读取、生成、写出或部署的任务
+运行时会打印阶段信息和距离上一条阶段日志的耗时，用于确认当前正在读取、生成、写出或部署的任务
 
 ## 致谢
 
