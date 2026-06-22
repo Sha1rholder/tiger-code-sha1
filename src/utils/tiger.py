@@ -3,7 +3,7 @@ from wordfreq import get_frequency_dict
 from utils.types import Code, Freq, Text
 
 AUTO_ZH_ADD_LIMIT = 5
-MIN_ZH_FREQUENCY = Freq(0.000001)
+MIN_ZH_FREQUENCY = Freq(0.00001)  # 改成0.000001后会触发Python的bug，目前不知道怎么修
 
 
 def build_zh_outputs(
@@ -137,10 +137,7 @@ def drop_containing_words(
 	return [
 		entry
 		for entry in entries
-		if not any(
-			len(other) < len(entry[0]) and other in entry[0]
-			for other in words
-		)
+		if not any(len(other) < len(entry[0]) and other in entry[0] for other in words)
 	]
 
 
