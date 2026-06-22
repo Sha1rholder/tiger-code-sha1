@@ -290,6 +290,7 @@ def main(*, debug: bool = False) -> None:
 			read_lines(FilePath("upstream/SC2013/level-1.txt")),
 			read_lines(FilePath("upstream/SC2013/level-2.txt")),
 			read_lines(FilePath("upstream/SC2013/level-3.txt")),
+			read_lines(FilePath("add/char.txt")),
 		]
 	)
 
