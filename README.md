@@ -33,12 +33,12 @@ Rime/
 │	├ en_weight_translate.lua	# 英文候选按词典顺序惰性产出
 │	└ en_dict.txt				# 英文词典（机器生成）
 ├ src/
-│	├ main.py					# 读取源数据、解析格式、合并SC2013、调用utils、写出词典、部署、同步
+│	├ main.py					# 读取源数据、解析格式、调用utils入口、写出词典、部署、同步
 │	├ README.md					# 开发文档
 │	└ utils/
-│		├ en.py					# 英文词典生成器
+│		├ en.py					# 英文词典生成器和英文数据编排入口
 │		├ py_sc.py				# 拼音反查生成器
-│		└ tiger.py				# 中文词典生成器
+│		└ tiger.py				# 中文词典生成器和中文数据编排入口
 └ upstream/
 	├ ESDB.txt					# English Speller Database
 	├ tiger/					# 虎码原始数据

@@ -1,21 +1,20 @@
 # 词典生成实现说明
 
-`src/main.py`负责所有项目文件读写和Rime/TSV/TXT格式解析，`src/utils/`中的模块只处理已经读入的结构化数据。所有输入读取都按行分割处理，兼容`CRLF`和`LF`
+`src/main.py`负责所有项目文件读写、Rime/TSV/TXT格式解析和CLI流程，`src/utils/`中的模块只处理已经读入的结构化数据。中文和英文的排序、过滤、合并编排分别由`utils/tiger.py`和`utils/en.py`的单一入口函数完成
 
 主流程执行顺序：
 
 1. 读取`upstream/SC2013/level-1.txt`、`level-2.txt`、`level-3.txt`，交给`main.py`合并为`set[str]`
 2. 读取`upstream/tiger/PY_c.dict.yaml`正文为`list[tuple[code, weight, text]]`，交给`utils/py_sc.py`过滤并按词频降序生成拼音反查词典
-3. 读取`upstream/tiger/tiger.dict.yaml`正文为`list[tuple[code, text]]`，交给`utils/tiger.py`过滤、单一化编码并合并中文附加词
-4. 读取`custom/`中参与生成的`.zh.tsv`中文附加词典，逐文件交给`utils/tiger.py`检查重复`text`并排序，然后由`main.py`写回
-5. 读取`upstream/ESDB.txt`为`set[Text]`，读取`custom/`中参与生成的`.en.tsv`英文附加词典为`list[tuple[text, demotion_count]]`，逐文件交给`utils/en.py`排序并写回，再生成英文排序和ESDB大小写扩增词
+3. 读取`upstream/tiger/tiger.dict.yaml`正文和`custom/`中参与生成的`.zh.tsv`中文附加词典，交给`utils/tiger.py`一次性生成逐文件排序结果、调试行和最终中文词典行，再由`main.py`写回
+4. 读取`upstream/ESDB.txt`为`set[Text]`，读取`custom/`中参与生成的`.en.tsv`英文附加词典，交给`utils/en.py`一次性生成逐文件排序结果、最终英文词典和审查行，再由`main.py`写回
 
 ## 模块职责
 
-- `src/main.py`：读取源文件、解析格式、调用纯函数、写出生成文件、按需部署Weasel、按需同步git
+- `src/main.py`：读取源文件、解析格式、调用utils入口、写回附加词和生成文件、按需部署Weasel、按需同步git
 - `src/utils/py_sc.py`：过滤拼音反查行并按`weight`降序输出`(code, text)`
-- `src/utils/tiger.py`：过滤虎码单字、处理同字多码、整理中文附加词、按码长合并附加词
-- `src/utils/en.py`：基于ESDB拼写集合和`wordfreq`生成英文基础词排序，计算ESDB大小写扩增、变体关系、提权词频和降权次数
+- `src/utils/tiger.py`：过滤虎码单字、处理同字多码、整理中文附加词、按码长合并附加词，并通过单一入口返回`main.py`写文件所需的数据
+- `src/utils/en.py`：基于ESDB拼写集合和`wordfreq`生成英文基础词排序，计算ESDB大小写扩增、变体关系、提权词频和降权次数，并通过单一入口返回`main.py`写文件所需的数据
 
 ## 中文处理
 
@@ -32,13 +31,13 @@
 - 若短码已经被已选中的更高权重条目占用，继续保留原编码
 - 码长相同或后续编码更长时，继续保留原编码
 
-中文附加词来自`custom/`中参与生成的`.zh.tsv`文件，第一行固定为`code<TAB>text`。空行会被跳过，其余行必须严格为两列TSV。文件名以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略。`utils/tiger.py`会按以下规则稳定排序后由`main.py`逐文件写回：
+中文附加词来自`custom/`中参与生成的`.zh.tsv`文件，第一行固定为`code<TAB>text`。空行会被跳过，其余行必须严格为两列TSV。文件名以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略。`main.py`读取全部附加词文件后交给`utils/tiger.py`按以下规则稳定排序，再由`main.py`逐文件写回：
 
 1. `code`长度升序
 2. `code.casefold()`升序
 3. 相同排序键保留原始先后顺序
 
-逐文件排序写回后，`main.py`会按文件名字符顺序拼接全部中文附加词，再按同一规则整体排序。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/zh_dict.tsv`用于审查只包含简体中文单字的基础虎码词典，并输出`temp/add.tsv`用于审查合并后的中文附加词中间态
+逐文件排序数据生成后，`utils/tiger.py`会按文件名字符顺序拼接全部中文附加词，再按同一规则整体排序。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/zh_dict.tsv`用于审查只包含简体中文单字的基础虎码词典，并输出`temp/add.tsv`用于审查合并后的中文附加词中间态
 
 基础虎码和中文附加词按码长分层合并：每个码长组中先放基础虎码，再追加同码长附加词；1码、2码、3码各自成组，4码及以上归为4码组
 
@@ -53,7 +52,7 @@
 3. `text.lower()`升序
 4. 相同排序键保留原始先后顺序
 
-逐文件排序写回后，`main.py`会按文件名字符顺序拼接全部英文附加词，再按同一规则整体排序。英文附加词会按`demotion_count`插入基础英文词对应降权分组的首部；若某个附加词降权次数在基础词中不存在，也按数值位置插入。若基础英文词典包含完全相同的词，主流程会跳过基础词典里的重复项，避免最终英文词典重复
+逐文件排序数据生成后，`utils/en.py`会按文件名字符顺序拼接全部英文附加词，再按同一规则整体排序。英文附加词会按`demotion_count`插入基础英文词对应降权分组的首部；若某个附加词降权次数在基础词中不存在，也按数值位置插入。若基础英文词典包含完全相同的词，英文编排入口会跳过基础词典里的重复项，避免最终英文词典重复
 
 基础英文候选来源是`upstream/ESDB.txt`拼写集合与`wordfreq`英语词频库的大小写不敏感交集。ESDB只作为无序拼写白名单，不参与排序。生成时会过滤掉：
 

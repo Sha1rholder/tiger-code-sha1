@@ -30,6 +30,59 @@ columns:
 """)
 
 
+def main(*, debug: bool = False) -> None:
+	"""更新中文、拼音和英文词典并按需写出调试文件"""
+	sc2013_set = get_sc2013(
+		[
+			read_lines(FilePath("upstream/SC2013/level-1.txt")),
+			read_lines(FilePath("upstream/SC2013/level-2.txt")),
+			read_lines(FilePath("upstream/SC2013/level-3.txt")),
+			read_lines(FilePath("custom/char.txt")),
+		]
+	)
+
+	py_rows = py_sc.get_py_sc(
+		read_py_dict(FilePath("upstream/tiger/PY_c.dict.yaml")),
+		sc2013_set,
+	)
+	write_rows(FilePath("tiger_sha1_py.dict.yaml"), PY_DICT_HEADER, py_rows)
+
+	zh_add_files = get_add_files(".zh.tsv")
+	(
+		sorted_zh_add_files_rows,
+		zh_add_rows,
+		debug_zh_dict_rows,
+		zh_rows,
+	) = tiger.build_zh_outputs(
+		read_tiger_dict(FilePath("upstream/tiger/tiger.dict.yaml")),
+		sc2013_set,
+		[read_zh_add(FilePath(str(path))) for path in zh_add_files],
+	)
+	for path, rows in zip(zh_add_files, sorted_zh_add_files_rows, strict=True):
+		write_zh_add(FilePath(str(path)), rows)
+	if debug:
+		write_zh_add(FilePath("temp/zh_dict.tsv"), debug_zh_dict_rows)
+		write_zh_add(FilePath("temp/add.tsv"), zh_add_rows)
+	write_rows(FilePath("tiger_sha1_zh.dict.yaml"), ZH_DICT_HEADER, zh_rows)
+
+	en_add_files = get_add_files(".en.tsv")
+	(
+		sorted_en_add_files_entries,
+		en_add_entries,
+		en_dict,
+		en_base_entries,
+	) = en.build_en_outputs(
+		[read_en_add(FilePath(str(path))) for path in en_add_files],
+		read_esdb_words(FilePath("upstream/ESDB.txt")),
+	)
+	for path, entries in zip(en_add_files, sorted_en_add_files_entries, strict=True):
+		write_en_add(FilePath(str(path)), entries)
+	write_words(FilePath("lua/en_dict.txt"), en_dict)
+	if debug:
+		write_words(FilePath("temp/add.txt"), [entry[0] for entry in en_add_entries])
+		write_en_review_tsv(FilePath("temp/en_dict.tsv"), en_base_entries)
+
+
 def read_lines(filename: FilePath) -> list[str]:
 	"""读取UTF-8文本并按行返回"""
 	return Path(filename).read_text(encoding="utf-8").splitlines()
@@ -259,84 +312,6 @@ def write_en_review_tsv(
 		f.write("word\tfrequency\tboosted_frequency\tdemotion_count\n")
 		for entry in entries:
 			f.write(f"{entry[0]}\t{entry[1]:.17g}\t{entry[2]:.17g}\t{entry[3]}\n")
-
-
-def sort_zh_add_files() -> list[tuple[Code, Text]]:
-	"""排序写回所有中文附加词文件并返回合并排序后的词条"""
-	rows: list[tuple[Code, Text]] = []
-	for path in get_add_files(".zh.tsv"):
-		file_rows = tiger.sort_zh_add(read_zh_add(FilePath(str(path))))
-		write_zh_add(FilePath(str(path)), file_rows)
-		rows.extend(file_rows)
-
-	return tiger.sort_zh_add(rows)
-
-
-def sort_en_add_files() -> list[tuple[Text, int]]:
-	"""排序写回所有英文附加词文件并返回合并排序后的词条"""
-	rows: list[tuple[Text, int]] = []
-	for path in get_add_files(".en.tsv"):
-		file_rows = en.sort_add_entries(read_en_add(FilePath(str(path))))
-		write_en_add(FilePath(str(path)), file_rows)
-		rows.extend(file_rows)
-
-	return en.sort_add_entries(rows, warn_duplicates=False)
-
-
-def main(*, debug: bool = False) -> None:
-	"""更新中文、拼音和英文词典并按需写出调试文件"""
-	sc2013_set = get_sc2013(
-		[
-			read_lines(FilePath("upstream/SC2013/level-1.txt")),
-			read_lines(FilePath("upstream/SC2013/level-2.txt")),
-			read_lines(FilePath("upstream/SC2013/level-3.txt")),
-			read_lines(FilePath("custom/char.txt")),
-		]
-	)
-
-	py_rows = py_sc.get_py_sc(
-		read_py_dict(FilePath("upstream/tiger/PY_c.dict.yaml")),
-		sc2013_set,
-	)
-	write_rows(FilePath("tiger_sha1_py.dict.yaml"), PY_DICT_HEADER, py_rows)
-
-	tiger_rows = tiger.filter_tiger(
-		read_tiger_dict(FilePath("upstream/tiger/tiger.dict.yaml")),
-		sc2013_set,
-	)
-	zh_add_rows = sort_zh_add_files()
-	if debug:
-		write_zh_add(
-			FilePath("temp/zh_dict.tsv"),
-			tiger.get_debug_zh_dict_rows(tiger_rows, sc2013_set),
-		)
-		write_zh_add(FilePath("temp/add.tsv"), zh_add_rows)
-
-	zh_rows = tiger.combine_tiger_add(tiger_rows, zh_add_rows)
-	write_rows(FilePath("tiger_sha1_zh.dict.yaml"), ZH_DICT_HEADER, zh_rows)
-
-	en_add_entries = sort_en_add_files()
-
-	en_base_entries = en.get_base_ranked_entries(
-		read_esdb_words(FilePath("upstream/ESDB.txt"))
-	)
-	en_add_seen = {entry[0] for entry in en_add_entries}
-	en_base_filtered_entries = [
-		entry
-		for entry in en_base_entries
-		if len(entry[0]) >= en.MIN_WORD_LEN and entry[0] not in en_add_seen
-	]
-	en_words = en.combine_add_base_words(en_add_entries, en_base_filtered_entries)
-	(
-		en_regular_words,
-		en_initial_upper_words,
-		en_second_initial_upper_words,
-	) = en.reorder_case_variants(en_words)
-	en_dict = en_regular_words + en_initial_upper_words + en_second_initial_upper_words
-	write_words(FilePath("lua/en_dict.txt"), en_dict)
-	if debug:
-		write_words(FilePath("temp/add.txt"), [entry[0] for entry in en_add_entries])
-		write_en_review_tsv(FilePath("temp/en_dict.tsv"), en_base_entries)
 
 
 def git_sync() -> None:
