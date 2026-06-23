@@ -1,5 +1,4 @@
 from collections.abc import Iterator
-import sys
 
 from wordfreq import get_frequency_dict
 
@@ -45,29 +44,27 @@ def build_en_outputs(
 def sort_add_entries(
 	entries: list[tuple[Text, int]], *, warn_duplicates: bool = True
 ) -> list[tuple[Text, int]]:
-	"""返回按降权次数、单词长度和字母顺序稳定排序后的英文附加词"""
+	"""返回按降权次数和区分大小写词面排序后的英文附加词"""
 	clean_entries: list[tuple[Text, int]] = [entry for entry in entries if entry[0]]
 
 	if warn_duplicates:
 		seen: set[Text] = set()
 		for word, _demotion_count in clean_entries:
 			if word in seen:
-				print_warning(f"警告：英文附加词'{word}'重复")
+				print(f"警告：英文附加词'{word}'重复")
 			else:
 				seen.add(word)
 
 	return sorted(
 		clean_entries,
-		key=lambda entry: (entry[1], len(entry[0]), entry[0].lower()),
+		key=lambda entry: (
+			entry[1],
+			tuple(
+				ord(char)
+				for char in f"{entry[0].lower()}\0{''.join('1' if char.isupper() else '0' for char in entry[0])}"
+			),
+		),
 	)
-
-
-def print_warning(message: str) -> None:
-	"""输出警告信息并兼容非UTF-8控制台"""
-	try:
-		print(message)
-	except UnicodeEncodeError:
-		sys.stdout.buffer.write(f"{message}\n".encode("utf-8"))
 
 
 def combine_add_base_words(
@@ -98,8 +95,7 @@ def get_base_ranked_entries(
 	"""返回未过滤码长的英文词条排序指标"""
 	esdb = expand_esdb_case_variants(esdb_words)
 	en_freq: dict[str, Freq] = {
-		word: Freq(frequency)
-		for word, frequency in get_frequency_dict("en").items()
+		word: Freq(frequency) for word, frequency in get_frequency_dict("en").items()
 	}
 
 	infos: list[tuple[Text, Text, Freq]] = [
@@ -287,21 +283,13 @@ def reorder_case_variants(
 	initial_upper_words: list[Text] = []
 	second_initial_upper_words: list[Text] = []
 	for word in words:
-		if is_second_initial_upper(word):
+		if (
+			len(word) > 1 and word[0].isupper() and word[1].isupper()
+		):  # 首字母和第二个字母是否都为大写
 			second_initial_upper_words.append(word)
-		elif is_initial_upper(word):
+		elif bool(word) and word[0].isupper():  # 首字母是否为大写
 			initial_upper_words.append(word)
 		else:
 			base_words.append(word)
 
 	return base_words, initial_upper_words, second_initial_upper_words
-
-
-def is_initial_upper(word: Text) -> bool:
-	"""判断首字母是否为大写"""
-	return bool(word) and word[0].isupper()
-
-
-def is_second_initial_upper(word: Text) -> bool:
-	"""判断首字母和第二个字母是否都为大写"""
-	return len(word) > 1 and word[0].isupper() and word[1].isupper()
