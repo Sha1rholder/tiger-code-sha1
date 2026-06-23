@@ -88,7 +88,7 @@ def main(*, debug: bool = False) -> None:
 		)
 		_last_print_time = now
 		write_zh_add(FilePath("temp/zh_dict.tsv"), debug_zh_dict_rows)
-		write_zh_add(FilePath("temp/add.tsv"), zh_add_rows)
+		write_zh_add(FilePath("temp/zh_add.tsv"), zh_add_rows)
 		now = time.perf_counter()
 		print(
 			f"Completed writing Chinese debug files in {now - _last_print_time:.2f}s. ",
@@ -126,7 +126,7 @@ def main(*, debug: bool = False) -> None:
 			flush=True,
 		)
 		_last_print_time = now
-		write_words(FilePath("temp/add.txt"), [entry[0] for entry in en_add_entries])
+		write_en_add(FilePath("temp/en_add.tsv"), en_add_entries)
 		write_en_review_tsv(FilePath("temp/en_dict.tsv"), en_base_entries)
 	now = time.perf_counter()
 	if debug:

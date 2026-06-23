@@ -52,7 +52,7 @@
 
 手动中文附加词按文件名字符顺序和文件内原始顺序读入`dict[Code, list[Text]]`。重复报警只检查同一`Code`对应的`list[Text]`内是否重复；相同`Text`出现在不同`Code`下不会报警
 
-多个中文dict合并时按传入顺序处理，同`Code`键名会把`list[Text]`完整拼接，再按首次出现顺序去重，最后最多保留前5个`Text`。基础虎码dict会在写出前扁平化为`code<TAB>text`行，同码候选相邻。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/zh_dict.tsv`用于审查只包含简体中文单字的基础虎码词典，并输出`temp/add.tsv`用于审查手动中文附加词和自动中文加词合并后的扁平化中间态
+多个中文dict合并时按传入顺序处理，同`Code`键名会把`list[Text]`完整拼接，再按首次出现顺序去重，最后最多保留前5个`Text`。基础虎码dict会在写出前扁平化为`code<TAB>text`行，同码候选相邻。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/zh_dict.tsv`用于审查只包含简体中文单字的基础虎码词典，并输出`temp/zh_add.tsv`用于审查手动中文附加词和自动中文加词合并后的扁平化中间态
 
 最终中文词典由基础虎码单字、手动中文附加词和自动中文加词三个dict依次合并后再扁平化返回`main.py`写出。同码候选顺序固定为基础单字、手动加词、自动加词，并受同码去重和5候选上限限制
 
@@ -113,7 +113,7 @@ ESDB读入为`set[Text]`后扩增大小写形式：若词面全小写，则加�
 - 首字母和第二个字母都大写的词排在最后
 - 每组内部保持合并后的原始相对顺序
 
-`lua/en_dict.txt`是一行一词的纯文本文件，Lua translator按该文件顺序惰性产出英文候选。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/en_dict.tsv`用于审查英文排序指标
+`lua/en_dict.txt`是一行一词的纯文本文件，Lua translator按该文件顺序惰性产出英文候选。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/en_add.tsv`用于审查英文附加词和`demotion_count`，并输出`temp/en_dict.tsv`用于审查英文排序指标
 
 ## 输出文件
 
@@ -122,6 +122,6 @@ ESDB读入为`set[Text]`后扩增大小写形式：若词面全小写，则加�
 - `tiger_sha1_py.dict.yaml`：拼音反查词典
 - `lua/en_dict.txt`：英文词典
 - `temp/zh_dict.tsv`：只包含简体中文单字的基础虎码词典TSV
-- `temp/add.tsv`：手动中文附加词后接自动中文加词的合并TSV
-- `temp/add.txt`：合并排序后的英文附加词
+- `temp/zh_add.tsv`：手动中文附加词后接自动中文加词的合并TSV
+- `temp/en_add.tsv`：合并排序后的英文附加词和`demotion_count`
 - `temp/en_dict.tsv`：保留完整排序指标的英文词典
