@@ -3,7 +3,7 @@ from wordfreq import get_frequency_dict
 from utils.types import Code, Freq, Text
 
 AUTO_ZH_ADD_LIMIT = 5
-MIN_ZH_FREQUENCY = Freq(0.00001)  # 改成0.000001后会触发Python的bug，目前不知道怎么修
+MIN_ZH_FREQUENCY = Freq(0.000001)  # 值改为0.000001后进程有概率崩溃，性能也极大下降，目前不知道怎么修（越低越容易崩）
 
 
 def build_zh_outputs(
