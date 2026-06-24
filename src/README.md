@@ -1,8 +1,10 @@
 # 词典生成实现说明
 
-`src/main.py`负责所有项目文件读写、Rime/TSV/TXT格式解析和CLI流程，`src/utils/`中的模块只处理已经读入的结构化数据。中文和英文的排序、过滤、合并编排分别由`utils/tiger.py`和`utils/en.py`的单一入口函数完成。CLI运行时会打印阶段信息和距离上一条阶段日志的耗时，便于定位当前正在处理的任务
+`src/main.py`负责所有项目文件读写、Rime/TSV/TXT格式解析和CLI流程，`src/utils/`中的模块只处理已经读入的结构化数据。中文和英文的排序、过滤、合并编排分别由`utils/tiger.py`和`utils/en.py`的单一入口函数完成。CLI在编译词典时会打印阶段信息和距离上一条阶段日志的耗时，便于定位当前正在处理的任务
 
-主流程执行顺序：
+不带参数执行`uv run src/main.py`会显示帮助并退出，不会编译词典、部署Weasel或同步git。`--compile`用于编译词典，`--debug`会隐式启用`--compile`并写出审查文件，`--deploy`只重新部署Weasel，不会编译词典。需要更新词典并部署时执行`uv run src/main.py --compile --deploy`
+
+词典编译主流程执行顺序：
 
 1. 读取`upstream/SC2013/level-1.txt`、`level-2.txt`、`level-3.txt`和`custom/char.unfilter.txt`，交给`main.py`合并为`set[str]`
 2. 读取`upstream/tiger/PY_c.dict.yaml`正文为`list[tuple[code, weight, text]]`，交给`utils/py_sc.py`过滤并按词频降序生成拼音反查词典
@@ -52,7 +54,7 @@
 
 手动中文附加词按文件名字符顺序和文件内原始顺序读入`dict[Code, list[Text]]`。重复报警只检查同一`Code`对应的`list[Text]`内是否重复；相同`Text`出现在不同`Code`下不会报警
 
-多个中文dict合并时按传入顺序处理，同`Code`键名会把`list[Text]`完整拼接，再按首次出现顺序去重，最后最多保留前5个`Text`。基础虎码dict会在写出前扁平化为`code<TAB>text`行，同码候选相邻。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/zh_dict.tsv`用于审查只包含简体中文单字的基础虎码词典，并输出`temp/zh_add.tsv`用于审查手动中文附加词和自动中文加词合并后的扁平化中间态
+多个中文dict合并时按传入顺序处理，同`Code`键名会把`list[Text]`完整拼接，再按首次出现顺序去重，最后最多保留前5个`Text`。基础虎码dict会在写出前扁平化为`code<TAB>text`行，同码候选相邻。若执行`uv run src/main.py --debug`，脚本会隐式编译词典，并额外输出`temp/zh_dict.tsv`用于审查只包含简体中文单字的基础虎码词典，并输出`temp/zh_add.tsv`用于审查手动中文附加词和自动中文加词合并后的扁平化中间态
 
 最终中文词典由基础虎码单字、手动中文附加词和自动中文加词三个dict依次合并后再扁平化返回`main.py`写出。同码候选顺序固定为基础单字、手动加词、自动加词，并受同码去重和5候选上限限制
 
@@ -113,9 +115,9 @@ ESDB读入为`set[Text]`后扩增大小写形式：若词面全小写，则加�
 - 首字母和第二个字母都大写的词排在最后
 - 每组内部保持合并后的原始相对顺序
 
-`lua/en_dict.txt`是一行一词的纯文本文件，Lua translator按该文件顺序惰性产出英文候选。若执行`uv run src/main.py --debug`，脚本会额外输出`temp/en_add.tsv`用于审查英文附加词和`demotion_count`，并输出`temp/en_dict.tsv`用于审查英文排序指标
+`lua/en_dict.txt`是一行一词的纯文本文件，Lua translator按该文件顺序惰性产出英文候选。若执行`uv run src/main.py --debug`，脚本会隐式编译词典，并额外输出`temp/en_add.tsv`和`temp/en_dict.tsv`用于审查英文附加词和英文排序指标
 
-## 输出文件
+## 编译产物
 
 - `tiger_sha1_weasel.dict.yaml`：主方案词典壳，导入`alphabet`和`tiger_sha1_zh`
 - `tiger_sha1_zh.dict.yaml`：中文基础词典

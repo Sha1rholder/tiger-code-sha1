@@ -134,11 +134,16 @@ def drop_containing_words(
 ) -> list[tuple[Text, Freq]]:
 	"""丢弃包含其它候选词的中文词频条目"""
 	words = [entry[0] for entry in entries]
-	return [
-		entry
-		for entry in entries
-		if not any(len(other) < len(entry[0]) and other in entry[0] for other in words)
-	]
+	return [entry for entry in entries if not has_containing_word(entry[0], words)]
+
+
+def has_containing_word(word: Text, words: list[Text]) -> bool:
+	"""判断词语是否包含其它更短候选词"""
+	for other in words:
+		if len(other) < len(word) and other in word:
+			return True
+
+	return False
 
 
 def get_auto_zh_add_dict(

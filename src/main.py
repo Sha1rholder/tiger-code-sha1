@@ -1,6 +1,7 @@
 import argparse
 import os
 import subprocess
+import sys
 import time
 from collections.abc import Iterable
 from pathlib import Path
@@ -404,9 +405,14 @@ def parse_args() -> argparse.Namespace:
 	"""解析命令行参数"""
 	parser = argparse.ArgumentParser(description="Update Rime dictionaries")
 	parser.add_argument(
+		"--compile",
+		action="store_true",
+		help="Update generated dictionaries",
+	)
+	parser.add_argument(
 		"--deploy",
 		action="store_true",
-		help="Run WeaselDeployer.exe after updating dictionaries",
+		help="Run WeaselDeployer.exe",
 	)
 	parser.add_argument(
 		"--debug",
@@ -418,6 +424,9 @@ def parse_args() -> argparse.Namespace:
 		action="store_true",
 		help="Sync changes: git add, commit, and push (only on main)",
 	)
+	if len(sys.argv) == 1:
+		parser.print_help()
+		raise SystemExit(0)
 	return parser.parse_args()
 
 
@@ -433,7 +442,8 @@ if __name__ == "__main__":
 	os.chdir(Path(__file__).resolve().parent.parent)
 
 	args = parse_args()
-	main(debug=args.debug)
+	if args.compile or args.debug:
+		main(debug=args.debug)
 	if args.deploy:
 		deploy()
 	if args.sync:
