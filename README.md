@@ -64,7 +64,7 @@ Rime/
 3. 执行`git clone --depth=1 https://github.com/Sha1rholder/tiger-code-sha1.git "$env:APPDATA\Rime"; uv run "$env:APPDATA\Rime\src\main.py" --compile --deploy`
 4. 在Weasel控制面板中选择`tiger_sha1_weasel`
 
-若要加减词，请编辑`custom/`中的`.zh.tsv`中文词典或`.en.tsv`英文词典，然后执行`uv run src/main.py --compile --deploy`。不需要手动整理附加词典，脚本会先按单文件排序并写回，这个排序只用于让加词文件便于阅读，不决定同码候选顺序。基础虎码单字、手动中文附加词和自动中文加词会按编码分组合并，同码候选依次拼接，再按首次出现顺序去重，且每个编码最多保留前5个候选。自动中文加词来自`wordfreq`中文词频。英文附加词文件按`demotion_count`和`aAbBcC...zZ`逐位词面顺序排序；`demotion_count`用于插入基础英文词对应降权分组的首部。`custom/`中以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略
+若要加减词，请编辑`custom/`中的`.zh.tsv`中文词典或`.en.tsv`英文词典，然后执行`uv run src/main.py --compile --deploy`，不需要手动整理附加词典。每个编码最多保留前5个中文候选，英文不限。`custom/`中以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略
 
 若要让不在《通用规范汉字表（2013）》中的单字参与中文和拼音词典生成，请把单字逐行写入`custom/char.unfilter.txt`。若要覆盖基础虎码单字编码，请编辑`custom/char.recode.tsv`，表头固定为`code<TAB>text`，且`code`和`text`都不能重复。改码表只处理基础单字，不用于添加词组
 

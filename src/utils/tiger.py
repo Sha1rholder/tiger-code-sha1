@@ -3,7 +3,9 @@ from wordfreq import get_frequency_dict
 from utils.types import Code, Freq, Text
 
 AUTO_ZH_ADD_LIMIT = 5
-MIN_ZH_FREQUENCY = Freq(0.000001)  # 值改为0.000001后进程有概率崩溃，性能也极大下降，目前不知道怎么修（越低越容易崩）
+MIN_ZH_FREQUENCY = Freq(
+	0.000001
+)  # 值改为0.000001后进程有概率崩溃，性能也极大下降，目前不知道怎么修（越低越容易崩）
 
 
 def build_zh_outputs(
@@ -134,16 +136,11 @@ def drop_containing_words(
 ) -> list[tuple[Text, Freq]]:
 	"""丢弃包含其它候选词的中文词频条目"""
 	words = [entry[0] for entry in entries]
-	return [entry for entry in entries if not has_containing_word(entry[0], words)]
-
-
-def has_containing_word(word: Text, words: list[Text]) -> bool:
-	"""判断词语是否包含其它更短候选词"""
-	for other in words:
-		if len(other) < len(word) and other in word:
-			return True
-
-	return False
+	return [
+		entry
+		for entry in entries
+		if not any(len(other) < len(entry[0]) and other in entry[0] for other in words)
+	]
 
 
 def get_auto_zh_add_dict(
@@ -243,5 +240,5 @@ def validate_zh_recodes(
 
 
 def sort_zh_add(rows: list[tuple[Code, Text]]) -> list[tuple[Code, Text]]:
-	"""返回按编码长度和字母顺序稳定排序后的附加词条(code, text)列表"""
-	return sorted(rows, key=lambda item: (len(item[0]), item[0].lower()))
+	"""返回按code字母顺序稳定排序后的附加词条(code, text)列表"""
+	return sorted(rows, key=lambda item: item[0].lower())

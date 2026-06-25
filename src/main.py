@@ -38,7 +38,7 @@ def main(*, debug: bool = False) -> None:
 	"""更新中文、拼音和英文词典并按需写出调试文件"""
 	global _last_print_time
 
-	print("Now doing loading SC2013 character set.", flush=True)
+	print("Loading SC2013 character set.", flush=True)
 	_last_print_time = time.perf_counter()
 	sc2013_set = get_sc2013(
 		[
