@@ -34,7 +34,7 @@ Rime/
 │	├ *.zh.tsv					# 自定义中文词典
 │	└ *.en.tsv					# 自定义英文词典
 ├ lua/
-│	├ commit_raw_symbol.lua		# 有buffer时符号键直接提交ASCII
+│	├ commit_raw_symbol.lua		# buffer符号直出和数组符号连按
 │	├ en_weight_translate.lua	# 英文候选按词典顺序惰性产出
 │	└ en_dict.txt				# 英文词典（机器生成）
 ├ src/
