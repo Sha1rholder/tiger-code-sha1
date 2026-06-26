@@ -4,6 +4,8 @@
 
 不带参数执行`uv run src/main.py`会显示帮助并退出，不会编译词典、部署Weasel或同步git。`--compile`用于编译词典，`--debug`会隐式启用`--compile`并写出审查文件，`--deploy`只重新部署Weasel，不会编译词典。需要更新词典并部署时执行`uv run src/main.py --compile --deploy`
 
+`lua/commit_raw_symbol.lua`是主方案的Lua processor，位于`punctuator`之前。它处理两类符号键：有英文buffer时直接提交`buffer+ASCII符号`；当前符号候选来自`half_shape`数组首选时，连按同一符号提交硬编码目标，普通符号提交ASCII，`'`和`"`分别提交`’`和`”`
+
 词典编译主流程执行顺序：
 
 1. 读取`upstream/SC2013/level-1.txt`、`level-2.txt`、`level-3.txt`和`custom/char.unfilter.txt`，交给`main.py`合并为`set[str]`
