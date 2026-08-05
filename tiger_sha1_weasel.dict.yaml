@@ -6,6 +6,6 @@ columns:
   - code
   - text
 import_tables:
-  - alphabet
   - tiger_sha1_zh
+  - tiger_sha1_en
 ...

@@ -111,21 +111,18 @@ ESDB读入为`set[Text]`后扩增大小写形式：若词面全小写，则加�
 
 ## 英文基础词大小写重排
 
-英文附加词和基础英文词按降权次数合并后，会按最终输出顺序拆成基础词、首字母大写词、前两字母大写词三组，再拼接写入`lua/en_dict.txt`：
+英文附加词和基础英文词按降权次数合并后，会按最终输出顺序拆成基础词、首字母大写词、前两字母大写词三组，再拼接写入`src/words/en.tsv`：
 
 - 基础词保留在最前
 - 首字母大写词排在基础词之后
 - 首字母和第二个字母都大写的词排在最后
 - 每组内部保持合并后的原始相对顺序
 
-`lua/en_dict.txt`是一行一词的纯文本文件，Lua translator按该文件顺序惰性产出英文候选。若执行`uv run src/main.py --debug`，脚本会隐式编译词典，并额外输出`temp/en_add.tsv`和`temp/en_dict.tsv`用于审查英文附加词和英文排序指标
-
 ## 编译产物
 
 - `tiger_sha1_weasel.dict.yaml`：主方案词典壳，导入`alphabet`和`tiger_sha1_zh`
 - `tiger_sha1_zh.dict.yaml`：中文基础词典
 - `tiger_sha1_py.dict.yaml`：拼音反查词典
-- `lua/en_dict.txt`：英文词典
 - `temp/zh_dict.tsv`：只包含简体中文单字的基础虎码词典TSV
 - `temp/zh_add.tsv`：手动中文附加词后接自动中文加词的合并TSV
 - `temp/en_add.tsv`：合并排序后的英文附加词和`demotion_count`

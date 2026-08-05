@@ -15,5 +15,7 @@ __pycache__/
 /custom/.*
 /lua/en_dict.txt
 /tiger_sha1_zh.dict.yaml
+/tiger_sha1_en.dict.yaml
 /tiger_sha1_py.dict.yaml
-/src/words/
+/src/wordfreq/en.tsv
+/src/wordfreq/zh.tsv

@@ -21,11 +21,11 @@
 ```text
 Rime/
 ├ tiger_sha1_weasel.schema.yaml	# 主输入方案
-├ tiger_sha1_weasel.dict.yaml	# 主方案词典壳，导入alphabet和tiger_sha1_zh
+├ tiger_sha1_weasel.dict.yaml	# 主方案词典壳
 ├ tiger_sha1_zh.dict.yaml		# 中文基础词典（机器生成）
+├ tiger_sha1_en.dict.yaml		# 英文基础词典（机器生成）
 ├ tiger_sha1_py.schema.yaml		# 拼音反查伪方案
 ├ tiger_sha1_py.dict.yaml		# 拼音反查词典（机器生成）
-├ alphabet.dict.yaml			# 大写字母表
 ├ symbols.yaml					# 符号表
 ├ weasel.custom.yaml			# 小狼毫界面定制
 ├ custom/
@@ -34,19 +34,8 @@ Rime/
 │	├ *.zh.tsv					# 自定义中文词典
 │	└ *.en.tsv					# 自定义英文词典
 ├ lua/
-│	├ commit_raw_symbol.lua		# buffer符号直出和数组符号连按
-│	├ en_weight_translate.lua	# 英文候选按词典顺序惰性产出
-│	└ en_dict.txt				# 英文词典（机器生成）
-├ src/
-│	├ main.py					# 读取源数据、解析格式、调用utils入口、写出词典、部署、同步
-│	├ words.py					# 导出wordfreq词频数据
-│	├ words/					# 中英文词频TSV（机器生成）
-│	├ README.md					# 开发文档
-│	└ utils/
-│		├ types.py				# 类型定义
-│		├ en.py					# 英文词典生成器和英文数据编排入口
-│		├ py_sc.py				# 拼音反查生成器
-│		└ tiger.py				# 中文词典生成器和中文数据编排入口
+│	└ commit_raw_symbol.lua		# buffer符号直出和数组符号连按
+├ src/							# 词表编排代码
 └ upstream/
 	├ ESDB.txt					# English Speller Database
 	├ tiger/					# 虎码原始数据
@@ -63,25 +52,12 @@ Rime/
 	- [Astral uv](https://docs.astral.sh/uv/)
 	- [Noto Sans SC字体](https://fonts.google.com/noto/specimen/Noto+Sans+SC)
 2. 终止Weasel程序并清空用户文件夹
-3. 执行`git clone --depth=1 https://github.com/Sha1rholder/tiger-code-sha1.git "$env:APPDATA\Rime"; uv run "$env:APPDATA\Rime\src\main.py" --compile --deploy`
+3. 执行`git clone --depth=1 https://github.com/Sha1rholder/tiger-code-sha1.git "$env:APPDATA\Rime"; cd "$env:APPDATA\Rime\src\wordfreq\"; uv run main.py; cd ""$env:APPDATA\Rime\"; cargo run src\main.rs`
 4. 在Weasel控制面板中选择`tiger_sha1_weasel`
 
-若要加减词，请编辑`custom/`中的`.zh.tsv`中文词典或`.en.tsv`英文词典，然后执行`uv run src/main.py --compile --deploy`，不需要手动整理附加词典。每个编码最多保留前5个中文候选，英文不限。`custom/`中以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略
+若要加减词，请编辑`custom/`中的`.zh.tsv`中文词典或`.en.tsv`英文词典，然后执行`cargo run src\main.rs`，不需要手动整理附加词典。每个编码最多保留前5个中文候选，英文不限。`custom/`中以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略
 
 若要让不在《通用规范汉字表（2013）》中的单字参与中文和拼音词典生成，请把单字逐行写入`custom/char.unfilter.txt`。若要覆盖基础虎码单字编码，请编辑`custom/char.recode.tsv`，表头固定为`code<TAB>text`，且`code`和`text`都不能重复。改码表只处理基础单字，不用于添加词组
-
-## 开发
-
-实现细节见`src/README.md`
-
-执行`uv run src/words.py`可将`wordfreq`中英文词频数据导出到`src/words/`，生成`zh.tsv`和`en.tsv`供Rust词典生成器读取。TSV按`wordfreq`原始迭代顺序记录`word`和`frequency`
-
-`src/main.py`可用参数：
-- 不带参数：显示帮助并退出
-- `--compile`：更新并编译词典
-- `--deploy`：重新部署Weasel
-- `--debug`：隐式执行`--compile`，并额外在`temp/`中输出`zh_dict.tsv`、`zh_add.tsv`、`en_add.tsv`、`en_dict.tsv`供审查中间词典
-- `--sync`：自动执行`git add .`、`git commit`、`git push`以同步到上游（仅在main分支触发push）
 
 ## 致谢
 
