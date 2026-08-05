@@ -25,6 +25,7 @@ switches:
 
 engine:
   processors:
+    # - lua_processor@*ascii_enhance_processor
     - ascii_composer
     - lua_processor@*commit_raw_symbol
     - recognizer

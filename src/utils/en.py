@@ -104,7 +104,7 @@ def get_base_ranked_entries(
 		if (
 			word.isascii()
 			and word.isalpha()
-			and len(word) >= 3
+			and len(word) >= 2
 			and word.lower() in en_freq
 		)
 	]
