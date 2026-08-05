@@ -2,6 +2,8 @@
 
 `src/main.py`负责所有项目文件读写、Rime/TSV/TXT格式解析和CLI流程，`src/utils/`中的模块只处理已经读入的结构化数据。中文和英文的排序、过滤、合并编排分别由`utils/tiger.py`和`utils/en.py`的单一入口函数完成。CLI在编译词典时会打印阶段信息和距离上一条阶段日志的耗时，便于定位当前正在处理的任务
 
+`uv run src/words.py`将`wordfreq`中英文词频数据导出到`src/words/`，供Rust重写版本读取。`zh.tsv`和`en.tsv`按`wordfreq`原始迭代顺序记录`word<TAB>frequency`，频率使用17位有效数字保证双精度浮点往返一致
+
 不带参数执行`uv run src/main.py`会显示帮助并退出，不会编译词典、部署Weasel或同步git。`--compile`用于编译词典，`--debug`会隐式启用`--compile`并写出审查文件，`--deploy`只重新部署Weasel，不会编译词典。需要更新词典并部署时执行`uv run src/main.py --compile --deploy`
 
 `lua/commit_raw_symbol.lua`是主方案的Lua processor，位于`punctuator`之前。它处理两类符号键：有英文buffer时直接提交`buffer+ASCII符号`；当前符号候选来自`half_shape`数组首选时，连按同一符号提交硬编码目标，普通符号提交ASCII，`'`和`"`分别提交`’`和`”`

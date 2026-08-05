@@ -39,6 +39,8 @@ Rime/
 │	└ en_dict.txt				# 英文词典（机器生成）
 ├ src/
 │	├ main.py					# 读取源数据、解析格式、调用utils入口、写出词典、部署、同步
+│	├ words.py					# 导出wordfreq词频数据
+│	├ words/					# 中英文词频TSV（机器生成）
 │	├ README.md					# 开发文档
 │	└ utils/
 │		├ types.py				# 类型定义
@@ -71,6 +73,8 @@ Rime/
 ## 开发
 
 实现细节见`src/README.md`
+
+执行`uv run src/words.py`可将`wordfreq`中英文词频数据导出到`src/words/`，生成`zh.tsv`和`en.tsv`供Rust词典生成器读取。TSV按`wordfreq`原始迭代顺序记录`word`和`frequency`
 
 `src/main.py`可用参数：
 - 不带参数：显示帮助并退出

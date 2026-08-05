@@ -5,6 +5,7 @@ temp*
 __pycache__/
 .ruff_cache/
 
+/sync/
 /build/
 /luna_pinyin.userdb/
 /installation.yaml
@@ -15,3 +16,4 @@ __pycache__/
 /lua/en_dict.txt
 /tiger_sha1_zh.dict.yaml
 /tiger_sha1_py.dict.yaml
+/src/words/
