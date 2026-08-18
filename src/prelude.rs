@@ -8,13 +8,6 @@ impl From<String> for Text {
 		Self(value)
 	}
 }
-impl Text {
-	/// 返回文本是否只包含一个Unicode字符
-	pub(crate) fn is_single_char(&self) -> bool {
-		let mut chars = self.0.chars();
-		chars.next().is_some() && chars.next().is_none()
-	}
-}
 
 /// 编码
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

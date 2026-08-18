@@ -1,10 +1,13 @@
+# personal
 hqywygd
 
+# regular
 chatgpt
 ChatGPT
 bonjour
 Bonjour
 
+# Hacker
 gitattributes
 github
 gitignore
