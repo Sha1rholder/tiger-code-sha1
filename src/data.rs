@@ -22,6 +22,23 @@ fn parse_target(path: impl AsRef<Path>) -> Vec<String> {
 		.collect()
 }
 
+/// 合法中文字符表
+static SC2013: LazyLock<HashSet<Text>> = LazyLock::new(|| {
+	parse_target("src/data/SC2013/level-1.txt")
+		.into_iter()
+		.chain(parse_target("src/data/SC2013/level-2.txt"))
+		.chain(parse_target("src/data/SC2013/level-3.txt"))
+		.chain(parse_target("src/data/SC2013/custom.txt"))
+		.map(Text::from)
+		.collect()
+});
+
+/// 判断文本是否含有SC2013之外的字符
+fn contains_non_sc2013_char(text: &str, sc2013: &HashSet<Text>) -> bool {
+	text.chars()
+		.any(|character| !sc2013.contains(&Text::from(character.to_string())))
+}
+
 /// 过滤并选择每个字符使用的虎码，同时保留字符首次插入的顺序
 fn build_tiger_chars_raw(
 	mut tiger: Vec<(Code, Text, Weight)>,
@@ -179,40 +196,47 @@ pub static ESDB: LazyLock<HashSet<Text>> = LazyLock::new(|| {
 		.collect()
 });
 
-/// 拼音、汉字和权重
-pub static ZH_PY: LazyLock<HashSet<(Code, Text, Weight)>> = LazyLock::new(|| {
-	parse_target("src/data/py/py.tsv")
-		.into_iter()
-		.skip(1)
-		.map(|line| {
-			let mut fields = line.split('\t');
-			let text = fields.next().expect("missing text field");
-			let code = fields.next().expect("missing code field");
-			let weight = fields
-				.next()
-				.expect("missing weight field")
-				.parse()
-				.expect("invalid weight field");
+/// 按权重降序排列的拼音和汉字
+pub static ZH_PY: LazyLock<Vec<(Code, Text)>> = LazyLock::new(|| {
+	let path = "src/data/py/py.tsv";
+	let mut weighted_entries = HashMap::new();
 
-			(
-				Code::from(code.to_owned()),
-				Text::from(text.to_owned()),
-				Weight::from(weight),
-			)
-		})
+	for line in parse_target(path).into_iter().skip(1) {
+		let mut fields = line.split('\t');
+		let text = fields.next().expect("missing text field");
+		let code = fields.next().expect("missing code field");
+		let weight = fields
+			.next()
+			.expect("missing weight field")
+			.parse()
+			.expect("invalid weight field");
+
+		if contains_non_sc2013_char(text, &SC2013) {
+			continue;
+		}
+
+		let entry = (Code::from(code.to_owned()), Text::from(text.to_owned()));
+		let previous = weighted_entries.insert(entry, Weight::from(weight));
+		assert!(
+			previous.is_none(),
+			"duplicate code and text in {path}: {code}\t{text}"
+		);
+	}
+
+	let mut weighted_entries = weighted_entries
+		.into_iter()
+		.map(|((code, text), weight)| (code, text, weight))
+		.collect::<Vec<_>>();
+	weighted_entries.sort_by_key(|(_, _, weight)| Reverse(*weight));
+
+	weighted_entries
+		.into_iter()
+		.map(|(code, text, _)| (code, text))
 		.collect()
 });
 
 /// 虎码字符表
 pub static TIGER_CHARS: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
-	// 合并SC2013字符表
-	let sc2013 = parse_target("src/data/SC2013/level-1.txt")
-		.into_iter()
-		.chain(parse_target("src/data/SC2013/level-2.txt"))
-		.chain(parse_target("src/data/SC2013/level-3.txt"))
-		.chain(parse_target("src/data/SC2013/custom.txt"))
-		.map(Text::from)
-		.collect::<HashSet<_>>();
 	// 读取原始虎码元组
 	let tiger = parse_target("src/data/zh/tiger.tsv")
 		.into_iter()
@@ -235,14 +259,13 @@ pub static TIGER_CHARS: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 		})
 		.collect();
 	// 生成有序的单字编码表
-	let mut tiger_chars_raw = build_tiger_chars_raw(tiger, &sc2013);
-	// 断言字符集合完整覆盖SC2013
-	let tiger_keys = tiger_chars_raw.keys().collect::<HashSet<_>>();
-	let sc2013_keys = sc2013.iter().collect::<HashSet<_>>();
-	assert_eq!(tiger_keys, sc2013_keys, "tiger raw keys must equal SC2013");
-	// 断言后释放SC2013
-	drop(sc2013);
-
+	let mut tiger_chars_raw = build_tiger_chars_raw(tiger, &SC2013);
+	{
+		// 断言字符集合完整覆盖SC2013
+		let tiger_keys = tiger_chars_raw.keys().collect::<HashSet<_>>();
+		let sc2013_keys = SC2013.iter().collect::<HashSet<_>>();
+		assert_eq!(tiger_keys, sc2013_keys, "tiger raw keys must equal SC2013");
+	}
 	// 读取Text到Code的重编码表
 	let tiger_recode = parse_target("src/data/zh/recode.tsv")
 		.into_iter()
@@ -285,12 +308,6 @@ pub static ZH_FREQ: LazyLock<HashMap<Text, Freq>> = LazyLock::new(|| {
 	let path = "src/data/wordfreq/zh.tsv";
 	let mut seen = HashSet::new();
 	let mut frequencies = HashMap::new();
-	// 从TIGER_CHARS提取合法字符
-	let allowed_chars = TIGER_CHARS
-		.values()
-		.flatten()
-		.cloned()
-		.collect::<HashSet<_>>();
 
 	// 读取并过滤中文词频
 	for line in parse_target(path).into_iter().skip(1) {
@@ -305,11 +322,7 @@ pub static ZH_FREQ: LazyLock<HashMap<Text, Freq>> = LazyLock::new(|| {
 			panic!("duplicate text in {path}: {text}");
 		}
 		// 丢弃单字和包含非法字符的词
-		if text.chars().count() == 1
-			|| text
-				.chars()
-				.any(|character| !allowed_chars.contains(&Text::from(character.to_string())))
-		{
+		if text.chars().count() == 1 || contains_non_sc2013_char(text, &SC2013) {
 			continue;
 		}
 
@@ -317,7 +330,10 @@ pub static ZH_FREQ: LazyLock<HashMap<Text, Freq>> = LazyLock::new(|| {
 	}
 
 	// 临时借用全部合法键
-	let texts = frequencies.keys().map(String::as_str).collect::<HashSet<_>>();
+	let texts = frequencies
+		.keys()
+		.map(String::as_str)
+		.collect::<HashSet<_>>();
 	// 找出包含任意其它键的键
 	let contained_texts = texts
 		.iter()
@@ -475,19 +491,12 @@ mod tests {
 	/// 验证真实虎码字符表覆盖SC2013并应用全部重编码
 	#[test]
 	fn tiger_chars_cover_sc2013_and_apply_recode() {
-		let sc2013 = parse_target("src/data/SC2013/level-1.txt")
-			.into_iter()
-			.chain(parse_target("src/data/SC2013/level-2.txt"))
-			.chain(parse_target("src/data/SC2013/level-3.txt"))
-			.chain(parse_target("src/data/SC2013/custom.txt"))
-			.map(Text::from)
-			.collect::<HashSet<_>>();
 		let tiger_texts = TIGER_CHARS.values().flatten().collect::<HashSet<_>>();
 		let tiger_text_count = TIGER_CHARS.values().map(Vec::len).sum::<usize>();
 
-		assert_eq!(tiger_text_count, sc2013.len());
-		assert_eq!(tiger_texts.len(), sc2013.len());
-		assert!(sc2013.iter().all(|text| tiger_texts.contains(text)));
+		assert_eq!(tiger_text_count, SC2013.len());
+		assert_eq!(tiger_texts.len(), SC2013.len());
+		assert!(SC2013.iter().all(|text| tiger_texts.contains(text)));
 
 		for line in parse_target("src/data/zh/recode.tsv").into_iter().skip(1) {
 			let mut fields = line.split('\t');
