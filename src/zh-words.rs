@@ -3,12 +3,13 @@ use crate::{Code, Freq, Text};
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-type CompletionWeight = Freq;
-type CompletionText = Text;
-type FirstText = Text;
-type OriginalText = Text;
+type CompletionWeight = Freq; // 补全加权词频
+type CompletionText = Text; // 补全部
+type FirstText = Text; // 首字
+type OriginalText = Text; // 原词
 
 const CANDIDATES: usize = 5;
+const MAX_CANDIDATES: usize = 9;
 
 /// 反转虎码字符表并断言每个字符只有一个编码
 fn build_char_codes(tiger_chars: &HashMap<Code, Vec<Text>>) -> HashMap<Text, Code> {
@@ -65,7 +66,7 @@ fn join_text(first: &FirstText, completion: &CompletionText) -> OriginalText {
 	OriginalText::from(original)
 }
 
-/// 按补全权重生成每个编码的自动词
+/// 按补全加权词频生成每个编码的自动词
 fn build_automatic_words(
 	zh_freq: &HashMap<Text, Freq>,
 	tiger_chars: &HashMap<Code, Vec<Text>>,
@@ -73,7 +74,7 @@ fn build_automatic_words(
 	let char_codes = build_char_codes(tiger_chars);
 	let mut completions = HashMap::<FirstText, HashMap<CompletionText, CompletionWeight>>::new();
 
-	// 按首字收集补全部和补全权重
+	// 按首字收集补全部和补全加权词频
 	for (original, freq) in zh_freq {
 		let (first, completion) = split_original_text(original);
 		let code_len = completion_code_len(&completion, &char_codes);
@@ -107,7 +108,7 @@ fn build_automatic_words(
 		}
 	}
 
-	// 按补全权重不稳定降序
+	// 按补全加权词频不稳定降序
 	weighted_words
 		.into_iter()
 		.map(|(code, words)| {
@@ -119,7 +120,7 @@ fn build_automatic_words(
 		.collect()
 }
 
-/// 合并字符、自定义词和自动词并限制候选数
+/// 合并字符和自定义词并用自动词补位
 fn merge_zh_words(
 	tiger_chars: &HashMap<Code, Vec<Text>>,
 	zh_custom: &HashMap<Code, Vec<Text>>,
@@ -141,14 +142,18 @@ fn merge_zh_words(
 			.or_default()
 			.extend(texts.iter().cloned());
 	}
-	// 最后加入自动词
-	for (code, texts) in automatic_words {
-		zh_words.entry(code).or_default().extend(texts);
-	}
 
-	// 每个Code只保留前CANDIDATES项
-	for texts in zh_words.values_mut() {
-		texts.truncate(CANDIDATES);
+	// 基础候选不能超过候选页容量
+	assert!(
+		zh_words.values().all(|texts| texts.len() <= MAX_CANDIDATES),
+		"base Chinese candidates must not exceed MAX_CANDIDATES"
+	);
+
+	// 最后用自动词补足候选
+	for (code, texts) in automatic_words {
+		let words = zh_words.entry(code).or_default();
+		let available = CANDIDATES.saturating_sub(words.len());
+		words.extend(texts.into_iter().take(available));
 	}
 
 	zh_words
@@ -156,7 +161,7 @@ fn merge_zh_words(
 
 /// 中文候选词
 pub static ZH_WORDS: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
-	// 生成按补全权重排序的自动词
+	// 生成按补全加权词频排序的自动词
 	let automatic_words = build_automatic_words(&ZH_FREQ, &TIGER_CHARS);
 	// 按优先级合并全部中文候选
 	merge_zh_words(&TIGER_CHARS, &ZH_CUSTOM, automatic_words)
@@ -193,7 +198,7 @@ mod tests {
 		}
 	}
 
-	/// 验证补全权重由词频和补全码长共同决定
+	/// 验证补全加权词频由词频和补全码长共同决定
 	#[test]
 	fn automatic_words_sort_by_completion_weight() {
 		let tiger_chars = HashMap::from([
@@ -211,17 +216,20 @@ mod tests {
 		);
 	}
 
-	/// 验证三路候选顺序、重复保留和截断
+	/// 验证基础候选优先并按剩余数量补充自动词
 	#[test]
 	fn merged_words_preserve_priority_and_duplicates() {
-		let tiger_chars = HashMap::from([(code("x"), vec![text("甲"), text("乙")])]);
+		let tiger_chars = HashMap::from([
+			(code("x"), vec![text("甲"), text("乙")]),
+			(code("y"), vec![text("一"), text("二"), text("三")]),
+		]);
 		let zh_custom = HashMap::from([
 			(code("x"), vec![text("乙"), text("丙")]),
-			(code("y"), vec![text("自定义")]),
+			(code("y"), vec![text("四"), text("五"), text("六")]),
 		]);
 		let automatic_words = HashMap::from([
 			(code("x"), vec![text("丁"), text("戊"), text("己")]),
-			(code("z"), vec![text("自动")]),
+			(code("y"), vec![text("自动")]),
 		]);
 
 		let zh_words = merge_zh_words(&tiger_chars, &zh_custom, automatic_words);
@@ -236,8 +244,33 @@ mod tests {
 				text("丁"),
 			])
 		);
-		assert_eq!(zh_words.get(&code("y")), Some(&vec![text("自定义")]));
-		assert_eq!(zh_words.get(&code("z")), Some(&vec![text("自动")]));
+		assert_eq!(
+			zh_words.get(&code("y")),
+			Some(&vec![
+				text("一"),
+				text("二"),
+				text("三"),
+				text("四"),
+				text("五"),
+				text("六"),
+			])
+		);
+	}
+
+	/// 验证基础候选不能超过候选页容量
+	#[test]
+	#[should_panic(expected = "base Chinese candidates must not exceed MAX_CANDIDATES")]
+	fn excessive_base_candidates_are_rejected() {
+		let tiger_chars = HashMap::from([(
+			code("x"),
+			vec![text("一"), text("二"), text("三"), text("四"), text("五")],
+		)]);
+		let zh_custom = HashMap::from([(
+			code("x"),
+			vec![text("六"), text("七"), text("八"), text("九"), text("十")],
+		)]);
+
+		let _ = merge_zh_words(&tiger_chars, &zh_custom, HashMap::new());
 	}
 
 	/// 验证虎码字符不能映射到多个编码
@@ -272,6 +305,6 @@ mod tests {
 
 		assert_eq!(actual_codes, expected_codes);
 		assert!(ZH_WORDS.values().all(|texts| !texts.is_empty()));
-		assert!(ZH_WORDS.values().all(|texts| texts.len() <= CANDIDATES));
+		assert!(ZH_WORDS.values().all(|texts| texts.len() <= MAX_CANDIDATES));
 	}
 }
