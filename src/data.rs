@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use std::collections::BTreeSet;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
@@ -81,7 +82,7 @@ pub static ZH_PY: LazyLock<HashSet<(Code, Text, Weight)>> = LazyLock::new(|| {
 });
 
 /// 虎码
-pub static TIGER: LazyLock<HashSet<(Code, Text, Weight)>> = LazyLock::new(|| {
+pub static TIGER: LazyLock<Vec<(Code, Text, Weight)>> = LazyLock::new(|| {
 	parse_target("src/data/zh/tiger.tsv")
 		.into_iter()
 		.skip(1)
@@ -105,14 +106,14 @@ pub static TIGER: LazyLock<HashSet<(Code, Text, Weight)>> = LazyLock::new(|| {
 });
 
 /// 自定义编码
-pub static ZH_CUSTOM: LazyLock<BTreeSet<(Code, Text)>> = LazyLock::new(|| {
+pub static ZH_CUSTOM: LazyLock<Vec<(Code, Text)>> = LazyLock::new(|| {
 	parse_target("src/data/zh/custom.tsv")
 		.into_iter()
 		.skip(1)
 		.map(|line| {
 			let mut fields = line.split('\t');
-			let text = fields.next().expect("missing text field");
 			let code = fields.next().expect("missing code field");
+			let text = fields.next().expect("missing text field");
 
 			(Code::from(code.to_owned()), Text::from(text.to_owned()))
 		})
@@ -120,54 +121,77 @@ pub static ZH_CUSTOM: LazyLock<BTreeSet<(Code, Text)>> = LazyLock::new(|| {
 });
 
 /// 重编码
-pub static ZH_RECODE: LazyLock<HashSet<(Code, Text)>> = LazyLock::new(|| {
-	parse_target("src/data/zh/tiger.tsv")
+pub static ZH_RECODE: LazyLock<Vec<(Code, Text)>> = LazyLock::new(|| {
+	parse_target("src/data/zh/recode.tsv")
 		.into_iter()
 		.skip(1)
 		.map(|line| {
 			let mut fields = line.split('\t');
-			let text = fields.next().expect("missing text field");
 			let code = fields.next().expect("missing code field");
+			let text = fields.next().expect("missing text field");
 
 			(Code::from(code.to_owned()), Text::from(text.to_owned()))
 		})
 		.collect()
 });
 
-/// 中文wordfreq
-pub static ZH_FREQ: LazyLock<HashSet<(Text, Freq)>> = LazyLock::new(|| {
-	parse_target("src/data/wordfreq/zh.tsv")
-		.into_iter()
-		.skip(1)
-		.map(|line| {
-			let mut fields = line.split('\t');
-			let text = fields.next().expect("missing text field");
-			let freq = fields.next().expect("missing freq field");
+/// 合法中文wordfreq
+pub static ZH_FREQ: LazyLock<HashMap<Text, Freq>> = LazyLock::new(|| {
+	let path = "src/data/wordfreq/zh.tsv";
+	let mut seen = HashSet::new();
+	let mut frequencies = HashMap::new();
 
-			(
-				Text::from(text.to_owned()),
-				Freq::from(freq.parse().expect("invalid freq field")),
-			)
-		})
-		.collect()
+	for line in parse_target(path).into_iter().skip(1) {
+		let mut fields = line.split('\t');
+		let text = fields.next().expect("missing text field");
+		let freq = fields.next().expect("missing freq field");
+		let freq = Freq::from(freq.parse().expect("invalid freq field"));
+		let parsed_text = Text::from(text.to_owned());
+
+		if !seen.insert(parsed_text.clone()) {
+			panic!("duplicate text in {path}: {text}");
+		}
+		if text.chars().count() == 1
+			|| text
+				.chars()
+				.any(|character| !SC2013.contains(&Text::from(character.to_string())))
+		{
+			continue;
+		}
+
+		let _ = frequencies.insert(parsed_text, freq);
+	}
+
+	frequencies
 });
 
-/// 英文wordfreq
-pub static EN_FREQ: LazyLock<HashSet<(Text, Freq)>> = LazyLock::new(|| {
-	parse_target("src/data/wordfreq/en.tsv")
-		.into_iter()
-		.skip(1)
-		.map(|line| {
-			let mut fields = line.split('\t');
-			let text = fields.next().expect("missing text field");
-			let freq = fields.next().expect("missing freq field");
+/// 合法英文wordfreq
+pub static EN_FREQ: LazyLock<HashMap<Text, Freq>> = LazyLock::new(|| {
+	let path = "src/data/wordfreq/en.tsv";
+	let mut seen = HashSet::new();
+	let mut frequencies = HashMap::new();
 
-			(
-				Text::from(text.to_owned()),
-				Freq::from(freq.parse().expect("invalid freq field")),
-			)
-		})
-		.collect()
+	for line in parse_target(path).into_iter().skip(1) {
+		let mut fields = line.split('\t');
+		let text = fields.next().expect("missing text field");
+		let freq = fields.next().expect("missing freq field");
+		let freq = Freq::from(freq.parse().expect("invalid freq field"));
+		let parsed_text = Text::from(text.to_owned());
+
+		if !seen.insert(parsed_text.clone()) {
+			panic!("duplicate text in {path}: {text}");
+		}
+		if text
+			.chars()
+			.any(|character| !character.is_ascii_alphabetic() && character != '\'')
+		{
+			continue;
+		}
+
+		let _ = frequencies.insert(parsed_text, freq);
+	}
+
+	frequencies
 });
 
 #[cfg(test)]
