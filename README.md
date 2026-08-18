@@ -12,8 +12,8 @@
 - **拼音反查**：通过`|`前缀触发拼音反查功能
 - **简化字表**：默认仅收录国标简体字，每个字仅保留一个编码
 - **中文词组**：基于词频自动补充常用词组，并支持手动加词
-- **英文词典**：基于词频和标准拼写库自动生成稳定英文词典，并支持英文附加词按降权次数插入
-- **更多符号**：全角模式自带一些常用特殊符号和emoji
+- **英文词典**：基于词频和标准拼写库自动生成稳定英文词典
+- **更多符号**：全角模式自带常用特殊符号和emoji
 - **自动整理**：脚本化更新词典、整理附加词、部署和同步
 
 ## 文件结构
@@ -21,27 +21,14 @@
 ```text
 Rime/
 ├ tiger_sha1_weasel.schema.yaml	# 主输入方案
-├ tiger_sha1_weasel.dict.yaml	# 主方案词典壳
-├ tiger_sha1_zh.dict.yaml		# 中文基础词典（机器生成）
-├ tiger_sha1_en.dict.yaml		# 英文基础词典（机器生成）
+├ tiger_sha1_weasel.dict.yaml	# 中文词典（机器生成）
 ├ tiger_sha1_py.schema.yaml		# 拼音反查伪方案
 ├ tiger_sha1_py.dict.yaml		# 拼音反查词典（机器生成）
 ├ symbols.yaml					# 符号表
 ├ weasel.custom.yaml			# 小狼毫界面定制
-├ custom/
-│	├ char.unfilter.txt			# 额外放行单字
-│	├ char.recode.tsv			# 基础单字改码表
-│	├ *.zh.tsv					# 自定义中文词典
-│	└ *.en.tsv					# 自定义英文词典
 ├ lua/
 │	└ commit_raw_symbol.lua		# buffer符号直出和数组符号连按
-├ src/							# 词表编排代码
-└ upstream/
-	├ ESDB.txt					# English Speller Database
-	├ tiger/					# 虎码原始数据
-	│	├ tiger.dict.yaml		# 秃版虎码字表
-	│	└ PY_c.dict.yaml		# 秃版拼音表
-	└ SC2013/					# 通用规范汉字表
+└ src/							# 词表编排代码
 ```
 
 ## 使用方法
@@ -50,14 +37,11 @@ Rime/
 	- [Weasel小狼毫](https://rime.im/)（请使用默认路径）
 	- [Git](https://git-scm.com/)
 	- [Astral uv](https://docs.astral.sh/uv/)
+	- [Rust工具链](https://rust-lang.org)
 	- [Noto Sans SC字体](https://fonts.google.com/noto/specimen/Noto+Sans+SC)
 2. 终止Weasel程序并清空用户文件夹
-3. 执行`git clone --depth=1 https://github.com/Sha1rholder/tiger-code-sha1.git "$env:APPDATA\Rime"; cd "$env:APPDATA\Rime\src\wordfreq\"; uv run main.py; cd ""$env:APPDATA\Rime\"; cargo run src\main.rs`
+3. 执行`git clone --depth=1 https://github.com/Sha1rholder/tiger-code-sha1.git "$env:APPDATA/Rime"; cd "$env:APPDATA/Rime/src/data/wordfreq/"; uv run main.py; cd ""$env:APPDATA/Rime/"; cargo run`
 4. 在Weasel控制面板中选择`tiger_sha1_weasel`
-
-若要加减词，请编辑`custom/`中的`.zh.tsv`中文词典或`.en.tsv`英文词典，然后执行`cargo run src\main.rs`，不需要手动整理附加词典。每个编码最多保留前5个中文候选，英文不限。`custom/`中以`-`或`.-`开头的词典会被生成逻辑忽略；以`.`开头的词典会被`.gitignore`忽略
-
-若要让不在《通用规范汉字表（2013）》中的单字参与中文和拼音词典生成，请把单字逐行写入`custom/char.unfilter.txt`。若要覆盖基础虎码单字编码，请编辑`custom/char.recode.tsv`，表头固定为`code<TAB>text`，且`code`和`text`都不能重复。改码表只处理基础单字，不用于添加词组
 
 ## 致谢
 

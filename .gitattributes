@@ -1,4 +1,5 @@
 * text=auto eol=lf
-/uv.lock binary
+uv.lock -diff linguist-generated=true
+Cargo.lock -diff linguist-generated=true
 
-/upstream/* -diff linguist-generated=true
+/src/data/* -diff linguist-generated=true

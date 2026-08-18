@@ -1,6 +1,7 @@
 draft*
 temp*
 
+target/
 .venv/
 __pycache__/
 .ruff_cache/
@@ -12,10 +13,7 @@ __pycache__/
 /user.yaml
 /default.custom.yaml
 
-/custom/.*
-/lua/en_dict.txt
-/tiger_sha1_zh.dict.yaml
-/tiger_sha1_en.dict.yaml
+/tiger_sha1_weasel.dict.yaml
 /tiger_sha1_py.dict.yaml
-/src/wordfreq/en.tsv
-/src/wordfreq/zh.tsv
+/src/data/wordfreq/en.tsv
+/src/data/wordfreq/zh.tsv

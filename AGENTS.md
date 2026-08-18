@@ -1,1 +1,1 @@
-Read `README.md` and `src/README.md` to understand this repo.
+用rust重写某输入法编排工具链
