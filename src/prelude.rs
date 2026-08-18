@@ -8,6 +8,12 @@ impl From<String> for Text {
 		Self(value)
 	}
 }
+impl Text {
+	/// 返回底层字符串切片
+	pub(crate) fn as_str(&self) -> &str {
+		&self.0
+	}
+}
 
 /// 编码
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -28,6 +34,7 @@ impl Code {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Weight(u32);
 impl Weight {
+	/// 从u32创建权重
 	pub fn from(value: u32) -> Self {
 		Self(value)
 	}
@@ -37,8 +44,19 @@ impl Weight {
 #[derive(Clone, Copy, Debug)]
 pub struct Freq(f64);
 impl Freq {
+	/// 从f64创建词频
 	pub fn from(value: f64) -> Self {
 		Self(value)
+	}
+
+	/// 按整数倍缩放词频
+	pub(crate) fn scale(self, factor: usize) -> Self {
+		Self(self.0 * factor as f64)
+	}
+
+	/// 按浮点总序比较词频
+	pub(crate) fn total_cmp(&self, other: &Self) -> std::cmp::Ordering {
+		self.0.total_cmp(&other.0)
 	}
 }
 impl PartialEq for Freq {
