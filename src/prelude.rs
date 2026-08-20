@@ -1,4 +1,5 @@
 use std::hash::{Hash, Hasher};
+use std::ops::AddAssign;
 
 /// 文本
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -45,7 +46,7 @@ impl Weight {
 pub struct Freq(f64);
 impl Freq {
 	/// 从f64创建词频
-	pub fn from(value: f64) -> Self {
+	pub const fn from(value: f64) -> Self {
 		Self(value)
 	}
 
@@ -57,6 +58,12 @@ impl Freq {
 	/// 按浮点总序比较词频
 	pub(crate) fn total_cmp(&self, other: &Self) -> std::cmp::Ordering {
 		self.0.total_cmp(&other.0)
+	}
+}
+impl AddAssign for Freq {
+	/// 累加词频
+	fn add_assign(&mut self, rhs: Self) {
+		self.0 += rhs.0;
 	}
 }
 impl PartialEq for Freq {

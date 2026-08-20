@@ -9,9 +9,6 @@ Bonjour
 
 # Hacker
 gitattributes
-github
 gitignore
-javascript
-Javascript
 readme
 README
