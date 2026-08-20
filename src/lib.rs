@@ -6,3 +6,8 @@ mod sc2013;
 pub mod zh_raw;
 
 pub use prelude::{Code, Freq, Text, Weight};
+
+/// placeholder
+pub fn run() -> Result<(), Box<dyn std::error::Error>> {
+	Ok(())
+}
