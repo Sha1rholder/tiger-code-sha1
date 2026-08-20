@@ -6,6 +6,20 @@ use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
 
+/// 原词
+type OriginalText = Text;
+/// 首字
+type FirstText = Text;
+/// 补全部
+type CompletionText = Text;
+/// 补全加权词频
+type CompletionWeight = Freq;
+
+/// 补全候选项数量
+const CANDIDATES: usize = 5;
+/// 最大补全候选项数量
+const MAX_CANDIDATES: usize = 9;
+
 /// 过滤并选择每个字符使用的虎码，同时保留字符首次插入的顺序
 fn build_tiger_chars_raw(
 	mut tiger: Vec<(Code, Text, Weight)>,
@@ -98,35 +112,8 @@ fn group_texts_by_code(
 	grouped
 }
 
-/// 返回文本是否包含键集合中的其它文本
-fn contains_other_text(text: &str, texts: &HashSet<&str>) -> bool {
-	// 逐字符选择子串起点
-	for (start, _) in text.char_indices() {
-		let suffix = &text[start..];
-
-		// 枚举该起点后的所有字符边界
-		for (relative_end, _) in suffix
-			.char_indices()
-			.skip(1)
-			.chain(std::iter::once((suffix.len(), '\0')))
-		{
-			let end = start + relative_end;
-			// 跳过文本自身
-			if start == 0 && end == text.len() {
-				continue;
-			}
-			// 命中任意其它键后立即返回
-			if texts.contains(&text[start..end]) {
-				return true;
-			}
-		}
-	}
-
-	false
-}
-
 /// 虎码字符表
-pub static TIGER_CHARS: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
+static TIGER_CHARS: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 	// 读取原始虎码元组
 	let tiger = parse_target("src/data/zh/tiger.tsv")
 		.into_iter()
@@ -176,7 +163,7 @@ pub static TIGER_CHARS: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 });
 
 /// 自定义编码
-pub static ZH_CUSTOM: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
+static ZH_CUSTOM: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 	// 读取自定义Code和Text
 	let entries = parse_target("src/data/zh/custom.tsv")
 		.into_iter()
@@ -193,8 +180,35 @@ pub static ZH_CUSTOM: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 	group_texts_by_code(entries)
 });
 
+/// 返回文本是否包含键集合中的其它文本
+fn contains_other_text(text: &str, texts: &HashSet<&str>) -> bool {
+	// 逐字符选择子串起点
+	for (start, _) in text.char_indices() {
+		let suffix = &text[start..];
+
+		// 枚举该起点后的所有字符边界
+		for (relative_end, _) in suffix
+			.char_indices()
+			.skip(1)
+			.chain(std::iter::once((suffix.len(), '\0')))
+		{
+			let end = start + relative_end;
+			// 跳过文本自身
+			if start == 0 && end == text.len() {
+				continue;
+			}
+			// 命中任意其它键后立即返回
+			if texts.contains(&text[start..end]) {
+				return true;
+			}
+		}
+	}
+
+	false
+}
+
 /// 合法中文wordfreq
-pub static ZH_FREQ: LazyLock<HashMap<Text, Freq>> = LazyLock::new(|| {
+static ZH_FREQ: LazyLock<HashMap<Text, Freq>> = LazyLock::new(|| {
 	let path = "src/data/wordfreq/zh.tsv";
 	let mut seen = HashSet::new();
 	let mut frequencies = HashMap::new();
@@ -245,14 +259,6 @@ pub static ZH_FREQ: LazyLock<HashMap<Text, Freq>> = LazyLock::new(|| {
 		.map(|(text, freq)| (Text::from(text), freq))
 		.collect()
 });
-
-type CompletionWeight = Freq; // 补全加权词频
-type CompletionText = Text; // 补全部
-type FirstText = Text; // 首字
-type OriginalText = Text; // 原词
-
-const CANDIDATES: usize = 5;
-const MAX_CANDIDATES: usize = 9;
 
 /// 反转虎码字符表并断言每个字符只有一个编码
 fn build_char_codes(tiger_chars: &HashMap<Code, Vec<Text>>) -> HashMap<Text, Code> {
