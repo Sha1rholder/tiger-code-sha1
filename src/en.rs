@@ -671,6 +671,15 @@ static EN_WORDS: LazyLock<Vec<Text>> = LazyLock::new(|| {
 	merge_en_words(automatic, &EN_FIRST, &EN_LAST)
 });
 
+/// 码长高于MIN_LONG的英文候选词
+static EN_WORDS_LONG: LazyLock<Vec<Text>> = LazyLock::new(|| {
+	EN_WORDS
+		.iter()
+		.filter(|text| text.as_str().len() > MIN_LONG)
+		.cloned()
+		.collect()
+});
+
 /// 用英文词的所有非空前缀构造词典
 fn build_en_dict(words: &[Text]) -> HashMap<Code, Vec<Text>> {
 	let mut dictionary = HashMap::<Code, Vec<Text>>::new();
@@ -687,6 +696,10 @@ fn build_en_dict(words: &[Text]) -> HashMap<Code, Vec<Text>> {
 
 /// 按所有非空前缀码分组的英文词典
 pub static EN_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| build_en_dict(&EN_WORDS));
+
+/// 按所有非空前缀码分组的长英文词典
+pub static EN_DICT_LONG: LazyLock<HashMap<Code, Vec<Text>>> =
+	LazyLock::new(|| build_en_dict(&EN_WORDS_LONG));
 
 #[cfg(test)]
 mod tests {

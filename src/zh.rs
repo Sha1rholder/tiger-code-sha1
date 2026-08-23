@@ -1,5 +1,5 @@
 /// 生成中英混合词典
-use crate::en::EN_DICT;
+use crate::en::EN_DICT_LONG;
 use crate::zh_raw::ZH_WORDS;
 use crate::{Code, Text};
 use std::collections::{HashMap, hash_map::Entry};
@@ -32,7 +32,7 @@ fn merge_zh_dict(
 
 /// 按编码分组的中英混合词典
 pub static ZH_DICT: LazyLock<HashMap<Code, Vec<Text>>> =
-	LazyLock::new(|| merge_zh_dict(&ZH_WORDS, &EN_DICT));
+	LazyLock::new(|| merge_zh_dict(&ZH_WORDS, &EN_DICT_LONG));
 
 #[cfg(test)]
 mod tests {
