@@ -1,5 +1,5 @@
 use crate::data::parse_target;
-use crate::{Freq, Text};
+use crate::{Code, Freq, Text};
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
@@ -663,11 +663,28 @@ fn merge_en_words(
 }
 
 /// 英文候选词
-pub static EN_WORDS: LazyLock<Vec<Text>> = LazyLock::new(|| {
+static EN_WORDS: LazyLock<Vec<Text>> = LazyLock::new(|| {
 	// 先生成自动词再合并自定义词
 	let automatic = build_automatic_words(&ESDB, &EN_FREQ);
 	merge_en_words(automatic, &EN_FIRST, &EN_LAST)
 });
+
+/// 用英文词的所有非空前缀构造词典
+fn build_en_dict(words: &[Text]) -> HashMap<Code, Vec<Text>> {
+	let mut dictionary = HashMap::<Code, Vec<Text>>::new();
+
+	for text in words {
+		for end in 1..=text.as_str().len() {
+			let code = Code::from(text.as_str()[..end].to_owned());
+			dictionary.entry(code).or_default().push(text.clone());
+		}
+	}
+
+	dictionary
+}
+
+/// 按所有非空前缀码分组的英文词典
+pub static EN_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| build_en_dict(&EN_WORDS));
 
 #[cfg(test)]
 mod tests {
@@ -1152,5 +1169,32 @@ mod tests {
 				"APPLE", "PLANNED"
 			]
 		);
+	}
+
+	/// 验证每个英文词按全部非空前缀入表
+	#[test]
+	fn english_dictionary_indexes_every_nonempty_prefix() {
+		let words = [Text::from("Apple".to_owned()), Text::from("App".to_owned())];
+		let dictionary = build_en_dict(&words);
+
+		for prefix in ["A", "Ap"] {
+			assert_eq!(
+				text_strings(&dictionary[&Code::from(prefix.to_owned())]),
+				vec!["Apple", "App"]
+			);
+		}
+		assert_eq!(
+			text_strings(&dictionary[&Code::from("App".to_owned())]),
+			vec!["Apple", "App"]
+		);
+		assert_eq!(
+			text_strings(&dictionary[&Code::from("Appl".to_owned())]),
+			vec!["Apple"]
+		);
+		assert_eq!(
+			text_strings(&dictionary[&Code::from("Apple".to_owned())]),
+			vec!["Apple"]
+		);
+		assert!(!dictionary.contains_key(&Code::from(String::new())));
 	}
 }
