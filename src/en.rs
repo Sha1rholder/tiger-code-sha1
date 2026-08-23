@@ -21,6 +21,8 @@ const MIN_FREQ: Freq = Freq::from(1e-7);
 const DOUBLE_LOWER: &str = "bdgklmnprstz";
 /// 允许双写的大写辅音
 const DOUBLE_UPPER: &str = "BDGKLMNPRSTZ";
+/// EN_WORDS_LONG中最短码长
+const MIN_LONG: usize = 5;
 
 /// 英文文本的大小写分类
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

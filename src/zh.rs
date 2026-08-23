@@ -2,7 +2,7 @@
 use crate::en::EN_DICT;
 use crate::zh_raw::ZH_WORDS;
 use crate::{Code, Text};
-use std::collections::HashMap;
+use std::collections::{HashMap, hash_map::Entry};
 use std::sync::LazyLock;
 
 /// 合并中文候选词和英文词典
@@ -13,10 +13,18 @@ fn merge_zh_dict(
 	let mut dictionary = zh_words.clone();
 
 	for (code, texts) in en_dict {
-		dictionary
-			.entry(code.clone())
-			.or_default()
-			.extend(texts.iter().cloned());
+		match dictionary.entry(code.clone()) {
+			Entry::Occupied(mut entry) => entry.get_mut().extend(texts.iter().cloned()),
+			Entry::Vacant(entry) => {
+				let mut texts = texts
+					.iter()
+					.filter(|text| text.as_str() != code.as_str())
+					.cloned()
+					.collect::<Vec<_>>();
+				texts.insert(0, Text::from(code.as_str().to_owned()));
+				entry.insert(texts);
+			}
+		}
 	}
 
 	dictionary
@@ -40,7 +48,7 @@ mod tests {
 		Code::from(value.to_owned())
 	}
 
-	/// 验证合并保留来源顺序、独有编码和重复候选
+	/// 验证合并顺序、独有编码首选和重复候选
 	#[test]
 	fn merged_dictionary_preserves_order_codes_and_duplicates() {
 		let zh_words = HashMap::from([
@@ -50,6 +58,7 @@ mod tests {
 		let en_dict = HashMap::from([
 			(code("a"), vec![text("apple"), text("甲")]),
 			(code("e"), vec![text("English")]),
+			(code("f"), vec![text("first"), text("f"), text("final")]),
 		]);
 
 		let dictionary = merge_zh_dict(&zh_words, &en_dict);
@@ -59,6 +68,13 @@ mod tests {
 			Some(&vec![text("甲"), text("乙"), text("apple"), text("甲")])
 		);
 		assert_eq!(dictionary.get(&code("z")), Some(&vec![text("中文")]));
-		assert_eq!(dictionary.get(&code("e")), Some(&vec![text("English")]));
+		assert_eq!(
+			dictionary.get(&code("e")),
+			Some(&vec![text("e"), text("English")])
+		);
+		assert_eq!(
+			dictionary.get(&code("f")),
+			Some(&vec![text("f"), text("first"), text("final")])
+		);
 	}
 }
