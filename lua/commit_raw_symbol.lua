@@ -41,22 +41,9 @@ local kAccepted = 1
 local kNoop = 2
 
 local repeat_symbol_rules = {
-	["!"] = { candidate = "！", commit = "!" },
-	["$"] = { candidate = "￥", commit = "$" },
-	["^"] = { candidate = "……", commit = "^" },
-	["("] = { candidate = "（", commit = "(" },
-	[")"] = { candidate = "）", commit = ")" },
-	["_"] = { candidate = "_", commit = "_" },
-	["\\"] = { candidate = "、", commit = "\\" },
-	[":"] = { candidate = "：", commit = ":" },
-	[";"] = { candidate = "；", commit = ";" },
-	["\""] = { candidate = "“", commit = "”" },
 	["'"] = { candidate = "‘", commit = "’" },
 	["<"] = { candidate = "《", commit = "<" },
-	[","] = { candidate = "，", commit = "," },
 	[">"] = { candidate = "》", commit = ">" },
-	["."] = { candidate = "。", commit = "." },
-	["?"] = { candidate = "？", commit = "?" },
 }
 
 ---安全调用对象方法
