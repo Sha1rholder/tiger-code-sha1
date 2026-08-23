@@ -13,7 +13,6 @@ __pycache__/
 /user.yaml
 /default.custom.yaml
 
-/tiger_sha1_weasel.dict.yaml
-/tiger_sha1_py.dict.yaml
+*.dict.yaml
 /src/data/wordfreq/en.tsv
 /src/data/wordfreq/zh.tsv

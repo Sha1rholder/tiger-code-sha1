@@ -1,7 +1,7 @@
 ---
 schema:
-  schema_id: tiger_sha1_weasel
-  name: tiger_sha1_weasel
+  schema_id: tiger_sha1_zh
+  name: tiger_sha1_zh
   author: Sha1rholder (sha1rholder@outlook.com)
   dependencies:
     - tiger_sha1_py
@@ -52,7 +52,7 @@ translator:
   enable_completion: false
   enable_sentence: false
   enable_user_dict: false
-  dictionary: tiger_sha1_weasel
+  dictionary: tiger_sha1_zh
   comment_format:
     - xform/~//
 

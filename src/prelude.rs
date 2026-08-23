@@ -25,6 +25,11 @@ impl From<String> for Code {
 	}
 }
 impl Code {
+	/// 返回底层字符串切片
+	pub(crate) fn as_str(&self) -> &str {
+		&self.0
+	}
+
 	/// 返回编码的字节长度
 	pub fn len(&self) -> usize {
 		self.0.len()
