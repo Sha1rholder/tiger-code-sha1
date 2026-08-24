@@ -25,10 +25,10 @@ switches:
 
 engine:
   processors:
+    - key_binder
     - ascii_composer
     - lua_processor@*commit_raw_symbol
     - recognizer
-    - key_binder
     - speller
     - punctuator
     - selector
@@ -42,8 +42,6 @@ engine:
     - punct_translator
     - reverse_lookup_translator
     - table_translator
-  filters:
-    - uniquifier
 
 speller:
   alphabet: zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA
