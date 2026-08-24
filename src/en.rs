@@ -681,7 +681,7 @@ static EN_WORDS_LONG: LazyLock<Vec<Text>> = LazyLock::new(|| {
 });
 
 /// 用英文词的所有非空前缀构造词典
-fn build_en_dict(words: &[Text]) -> HashMap<Code, Vec<Text>> {
+fn build_en_dicts(words: &[Text]) -> HashMap<Code, Vec<Text>> {
 	let mut dictionary = HashMap::<Code, Vec<Text>>::new();
 
 	for text in words {
@@ -695,11 +695,23 @@ fn build_en_dict(words: &[Text]) -> HashMap<Code, Vec<Text>> {
 }
 
 /// 按所有非空前缀码分组的英文词典
-pub static EN_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| build_en_dict(&EN_WORDS));
+pub static EN_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
+	let mut dictionary = build_en_dicts(&EN_WORDS);
+
+	// 保证每个编码自身加空格后唯一且首选
+	for (code, texts) in &mut dictionary {
+		texts.retain(|text| text.as_str() != code.as_str());
+		let mut primary = code.as_str().to_owned();
+		primary.push(' ');
+		texts.insert(0, Text::from(primary));
+	}
+
+	dictionary
+});
 
 /// 按所有非空前缀码分组的长英文词典
 pub static EN_DICT_LONG: LazyLock<HashMap<Code, Vec<Text>>> =
-	LazyLock::new(|| build_en_dict(&EN_WORDS_LONG));
+	LazyLock::new(|| build_en_dicts(&EN_WORDS_LONG));
 
 #[cfg(test)]
 mod tests {
@@ -1190,7 +1202,7 @@ mod tests {
 	#[test]
 	fn english_dictionary_indexes_every_nonempty_prefix() {
 		let words = [Text::from("Apple".to_owned()), Text::from("App".to_owned())];
-		let dictionary = build_en_dict(&words);
+		let dictionary = build_en_dicts(&words);
 
 		for prefix in ["A", "Ap"] {
 			assert_eq!(
@@ -1211,5 +1223,33 @@ mod tests {
 			vec!["Apple"]
 		);
 		assert!(!dictionary.contains_key(&Code::from(String::new())));
+	}
+
+	/// 验证独立英文词典中每个编码加空格后唯一且首选
+	#[test]
+	fn english_dictionary_prioritizes_each_spaced_code() {
+		for (code, texts) in EN_DICT.iter() {
+			let expected = format!("{} ", code.as_str());
+			assert_eq!(
+				texts.first().map(Text::as_str),
+				Some(expected.as_str()),
+				"spaced code must be the first candidate: {}",
+				code.as_str()
+			);
+			assert_eq!(
+				texts
+					.iter()
+					.filter(|text| text.as_str() == expected)
+					.count(),
+				1,
+				"spaced code must occur exactly once: {}",
+				code.as_str()
+			);
+			assert!(
+				texts.iter().all(|text| text.as_str() != code.as_str()),
+				"unspaced code must be absent: {}",
+				code.as_str()
+			);
+		}
 	}
 }
