@@ -57,7 +57,7 @@ translator:
 reverse_lookup:
   dictionary: tiger_sha1_py
   prefix: "|"
-  tips: "【拼音】"
+  tips: 【拼音】
   preedit_format:
     - xform/([nl])v/$1ü/
     - xform/([nl])ue/$1üe/
@@ -73,12 +73,6 @@ key_binder:
     - when: has_menu
       accept: Down
       send: Page_Down
-    - when: has_menu
-      accept: Right
-      send: Down
-    - when: has_menu
-      accept: Left
-      send: Up
     - when: always
       accept: F8
       toggle: full_shape
@@ -87,11 +81,8 @@ menu:
   page_size: 9
 
 recognizer:
-  import_preset: default
   patterns:
-    uppercase: "a^"
     reverse_lookup: ^\|[a-z]*'?$
 
 punctuator:
   import_preset: symbols
-  digit_separators: ""
