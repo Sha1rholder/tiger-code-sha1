@@ -25,8 +25,9 @@ Rime/
 ├ tiger_sha1_py.schema.yaml		# 拼音反查伪方案
 ├ tiger_sha1_py.dict.yaml		# 拼音反查词典（机器生成）
 ├ symbols.yaml					# 符号表
+├ default.custom.yaml			# Rime默认配置
 ├ weasel.custom.yaml			# 小狼毫界面定制
-├ lua/commit_raw_symbol.lua		# buffer符号直出和数组符号连按
+├ lua/commit_raw_symbol.lua		# buffer符号直出
 └ src/							# 词表编排代码
 ```
 

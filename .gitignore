@@ -1,4 +1,3 @@
-draft*
 temp*
 
 target/
@@ -11,8 +10,3 @@ __pycache__/
 /luna_pinyin.userdb/
 /installation.yaml
 /user.yaml
-/default.custom.yaml
-
-*.dict.yaml
-/src/data/wordfreq/en.tsv
-/src/data/wordfreq/zh.tsv

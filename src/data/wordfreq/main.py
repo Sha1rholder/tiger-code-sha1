@@ -16,7 +16,7 @@ for language in LANGUAGES:
 		encoding="utf-8",
 		newline="",
 	) as file:
-		file.write("text\tfrequency\n")
+		_ = file.write("text\tfrequency\n")
 		for word, frequency in frequencies.items():
-			file.write(f"{word}\t{frequency:.17g}\n")
+			_ = file.write(f"{word}\t{frequency:.17g}\n")
 print("Success!")
