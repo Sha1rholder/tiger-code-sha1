@@ -7,22 +7,6 @@ schema:
     - tiger_sha1_py
   description: 基于虎码改良的中英混输简体字方案
 
-ascii_composer:
-  switch_key:
-    Caps_Lock: noop
-    Control_L: noop
-    Control_R: noop
-    Eisu_toggle: noop
-    Shift_L: commit_code
-    Shift_R: commit_code
-
-switches:
-  - name: full_shape
-    reset: 0
-    states:
-      - 半角
-      - 全角
-
 engine:
   processors:
     - key_binder
@@ -31,8 +15,8 @@ engine:
     - recognizer
     - speller
     - punctuator
-    - selector
     - navigator
+    - selector
     - express_editor
   segmentors:
     - matcher
@@ -42,28 +26,6 @@ engine:
     - punct_translator
     - reverse_lookup_translator
     - table_translator
-
-speller:
-  alphabet: zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA
-
-translator:
-  enable_completion: false
-  enable_sentence: false
-  enable_user_dict: false
-  dictionary: tiger_sha1_zh
-  comment_format:
-    - xform/~//
-
-reverse_lookup:
-  dictionary: tiger_sha1_py
-  prefix: "|"
-  tips: 【拼音】
-  preedit_format:
-    - xform/([nl])v/$1ü/
-    - xform/([nl])ue/$1üe/
-    - xform/([jqxy])v/$1u/
-  comment_format:
-    - xform/^//
 
 key_binder:
   bindings:
@@ -77,12 +39,46 @@ key_binder:
       accept: F8
       toggle: full_shape
 
-menu:
-  page_size: 9
+ascii_composer:
+  switch_key:
+    Shift_L: commit_code
+    Shift_R: commit_code
 
 recognizer:
   patterns:
     reverse_lookup: ^\|[a-z]*'?$
 
+reverse_lookup:
+  dictionary: tiger_sha1_py
+  prefix: "|"
+  tips: 【拼音】
+  preedit_format:
+    - xform/([nl])v/$1ü/
+    - xform/([nl])ue/$1üe/
+    - xform/([jqxy])v/$1u/
+  comment_format:
+    - xform/^//
+
+speller:
+  alphabet: zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA
+
 punctuator:
   import_preset: symbols
+
+switches:
+  - name: full_shape
+    reset: 0
+    states:
+      - 半角
+      - 全角
+
+translator:
+  enable_completion: false
+  enable_sentence: false
+  enable_user_dict: false
+  dictionary: tiger_sha1_zh
+  comment_format:
+    - xform/~//
+
+menu:
+  page_size: 9
