@@ -93,10 +93,21 @@ fn write_dictionary_file(
 }
 
 /// 输出全部词典文件
-pub(crate) fn write_dicts() -> io::Result<()> {
-	write_entries_file(PY_FILE, PY_HEAD, &ZH_PY)?;
-	write_dictionary_file(ZH_FILE, ZH_HEAD, &ZH_DICT)?;
-	write_dictionary_file(EN_FILE, EN_HEAD, &EN_DICT)
+pub(crate) fn write_dicts(
+	output_py_dict: bool,
+	output_zh_dict: bool,
+	output_en_dict: bool,
+) -> io::Result<()> {
+	if output_py_dict {
+		write_entries_file(PY_FILE, PY_HEAD, &ZH_PY)?;
+	}
+	if output_zh_dict {
+		write_dictionary_file(ZH_FILE, ZH_HEAD, &ZH_DICT)?;
+	}
+	if output_en_dict {
+		write_dictionary_file(EN_FILE, EN_HEAD, &EN_DICT)?;
+	}
+	Ok(())
 }
 
 #[cfg(test)]
