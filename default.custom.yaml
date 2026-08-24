@@ -1,4 +1,4 @@
 patch:
   schema_list:
-    - {schema: tiger_sha1_zh}
+    - schema: tiger_sha1_zh
   switcher/hotkeys: []

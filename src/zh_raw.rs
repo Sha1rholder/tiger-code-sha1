@@ -487,17 +487,14 @@ mod tests {
 		]);
 
 		let zh_words = merge_zh_words(&tiger_chars, &zh_custom, automatic_words);
-
-		assert_eq!(
-			zh_words.get(&code("x")),
-			Some(&vec![
-				text("甲"),
-				text("乙"),
-				text("乙"),
-				text("丙"),
-				text("丁"),
-			])
+		let mut expected_x = vec![text("甲"), text("乙"), text("乙"), text("丙")];
+		expected_x.extend(
+			[text("丁"), text("戊"), text("己")]
+				.into_iter()
+				.take(CANDIDATES.saturating_sub(expected_x.len())),
 		);
+
+		assert_eq!(zh_words.get(&code("x")), Some(&expected_x));
 		assert_eq!(
 			zh_words.get(&code("y")),
 			Some(&vec![
