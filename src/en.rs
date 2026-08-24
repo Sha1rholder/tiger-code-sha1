@@ -698,12 +698,9 @@ fn build_en_dicts(words: &[Text]) -> HashMap<Code, Vec<Text>> {
 pub static EN_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 	let mut dictionary = build_en_dicts(&EN_WORDS);
 
-	// 保证每个编码自身加空格后唯一且首选
 	for (code, texts) in &mut dictionary {
 		texts.retain(|text| text.as_str() != code.as_str());
-		let mut primary = code.as_str().to_owned();
-		primary.push(' ');
-		texts.insert(0, Text::from(primary));
+		texts.insert(0, Text::from(code.as_str().to_owned()));
 	}
 
 	dictionary
@@ -1225,29 +1222,23 @@ mod tests {
 		assert!(!dictionary.contains_key(&Code::from(String::new())));
 	}
 
-	/// 验证独立英文词典中每个编码加空格后唯一且首选
+	/// 验证独立英文词典中每个编码自身唯一且为首选
 	#[test]
-	fn english_dictionary_prioritizes_each_spaced_code() {
+	fn english_dictionary_prioritizes_each_code() {
 		for (code, texts) in EN_DICT.iter() {
-			let expected = format!("{} ", code.as_str());
 			assert_eq!(
 				texts.first().map(Text::as_str),
-				Some(expected.as_str()),
-				"spaced code must be the first candidate: {}",
+				Some(code.as_str()),
+				"code must be the first candidate: {}",
 				code.as_str()
 			);
 			assert_eq!(
 				texts
 					.iter()
-					.filter(|text| text.as_str() == expected)
+					.filter(|text| text.as_str() == code.as_str())
 					.count(),
 				1,
-				"spaced code must occur exactly once: {}",
-				code.as_str()
-			);
-			assert!(
-				texts.iter().all(|text| text.as_str() != code.as_str()),
-				"unspaced code must be absent: {}",
+				"code must occur exactly once: {}",
 				code.as_str()
 			);
 		}

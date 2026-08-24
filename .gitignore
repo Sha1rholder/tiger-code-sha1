@@ -10,3 +10,5 @@ __pycache__/
 /luna_pinyin.userdb/
 /installation.yaml
 /user.yaml
+
+# *.dict.yaml # 临时禁用dict（tmd sb Zed对这种大文件即使写了`-diff linguist-generated=true`还是要算超大diff导致崩溃。迫不得已）
