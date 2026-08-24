@@ -1,4 +1,4 @@
-use crate::data::parse_target;
+use crate::prelude::parse_target;
 use crate::sc2013::{SC2013, contains_non_sc2013_char};
 use crate::{Code, Freq, Text, Weight};
 use indexmap::IndexMap;
@@ -16,7 +16,7 @@ type CompletionText = Text;
 type CompletionWeight = Freq;
 
 /// 补全候选项数量
-const CANDIDATES: usize = 5;
+const CANDIDATES: usize = 3;
 /// 最大补全候选项数量
 const MAX_CANDIDATES: usize = 9;
 
@@ -437,7 +437,7 @@ mod tests {
 	}
 
 	/// 构造测试权重
-	fn weight(value: u32) -> Weight {
+	fn weight(value: usize) -> Weight {
 		Weight::from(value)
 	}
 

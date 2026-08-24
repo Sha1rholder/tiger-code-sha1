@@ -1,4 +1,4 @@
-use crate::data::parse_target;
+use crate::prelude::parse_target;
 use crate::{Code, Freq, Text};
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};

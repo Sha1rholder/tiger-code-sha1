@@ -42,6 +42,7 @@ local kNoop = 2
 
 local repeat_symbol_rules = {
 	["'"] = { candidate = "‘", commit = "’" },
+	['"'] = { candidate = "“", commit = "”" },
 	["<"] = { candidate = "《", commit = "<" },
 	[">"] = { candidate = "》", commit = ">" },
 }
@@ -112,7 +113,7 @@ end
 ---@return string|nil 当前候选文本
 local function selected_candidate_text(context)
 	return candidate_text(call_method(context, "get_selected_candidate"))
-	    or candidate_text(selected_candidate_from_menu(context))
+		or candidate_text(selected_candidate_from_menu(context))
 end
 
 ---从键码获取ASCII符号字符（排除字母和数字）

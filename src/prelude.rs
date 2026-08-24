@@ -1,5 +1,7 @@
+use std::fs;
 use std::hash::{Hash, Hasher};
 use std::ops::AddAssign;
+use std::path::Path;
 
 /// 文本
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -38,10 +40,10 @@ impl Code {
 
 /// 权重
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Weight(u32);
+pub struct Weight(usize);
 impl Weight {
-	/// 从u32创建权重
-	pub fn from(value: u32) -> Self {
+	/// 创建权重
+	pub fn from(value: usize) -> Self {
 		Self(value)
 	}
 }
@@ -81,4 +83,18 @@ impl Hash for Freq {
 	fn hash<H: Hasher>(&self, state: &mut H) {
 		self.0.to_bits().hash(state);
 	}
+}
+
+/// 跳过空行和`#`开头的行，读取单个文本文件为列表
+pub(crate) fn parse_target(path: impl AsRef<Path>) -> Vec<String> {
+	let path = path.as_ref();
+	let content = fs::read_to_string(path)
+		.unwrap_or_else(|error| panic!("failed to read {}: {error}", path.display()));
+
+	content
+		.lines()
+		.map(str::trim)
+		.filter(|line| !line.is_empty() && !line.starts_with('#'))
+		.map(str::to_owned)
+		.collect()
 }

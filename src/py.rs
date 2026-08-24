@@ -1,4 +1,4 @@
-use crate::data::parse_target;
+use crate::prelude::parse_target;
 use crate::sc2013::{SC2013, contains_non_sc2013_char};
 use crate::{Code, Text, Weight};
 use std::cmp::Reverse;

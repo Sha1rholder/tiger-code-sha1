@@ -20,27 +20,21 @@
 
 ```text
 Rime/
-├ tiger_sha1_zh.schema.yaml	# 主输入方案
-├ tiger_sha1_zh.dict.yaml	# 中文词典（机器生成）
+├ tiger_sha1_zh.schema.yaml		# 主输入方案
+├ tiger_sha1_zh.dict.yaml		# 中文词典（机器生成）
 ├ tiger_sha1_py.schema.yaml		# 拼音反查伪方案
 ├ tiger_sha1_py.dict.yaml		# 拼音反查词典（机器生成）
 ├ symbols.yaml					# 符号表
 ├ weasel.custom.yaml			# 小狼毫界面定制
-├ lua/
-│	└ commit_raw_symbol.lua		# buffer符号直出和数组符号连按
+├ lua/commit_raw_symbol.lua		# buffer符号直出和数组符号连按
 └ src/							# 词表编排代码
 ```
 
-## 使用方法
+## 使用方法（以Windows为例）
 
 1. 安装依赖
-	- [Weasel小狼毫](https://rime.im/)（请使用默认路径）
-	- [Git](https://git-scm.com/)
-	- [Astral uv](https://docs.astral.sh/uv/)
-	- [Rust工具链](https://rust-lang.org)
-	- [Noto Sans SC字体](https://fonts.google.com/noto/specimen/Noto+Sans+SC)
-2. 终止Weasel程序并清空用户文件夹
-3. 执行`git clone --depth=1 https://github.com/Sha1rholder/tiger-code-sha1.git "$env:APPDATA/Rime"; cd "$env:APPDATA/Rime/src/data/wordfreq/"; uv run main.py; cd "$env:APPDATA/Rime/"; cargo run`
+2. 清空Rime用户文件夹
+3. 执行`git clone --depth=1 https://github.com/Sha1rholder/tiger-code-sha1.git "$env:APPDATA/Rime"; cd "$env:APPDATA/Rime/src/data/wordfreq/"; uv run main.py; cd "$env:APPDATA/Rime/"; cargo run --release`
 4. 在Weasel控制面板中选择`tiger_sha1_zh`
 
 ## 致谢

@@ -1,5 +1,5 @@
 use crate::Text;
-use crate::data::parse_target;
+use crate::prelude::parse_target;
 use std::collections::HashSet;
 use std::sync::LazyLock;
 

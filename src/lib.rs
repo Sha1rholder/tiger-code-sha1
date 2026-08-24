@@ -1,4 +1,3 @@
-pub mod data;
 pub mod en;
 mod prelude;
 pub mod py;
