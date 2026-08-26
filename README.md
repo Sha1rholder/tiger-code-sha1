@@ -26,14 +26,14 @@ Rime/
 └ src/							# 词典生成代码
 ```
 
-## 使用方法（以Windows为例）
+## 使用方法
 
 1. 安装依赖
 2. 清空Rime用户文件夹
-3. 执行`git clone --depth=1 https://github.com/Sha1rholder/tiger-code-sha1.git "$env:APPDATA/Rime"; cd "$env:APPDATA/Rime/src/data/wordfreq/"; uv run main.py; cd "$env:APPDATA/Rime/"; cargo run --release`
+3. 执行`git clone --depth=1 https://github.com/Sha1rholder/tiger-code-sha1.git "$env:APPDATA/Rime"; cd "$env:APPDATA/Rime/src/data/wordfreq/"; uv run main.py; cd "$env:APPDATA/Rime"; cargo run --release`
 4. 在Weasel控制面板中选择`tiger_sha1_zh`
 
-已在fcitx5上测试良好
+fcitx5目录为`~/.local/share/fcitx5/rime`
 
 ## 致谢
 
