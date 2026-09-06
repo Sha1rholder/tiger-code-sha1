@@ -1,0 +1,16 @@
+# 英文加词（追加在自动候选前）
+
+# personal
+hqywygd
+
+# regular
+chatgpt
+ChatGPT
+bonjour
+Bonjour
+
+# Hacker
+gitattributes
+gitignore
+readme
+README

@@ -1,14 +1,9 @@
 temp*
 
-target/
-.venv/
-__pycache__/
-.ruff_cache/
-
 /sync/
 /build/
 /luna_pinyin.userdb/
 /installation.yaml
 /user.yaml
 
-*.dict.yaml
+/*.dict.yaml

@@ -1,7 +1,0 @@
----
-schema:
-  schema_id: tiger_sha1_py
-  name: （伪方案勿用）拼音反查
-translator:
-  dictionary: tiger_sha1_py
-  prism: tiger_sha1_py

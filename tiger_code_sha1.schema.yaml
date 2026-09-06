@@ -1,0 +1,84 @@
+---
+schema:
+  schema_id: tiger_code_sha1
+  name: 中
+  author: Sha1rholder (sha1rholder@outlook.com)
+  dependencies:
+    - pinyin_lookup
+  description: 基于虎码改良的中英混输简体字方案
+
+engine:
+  processors:
+    - key_binder
+    - ascii_composer
+    - lua_processor@*commit_raw_symbol
+    - recognizer
+    - speller
+    - punctuator
+    - navigator
+    - selector
+    - express_editor
+  segmentors:
+    - matcher
+    - abc_segmentor
+    - punct_segmentor
+  translators:
+    - punct_translator
+    - reverse_lookup_translator
+    - table_translator
+
+key_binder:
+  bindings:
+    - when: has_menu
+      accept: Up
+      send: Page_Up
+    - when: has_menu
+      accept: Down
+      send: Page_Down
+    - when: always
+      accept: F8
+      toggle: full_shape
+
+ascii_composer:
+  switch_key:
+    Shift_L: commit_code
+    Shift_R: commit_code
+
+recognizer:
+  patterns:
+    reverse_lookup: ^\|[a-z]*'?$
+
+reverse_lookup:
+  dictionary: pinyin_lookup
+  prefix: "|"
+  tips: 【拼音】
+  preedit_format:
+    - xform/([nl])v/$1ü/
+    - xform/([nl])ue/$1üe/
+    - xform/([jqxy])v/$1u/
+  comment_format:
+    - xform/^//
+
+speller:
+  alphabet: zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA
+
+punctuator:
+  import_preset: symbols
+
+switches:
+  - name: full_shape
+    reset: 0
+    states:
+      - 半角
+      - 全角
+
+translator:
+  enable_completion: false
+  enable_sentence: false
+  enable_user_dict: false
+  dictionary: tiger_code_sha1
+  comment_format:
+    - xform/~//
+
+menu:
+  page_size: 9

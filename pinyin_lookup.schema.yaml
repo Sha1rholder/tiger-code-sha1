@@ -1,0 +1,7 @@
+---
+schema:
+  schema_id: pinyin_lookup
+  name: （伪方案勿用）Tiger Code Sha1临时拼音反查组件
+translator:
+  dictionary: pinyin_lookup
+  prism: pinyin_lookup

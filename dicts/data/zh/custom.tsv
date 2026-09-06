@@ -1,0 +1,26 @@
+code	text
+# 添加自定义编码
+
+# 常用词
+f	一下
+fi	一般
+i	为什么
+j	什么
+k	能不能
+nv	有没有
+oc	是不是
+oj	是什么
+sq	讲解
+
+# hacker
+bl	<blockquote>
+bl	</blockquote>
+ki	注释
+
+# 个人信息
+bp	张君一
+Sha	Sha1rholder
+sha	sha1
+sha	sha1rholder
+sha	sha1rholder@outlook.com
+sha	sha1rholder@gmail.com

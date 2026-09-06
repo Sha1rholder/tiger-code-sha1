@@ -1,5 +1,0 @@
-* text=auto eol=lf
-Cargo.lock -diff linguist-generated=true
-
-/src/data/** -diff linguist-generated=true
-/*.dict.yaml -diff linguist-generated=true

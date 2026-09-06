@@ -1,0 +1,5 @@
+*.lock -diff
+
+/data/en/ESDB.txt -diff
+/data/zh/chars/level-*.txt -diff
+/data/zh/tiger-code/* -diff
