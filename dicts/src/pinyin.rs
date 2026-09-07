@@ -55,5 +55,12 @@ fn build_pinyin(
 /// 按权重降序排列的拼音和汉字
 pub static PINYIN_DICT: LazyLock<Vec<(Code, Text)>> = LazyLock::new(|| {
 	let path = "data/zh/tiger-code/PY_c.dict.yaml.tsv";
-	build_pinyin(parse_target(path), path, &ZH_CHARS)
+	let mut lines = parse_target(path).into_iter();
+	// 校验并跳过TSV标题
+	assert_eq!(
+		lines.next().as_deref(),
+		Some("text\tcode\tweight"),
+		"invalid pinyin header in {path}"
+	);
+	build_pinyin(lines, path, &ZH_CHARS)
 });
