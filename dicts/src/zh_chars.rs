@@ -1,4 +1,4 @@
-//! 中文字符表与集外字符判定
+//! 中文字符表与集外字符判定，输出[`ZH_CHARS`]
 
 use crate::Text;
 use crate::prelude::parse_target;

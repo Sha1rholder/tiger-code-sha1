@@ -1,4 +1,4 @@
-//! 生成拼音反查候选表[`ZH_PY`]
+//! 生成拼音反查候选表[`PINYIN_DICT`]
 //!
 //! 读取`data/zh/tiger-code/PY_c.dict.yaml.tsv`中的拼音汉字对，按字符集过滤后按权重降序排列
 

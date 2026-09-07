@@ -1,6 +1,4 @@
-//! `tiger_code_sha1`词典生成库
-//!
-//! 将拼音反查与中英混合词典写为带YAML头的TSV，提供生成入口[`run()`]
+//! 输出YAML产物
 
 pub mod en_dict;
 pub mod pinyin;
