@@ -70,6 +70,12 @@ impl Freq {
 		Self(self.0 * factor as f64)
 	}
 
+	/// 将词频除以非零整数
+	pub(crate) fn divide(self, divisor: usize) -> Self {
+		assert_ne!(divisor, 0, "frequency divisor must be nonzero");
+		Self(self.0 / divisor as f64)
+	}
+
 	/// 按浮点总序比较词频
 	pub(crate) fn total_cmp(&self, other: &Self) -> std::cmp::Ordering {
 		self.0.total_cmp(&other.0)

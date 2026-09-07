@@ -1,6 +1,6 @@
 //! 生成英文词典[`EN_DICT_LONG`]
 //!
-//! 读取ESDB、英文词频与自定义前后加词，经词图生成变体词形并按词频过滤后按编码分组
+//! 读取ESDB、英文词频与自定义前后加词，构建变体图并评分后按ESDB和最终词频过滤，再按编码分组
 
 use crate::prelude::parse_target;
 use crate::{Code, Freq, Text};
@@ -10,8 +10,8 @@ use std::sync::LazyLock;
 
 /// 原始词频
 type FreqSelf = Freq;
-/// 提权词频
-type FreqBoost = Freq;
+/// 提权并降权后的最终词频
+type FreqFinal = Freq;
 /// 图节点编号
 type NodeId = usize;
 /// 降权次数
@@ -20,7 +20,11 @@ type DemotionCount = usize;
 /// 作为基本形式参与构图的最短码长
 const INFLECT_START: usize = 4;
 /// 允许进入英文词典的最低词频
-const MIN_FREQ: Freq = Freq::from(1e-7);
+const MIN_FREQ: Freq = Freq::from(1e-8);
+/// 降权因子
+///
+/// 每被降权一次，最终词频就除以一次[`DEMOTION_POWER`]。设为10时相当于降一级Zipf scale
+const DEMOTION_POWER: usize = 10;
 /// 允许双写的小写辅音
 const DOUBLE_LOWER: &str = "bdgklmnprstz";
 /// 允许双写的大写辅音
@@ -225,7 +229,7 @@ fn build_esdb(
 	grouped
 }
 
-/// ESDB
+/// English Speller Database正确英文拼写数据库
 static ESDB: LazyLock<HashMap<TextLower, HashSet<TextEn>>> = LazyLock::new(|| {
 	let path = "data/en/ESDB.txt";
 	// 读取并分组ESDB词条
@@ -353,7 +357,7 @@ fn expand_case_forms(groups: &mut HashMap<TextLower, HashSet<TextEn>>) {
 	}
 }
 
-/// 英文词图节点
+/// 按wordfreq原始小写形式构造的英文词图节点
 #[derive(Clone, Debug)]
 struct WordNode {
 	text: TextEn,
@@ -364,33 +368,19 @@ struct WordNode {
 /// 英文词评分
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct WordScore {
-	demotion_count: DemotionCount,
-	freq_boost: FreqBoost,
+	freq_final: FreqFinal,
 }
 
-/// 扩增[`ESDB`]、关联词频并创建稳定节点
-fn build_nodes(
-	esdb: &HashMap<TextLower, HashSet<TextEn>>,
-	frequencies: &HashMap<TextLower, FreqSelf>,
-) -> Vec<WordNode> {
-	// 克隆并扩增原始大小写组
-	let mut groups = esdb.clone();
-	expand_case_forms(&mut groups);
-
-	let mut nodes = Vec::new();
-	// 丢弃无词频组并展开所有词形
-	for (lower, forms) in groups {
-		let Some(freq_self) = frequencies.get(&lower).copied() else {
-			continue;
-		};
-		for text in forms {
-			nodes.push(WordNode {
-				text,
-				freq_self,
-				direct_bases: Vec::new(),
-			});
-		}
-	}
+/// 为全部英文wordfreq创建稳定小写节点，构图不依赖[`ESDB`]及大小写扩增
+fn build_nodes(frequencies: &HashMap<TextLower, FreqSelf>) -> Vec<WordNode> {
+	let mut nodes = frequencies
+		.iter()
+		.map(|(lower, &freq_self)| WordNode {
+			text: lower.lower_form(),
+			freq_self,
+			direct_bases: Vec::new(),
+		})
+		.collect::<Vec<_>>();
 
 	// 按码长和字面顺序建立稳定拓扑顺序
 	nodes.sort_unstable_by(|left, right| {
@@ -401,7 +391,7 @@ fn build_nodes(
 	});
 	assert!(
 		nodes.windows(2).all(|pair| pair[0].text != pair[1].text),
-		"expanded English texts must be unique"
+		"English graph texts must be unique"
 	);
 
 	nodes
@@ -547,12 +537,12 @@ fn collect_all_bases(nodes: &[WordNode]) -> Vec<HashSet<NodeId>> {
 /// 根据全部基本形式计算节点评分
 fn score_nodes(nodes: &[WordNode]) -> Vec<WordScore> {
 	let all_bases = collect_all_bases(nodes);
+	let mut demotion_counts: Vec<DemotionCount> = vec![0; nodes.len()];
 	// 每个节点先保留自身原始词频
 	let mut scores = nodes
 		.iter()
 		.map(|node| WordScore {
-			demotion_count: 0,
-			freq_boost: node.freq_self,
+			freq_final: node.freq_self,
 		})
 		.collect::<Vec<_>>();
 
@@ -566,9 +556,16 @@ fn score_nodes(nodes: &[WordNode]) -> Vec<WordScore> {
 				.total_cmp(&nodes[base_id].freq_self)
 				== Ordering::Less
 			{
-				scores[base_id].freq_boost += nodes[variant_id].freq_self;
-				scores[variant_id].demotion_count += 1;
+				scores[base_id].freq_final += nodes[variant_id].freq_self;
+				demotion_counts[variant_id] += 1;
 			}
+		}
+	}
+
+	// 提权全部完成后，每次降权将整个词频除以[`DEMOTION_POWER`]
+	for (score, demotion_count) in scores.iter_mut().zip(demotion_counts) {
+		for _ in 0..demotion_count {
+			score.freq_final = score.freq_final.divide(DEMOTION_POWER);
 		}
 	}
 
@@ -580,10 +577,9 @@ fn compare_scored_words(
 	(left_text, left_score): &(TextEn, WordScore),
 	(right_text, right_score): &(TextEn, WordScore),
 ) -> Ordering {
-	left_score
-		.demotion_count
-		.cmp(&right_score.demotion_count) // 降权次数
-		.then_with(|| right_score.freq_boost.total_cmp(&left_score.freq_boost)) // 提权词频
+	right_score
+		.freq_final
+		.total_cmp(&left_score.freq_final) // 最终词频
 		.then_with(|| left_text.len().cmp(&right_text.len())) // 码长
 		.then_with(|| left_text.cmp(right_text)) // 字面量
 }
@@ -593,21 +589,33 @@ fn build_automatic_words(
 	esdb: &HashMap<TextLower, HashSet<TextEn>>,
 	frequencies: &HashMap<TextLower, FreqSelf>,
 ) -> HashMap<WordCase, Vec<TextEn>> {
-	// 构图并计算全部节点评分
-	let mut nodes = build_nodes(esdb, frequencies);
+	// 以原始小写词构图并评分，大小写形式共享同一最终词频
+	let mut nodes = build_nodes(frequencies);
 	attach_direct_bases(&mut nodes);
 	let scores = score_nodes(&nodes);
-	let mut grouped = HashMap::<WordCase, Vec<(TextEn, WordScore)>>::new();
+	let scores = nodes
+		.into_iter()
+		.zip(scores)
+		.map(|(node, score)| (node.text.lower(), score))
+		.collect::<HashMap<_, _>>();
 
-	// 过滤低频节点并按大小写分类
-	for (node, score) in nodes.into_iter().zip(scores) {
-		if score.freq_boost.total_cmp(&MIN_FREQ) == Ordering::Less {
-			continue;
+	// 评分后按ESDB和最终词频筛选，再扩增保留词的大小写形式
+	let mut groups = esdb.clone();
+	groups.retain(|lower, _| {
+		scores
+			.get(lower)
+			.is_some_and(|score| score.freq_final.total_cmp(&MIN_FREQ) != Ordering::Less)
+	});
+	expand_case_forms(&mut groups);
+	let mut grouped = HashMap::<WordCase, Vec<(TextEn, WordScore)>>::new();
+	for (lower, forms) in groups {
+		let score = scores[&lower];
+		for text in forms {
+			grouped
+				.entry(text.word_case())
+				.or_default()
+				.push((text, score));
 		}
-		grouped
-			.entry(node.text.word_case())
-			.or_default()
-			.push((node.text, score));
 	}
 
 	// 分类内排序并丢弃评分
