@@ -1,4 +1,4 @@
-*.lock filter=lfs diff=lfs merge=lfs -text
+*.lock -diff
 
 /data/en/ESDB.txt filter=lfs diff=lfs merge=lfs -text
 /data/zh/chars/level-*.txt filter=lfs diff=lfs merge=lfs -text
