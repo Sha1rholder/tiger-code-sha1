@@ -5,8 +5,8 @@
 use crate::prelude::parse_target;
 use crate::zh_chars::{ZH_CHARS, contains_illegal_zh_char};
 use crate::{Code, Text, Weight};
-use indexmap::IndexMap;
 use std::cmp::Reverse;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::LazyLock;
 
@@ -16,7 +16,7 @@ fn build_pinyin(
 	path: &str,
 	zh_chars: &HashSet<Text>,
 ) -> Vec<(Code, Text)> {
-	let mut weighted_entries = IndexMap::new();
+	let mut weighted_entries = HashMap::new();
 
 	for line in lines {
 		let mut fields = line.split('\t');
@@ -53,7 +53,7 @@ fn build_pinyin(
 }
 
 /// 按权重降序排列的拼音和汉字
-pub static ZH_PY: LazyLock<Vec<(Code, Text)>> = LazyLock::new(|| {
+pub static PINYIN_DICT: LazyLock<Vec<(Code, Text)>> = LazyLock::new(|| {
 	let path = "data/zh/tiger-code/PY_c.dict.yaml.tsv";
 	build_pinyin(parse_target(path), path, &ZH_CHARS)
 });

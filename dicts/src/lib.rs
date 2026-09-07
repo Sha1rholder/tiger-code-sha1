@@ -11,7 +11,7 @@ pub mod zh_en_dict;
 
 pub use prelude::{Code, Freq, Text, Weight};
 
-use crate::pinyin::ZH_PY;
+use crate::pinyin::PINYIN_DICT;
 use crate::zh_en_dict::ZH_EN_DICT;
 use std::collections::HashMap;
 use std::fs::File;
@@ -107,7 +107,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
 		.parent()
 		.expect("dicts must be inside the Rime user directory");
 	// 先完成数据加载和校验，再打开输出文件
-	let pinyin = &*ZH_PY;
+	let pinyin = &*PINYIN_DICT;
 	let dictionary = &*ZH_EN_DICT;
 	write_entries_file(
 		&output_dir.join(PINYIN_LOOKUP_FILE),
