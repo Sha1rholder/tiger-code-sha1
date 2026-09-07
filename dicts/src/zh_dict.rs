@@ -1,4 +1,4 @@
-//! 生成原始中文候选表`ZH_WORDS`
+//! 生成原始中文候选表[`ZH_WORDS_DICT`]
 //!
 //! 读取虎码字符表、自定义条目与中文词频，经补全与优先级合并后按编码分组
 
@@ -119,9 +119,8 @@ fn group_texts_by_code(
 /// 虎码字符表
 static TIGER_CHARS: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 	// 读取原始虎码元组
-	let tiger = parse_target("src/data/zh/tiger.tsv")
+	let tiger = parse_target("data/zh/tiger-code/tiger.dict.yaml.tsv")
 		.into_iter()
-		.skip(1)
 		.map(|line| {
 			let mut fields = line.split('\t');
 			let text = fields.next().expect("missing text field");
@@ -151,7 +150,7 @@ static TIGER_CHARS: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 		);
 	}
 	// 读取Text到Code的重编码表
-	let tiger_recode = parse_target("src/data/zh/recode.tsv")
+	let tiger_recode = parse_target("data/zh/recode.tsv")
 		.into_iter()
 		.skip(1)
 		.map(|line| {
@@ -161,6 +160,8 @@ static TIGER_CHARS: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 
 			(Text::from(text.to_owned()), Code::from(code.to_owned()))
 		})
+		// 已从字符表移除的字不再应用重编码
+		.filter(|(text, _)| ZH_CHARS.contains(text))
 		.collect::<HashMap<_, _>>();
 	// 应用重编码
 	apply_tiger_recode(&mut tiger_chars_raw, tiger_recode);
@@ -172,7 +173,7 @@ static TIGER_CHARS: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 /// 自定义编码
 static ZH_CUSTOM: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 	// 读取自定义Code和Text
-	let entries = parse_target("src/data/zh/custom.tsv")
+	let entries = parse_target("data/zh/custom.tsv")
 		.into_iter()
 		.skip(1)
 		.map(|line| {
@@ -216,7 +217,7 @@ fn contains_other_text(text: &str, texts: &HashSet<&str>) -> bool {
 
 /// 合法中文wordfreq
 static ZH_FREQ: LazyLock<HashMap<Text, Freq>> = LazyLock::new(|| {
-	let path = "src/data/wordfreq/zh.tsv";
+	let path = "data/zh/wordfreq.tsv";
 	let mut seen = HashSet::new();
 	let mut frequencies = HashMap::new();
 
@@ -369,7 +370,11 @@ fn build_automatic_words(
 		.into_iter()
 		.map(|(code, words)| {
 			let mut words = words.into_iter().collect::<Vec<_>>();
-			words.sort_unstable_by(|(_, left), (_, right)| right.total_cmp(left));
+			words.sort_unstable_by(|(left_text, left), (right_text, right)| {
+				right
+					.total_cmp(left)
+					.then_with(|| left_text.cmp(right_text))
+			});
 			let words = words.into_iter().map(|(text, _)| text).collect();
 			(code, words)
 		})
@@ -416,7 +421,7 @@ fn merge_zh_words(
 }
 
 /// 中文候选词
-pub static ZH_WORDS: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
+pub static ZH_WORDS_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 	// 生成按补全加权词频排序的自动词
 	let automatic_words = build_automatic_words(&ZH_FREQ, &TIGER_CHARS);
 	// 按优先级合并全部中文候选

@@ -1,5 +1,5 @@
-//! 项目基础类型`Text`、`Code`、`Weight`、`Freq`
-//! 与通用数据文件解析函数`parse_target`
+//! 项目基础类型[`Text`]、[`Code`]、[`Weight`]、[`Freq`]
+//! 与通用数据文件解析函数[`parse_target`]
 
 use std::fs;
 use std::hash::{Hash, Hasher};
@@ -38,6 +38,11 @@ impl Code {
 	/// 返回编码的字节长度
 	pub fn len(&self) -> usize {
 		self.0.len()
+	}
+
+	/// 返回编码是否为空
+	pub fn is_empty(&self) -> bool {
+		self.0.is_empty()
 	}
 }
 
@@ -88,10 +93,10 @@ impl Hash for Freq {
 	}
 }
 
-/// 跳过空行和`#`开头的行，读取单个文本文件为列表
+/// 相对dicts目录读取文件，跳过空行和`#`开头的行
 pub(crate) fn parse_target(path: impl AsRef<Path>) -> Vec<String> {
-	let path = path.as_ref();
-	let content = fs::read_to_string(path)
+	let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(path);
+	let content = fs::read_to_string(&path)
 		.unwrap_or_else(|error| panic!("failed to read {}: {error}", path.display()));
 
 	content

@@ -1,22 +1,18 @@
-//! 生成中英混合词典`ZH_DICT`
+//! 生成中英混合词典[`ZH_EN_DICT`]
 //!
-//! 合并中文候选表与长英文词典，英文独有编码以编码本身为首选候选
+//! 合并[`ZH_WORDS_DICT`]与[`EN_DICT_LONG`]，英文独有编码以编码本身为首选候选
 
-/// 生成中英混合词典
 use crate::en_dict::EN_DICT_LONG;
-use crate::zh_dict::ZH_WORDS;
+use crate::zh_dict::ZH_WORDS_DICT;
 use crate::{Code, Text};
 use std::collections::{HashMap, hash_map::Entry};
 use std::sync::LazyLock;
 
-/// 合并中文候选词和英文词典
-fn merge_zh_dict(
-	zh_words: &HashMap<Code, Vec<Text>>,
-	en_dict: &HashMap<Code, Vec<Text>>,
-) -> HashMap<Code, Vec<Text>> {
-	let mut dictionary = zh_words.clone();
+/// 按编码分组的中英混合词典
+pub static ZH_EN_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
+	let mut dictionary = (*ZH_WORDS_DICT).clone();
 
-	for (code, texts) in en_dict {
+	for (code, texts) in EN_DICT_LONG.iter() {
 		match dictionary.entry(code.clone()) {
 			Entry::Occupied(mut entry) => entry.get_mut().extend(texts.iter().cloned()),
 			Entry::Vacant(entry) => {
@@ -32,8 +28,4 @@ fn merge_zh_dict(
 	}
 
 	dictionary
-}
-
-/// 按编码分组的中英混合词典
-pub static ZH_DICT: LazyLock<HashMap<Code, Vec<Text>>> =
-	LazyLock::new(|| merge_zh_dict(&ZH_WORDS, &EN_DICT_LONG));
+});

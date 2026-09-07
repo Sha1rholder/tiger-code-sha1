@@ -1,4 +1,4 @@
-//! 生成英文词典`EN_DICT`与`EN_DICT_LONG`
+//! 生成英文词典[`EN_DICT_LONG`]
 //!
 //! 读取ESDB、英文词频与自定义前后加词，经词图生成变体词形并按词频过滤后按编码分组
 
@@ -25,7 +25,7 @@ const MIN_FREQ: Freq = Freq::from(1e-7);
 const DOUBLE_LOWER: &str = "bdgklmnprstz";
 /// 允许双写的大写辅音
 const DOUBLE_UPPER: &str = "BDGKLMNPRSTZ";
-/// EN_WORDS_LONG中最短码长
+/// [`EN_WORDS_LONG`]中最短码长
 const MIN_LONG: usize = 5;
 
 /// 英文文本的大小写分类
@@ -185,7 +185,7 @@ fn is_valid_english_text(value: &str) -> bool {
 		.any(|byte| byte.is_ascii_alphabetic())
 }
 
-/// 构造按全小写形式分组的ESDB
+/// 构造按全小写形式分组的[`ESDB`]
 fn build_esdb(
 	lines: impl IntoIterator<Item = String>,
 	path: &str,
@@ -227,7 +227,7 @@ fn build_esdb(
 
 /// ESDB
 static ESDB: LazyLock<HashMap<TextLower, HashSet<TextEn>>> = LazyLock::new(|| {
-	let path = "src/data/ESDB.txt";
+	let path = "data/en/ESDB.txt";
 	// 读取并分组ESDB词条
 	build_esdb(parse_target(path), path)
 });
@@ -288,7 +288,7 @@ fn build_en_freq(
 
 /// 英文wordfreq
 static EN_FREQ: LazyLock<HashMap<TextLower, FreqSelf>> = LazyLock::new(|| {
-	let path = "src/data/wordfreq/en.tsv";
+	let path = "data/en/wordfreq.tsv";
 	// 读取并过滤英文词频
 	build_en_freq(parse_target(path), path)
 });
@@ -316,15 +316,15 @@ fn build_custom_words(
 }
 
 /// 英文前置加词
-static EN_FIRST: LazyLock<HashMap<WordCase, Vec<TextEn>>> = LazyLock::new(|| {
-	let path = "src/data/en/first.txt";
+static EN_PREPEND: LazyLock<HashMap<WordCase, Vec<TextEn>>> = LazyLock::new(|| {
+	let path = "data/en/prepend.txt";
 	// 读取并分类英文前置加词
 	build_custom_words(parse_target(path), path)
 });
 
 /// 英文后置加词
-static EN_LAST: LazyLock<HashMap<WordCase, Vec<TextEn>>> = LazyLock::new(|| {
-	let path = "src/data/en/last.txt";
+static EN_APPEND: LazyLock<HashMap<WordCase, Vec<TextEn>>> = LazyLock::new(|| {
+	let path = "data/en/append.txt";
 	// 读取并分类英文后置加词
 	build_custom_words(parse_target(path), path)
 });
@@ -368,7 +368,7 @@ struct WordScore {
 	freq_boost: FreqBoost,
 }
 
-/// 扩增ESDB、关联词频并创建稳定节点
+/// 扩增[`ESDB`]、关联词频并创建稳定节点
 fn build_nodes(
 	esdb: &HashMap<TextLower, HashSet<TextEn>>,
 	frequencies: &HashMap<TextLower, FreqSelf>,
@@ -668,15 +668,10 @@ fn merge_en_words(
 }
 
 /// 英文候选词
-static EN_WORDS: LazyLock<Vec<Text>> = LazyLock::new(|| {
+static EN_WORDS_LONG: LazyLock<Vec<Text>> = LazyLock::new(|| {
 	// 先生成自动词再合并自定义词
 	let automatic = build_automatic_words(&ESDB, &EN_FREQ);
-	merge_en_words(&EN_FIRST, automatic, &EN_LAST)
-});
-
-/// 码长高于MIN_LONG的英文候选词
-static EN_WORDS_LONG: LazyLock<Vec<Text>> = LazyLock::new(|| {
-	EN_WORDS
+	merge_en_words(&EN_PREPEND, automatic, &EN_APPEND)
 		.iter()
 		.filter(|text| text.as_str().len() > MIN_LONG)
 		.cloned()
@@ -696,18 +691,6 @@ fn build_en_dicts(words: &[Text]) -> HashMap<Code, Vec<Text>> {
 
 	dictionary
 }
-
-/// 按所有非空前缀码分组的英文词典
-pub static EN_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
-	let mut dictionary = build_en_dicts(&EN_WORDS);
-
-	for (code, texts) in &mut dictionary {
-		texts.retain(|text| text.as_str() != code.as_str());
-		texts.insert(0, Text::from(code.as_str().to_owned()));
-	}
-
-	dictionary
-});
 
 /// 按所有非空前缀码分组的长英文词典
 pub static EN_DICT_LONG: LazyLock<HashMap<Code, Vec<Text>>> =

@@ -1,20 +1,24 @@
-//! 生成拼音反查候选表`ZH_PY`
+//! 生成拼音反查候选表[`ZH_PY`]
 //!
-//! 读取`py.tsv`中的拼音汉字对，按ZH_CHARS字符集过滤后按权重降序排列
+//! 读取`data/zh/tiger-code/PY_c.dict.yaml.tsv`中的拼音汉字对，按字符集过滤后按权重降序排列
 
 use crate::prelude::parse_target;
 use crate::zh_chars::{ZH_CHARS, contains_illegal_zh_char};
 use crate::{Code, Text, Weight};
+use indexmap::IndexMap;
 use std::cmp::Reverse;
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::sync::LazyLock;
 
-/// 按权重降序排列的拼音和汉字
-pub static ZH_PY: LazyLock<Vec<(Code, Text)>> = LazyLock::new(|| {
-	let path = "src/data/py.tsv";
-	let mut weighted_entries = HashMap::new();
+/// 读取无表头的拼音数据，同权重时保留源文件顺序
+fn build_pinyin(
+	lines: impl IntoIterator<Item = String>,
+	path: &str,
+	zh_chars: &HashSet<Text>,
+) -> Vec<(Code, Text)> {
+	let mut weighted_entries = IndexMap::new();
 
-	for line in parse_target(path).into_iter().skip(1) {
+	for line in lines {
 		let mut fields = line.split('\t');
 		let text = fields.next().expect("missing text field");
 		let code = fields.next().expect("missing code field");
@@ -24,7 +28,7 @@ pub static ZH_PY: LazyLock<Vec<(Code, Text)>> = LazyLock::new(|| {
 			.parse()
 			.expect("invalid weight field");
 
-		if contains_illegal_zh_char(text, &ZH_CHARS) {
+		if contains_illegal_zh_char(text, zh_chars) {
 			continue;
 		}
 
@@ -46,4 +50,10 @@ pub static ZH_PY: LazyLock<Vec<(Code, Text)>> = LazyLock::new(|| {
 		.into_iter()
 		.map(|(code, text, _)| (code, text))
 		.collect()
+}
+
+/// 按权重降序排列的拼音和汉字
+pub static ZH_PY: LazyLock<Vec<(Code, Text)>> = LazyLock::new(|| {
+	let path = "data/zh/tiger-code/PY_c.dict.yaml.tsv";
+	build_pinyin(parse_target(path), path, &ZH_CHARS)
 });
