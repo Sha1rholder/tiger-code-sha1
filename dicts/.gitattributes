@@ -1,5 +1,5 @@
-*.lock -diff
+*.lock filter=lfs diff=lfs merge=lfs -text
 
-/data/en/ESDB.txt -diff
-/data/zh/chars/level-*.txt -diff
-/data/zh/tiger-code/* -diff
+/data/en/ESDB.txt filter=lfs diff=lfs merge=lfs -text
+/data/zh/chars/level-*.txt filter=lfs diff=lfs merge=lfs -text
+/data/zh/tiger-code/* filter=lfs diff=lfs merge=lfs -text
