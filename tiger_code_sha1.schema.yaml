@@ -11,7 +11,7 @@ engine:
   processors:
     - key_binder
     - ascii_composer
-    - lua_processor@*commit_raw_symbol
+    - lua_processor@*symbols
     - recognizer
     - speller
     - punctuator

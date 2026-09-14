@@ -18,41 +18,30 @@
 ---@class Context Rime上下文
 ---@field input string 编码串
 ---@field clear fun(self: Context) 清空编码串
+---@field get_selected_candidate fun(self: Context): Candidate? 获取当前选中的候选
 
----有输入buffer且末尾是英文字母时直接提交当前编码和后续ASCII符号
+---@class Candidate Rime候选
+---@field text string 候选文本
+
+---存在buffer时输入symbol直接上屏当前buffer和raw symbol
+---双击`'`和`"`直接上屏`’`和`”`
 
 local kAccepted = 1
 local kNoop = 2
 
----从键码获取ASCII符号字符（排除字母和数字）
----@param keycode number 键码
----@return string|nil 是ASCII符号时返回字符，否则返回nil
-local function ascii_symbol_from_keycode(keycode)
-	if type(keycode) ~= "number" then
-		return nil
-	end
-
-	if keycode >= 0x21 and keycode <= 0x7e then
-		local char = string.char(keycode)
-		if not char:match("[%w]") then
-			return char
-		end
-	end
-
-	return nil
-end
-
----获取不带修饰键的ASCII符号字符
+---获取不带修饰的symbol
 ---@param key KeyEvent 按键事件
 ---@return string|nil 是纯符号键时返回ASCII字符，否则返回nil
-local function plain_ascii_symbol_from_key(key)
+local function get_raw_symbol(key)
 	if key:release() or key:ctrl() or key:alt() or key:super() then
 		return nil
 	end
 
-	local symbol = ascii_symbol_from_keycode(key.keycode)
-	if symbol ~= nil then
-		return symbol
+	if type(key.keycode) == "number" and key.keycode >= 0x21 and key.keycode <= 0x7e then
+		local char = string.char(key.keycode)
+		if not char:match("[%w]") then
+			return char
+		end
 	end
 
 	local repr = key:repr()
@@ -63,7 +52,7 @@ local function plain_ascii_symbol_from_key(key)
 	return nil
 end
 
----Rime处理器入口：处理英文buffer后的ASCII符号
+---Rime处理器入口：处理双击引号和buffer后的ASCII符号
 ---@param key KeyEvent 按键事件
 ---@param env Environment Rime环境对象
 ---@return integer kAccepted表示按键已被处理，kNoop表示未处理
@@ -71,14 +60,31 @@ local function processor(key, env)
 	local engine = env.engine
 	local context = engine.context
 	local input = context.input or ""
-	local symbol = plain_ascii_symbol_from_key(key)
+	local symbol = get_raw_symbol(key)
 
 	if symbol == nil then
 		return kNoop
 	end
 
+	if symbol == '"' or symbol == "'" then
+		local candidate = context:get_selected_candidate()
+		if candidate ~= nil then
+			local closing_quote
+			if symbol == '"' and candidate.text == "“" then
+				closing_quote = "”"
+			elseif symbol == "'" and candidate.text == "‘" then
+				closing_quote = "’"
+			end
 
-	if input ~= "" and input:sub(-1):match("[a-zA-Z]") then
+			if closing_quote ~= nil then
+				engine:commit_text(closing_quote)
+				context:clear()
+				return kAccepted
+			end
+		end
+	end
+
+	if input ~= "" then
 		engine:commit_text(input .. symbol)
 		context:clear()
 		return kAccepted
