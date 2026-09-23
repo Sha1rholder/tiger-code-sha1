@@ -4,7 +4,7 @@ patch:
     polycarbonate-dark:
       name: polycarbonate-dark
       back_color: 0xcc000000
-      border_color: 0xc202020
+      border_color: 0xcc000000
       candidate_back_color: 0x00ffffff
       candidate_text_color: 0xdddddd
       comment_text_color: 0x666666
@@ -18,8 +18,7 @@ patch:
       label_color: 0xc9c9c9
       text_color: 0xc9c9c9
   style:
-    color_font: true
-    font_face: Noto Sans SC
+    font_face: Sha1 Sans
     font_point: 16
     color_scheme: polycarbonate-dark
     horizontal: true

@@ -1,6 +1,6 @@
 # Tiger Code Sha1
 
-基于[虎码](https://www.tiger-code.com)魔改的Rime输入方案
+基于[虎码](https://www.tiger-code.com)魔改的Rime输入方案，小狼毫、鼠须管、Fcitx5通用
 
 ## 特性
 
@@ -29,20 +29,20 @@
 	└ README.md						# 开发文档
 ```
 
-## 使用方法（以Windows为例）
+## 使用方法
 
 1. 安装依赖
 2. 清空Rime用户文件夹
 3. 执行
 ```ps1
-git clone --depth=1 https://github.com/Sha1rholder/tiger-code-sha1.git "$env:APPDATA\Rime"
+git clone --depth=1 https://github.com/Sha1rholder/tiger-code-sha1.git "$env:APPDATA\Rime" # 请勿必加上`--depth=1`，本repo的git history很爆炸
 cd "$env:APPDATA\Rime\dicts"
 uv run data\get_wordfreq.py
 cargo run --release
 ```
 4. 在Weasel控制面板中选择`tiger_code_sha1`
 
-fcitx5目录为`~/.local/share/fcitx5/rime`
+fcitx5目录为`~/.local/share/fcitx5/rime`，鼠须管目录为`~/Library/Rime`
 
 ## 致谢
 
