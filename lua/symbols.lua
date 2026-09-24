@@ -24,10 +24,18 @@
 ---@field text string 候选文本
 
 ---存在buffer时输入symbol直接上屏当前buffer和raw symbol
----双击`'`和`"`直接上屏`’`和`”`
+---双击`'`、`"`、`<`、`>`、`_`直接上屏对应次选
 
 local kAccepted = 1
 local kNoop = 2
+
+local second_symbols = {
+	['"'] = { ["“"] = "”" },
+	["'"] = { ["‘"] = "’" },
+	["<"] = { ["《"] = "<" },
+	[">"] = { ["》"] = ">" },
+	["_"] = { ["——"] = "_" },
+}
 
 ---获取不带修饰的symbol
 ---@param key KeyEvent 按键事件
@@ -52,7 +60,7 @@ local function get_raw_symbol(key)
 	return nil
 end
 
----Rime处理器入口：处理双击引号和buffer后的ASCII符号
+---Rime处理器入口：处理双击符号和buffer后的ASCII符号
 ---@param key KeyEvent 按键事件
 ---@param env Environment Rime环境对象
 ---@return integer kAccepted表示按键已被处理，kNoop表示未处理
@@ -66,18 +74,12 @@ local function processor(key, env)
 		return kNoop
 	end
 
-	if symbol == '"' or symbol == "'" then
+	if second_symbols[symbol] ~= nil then
 		local candidate = context:get_selected_candidate()
 		if candidate ~= nil then
-			local closing_quote
-			if symbol == '"' and candidate.text == "“" then
-				closing_quote = "”"
-			elseif symbol == "'" and candidate.text == "‘" then
-				closing_quote = "’"
-			end
-
-			if closing_quote ~= nil then
-				engine:commit_text(closing_quote)
+			local second_symbol = second_symbols[symbol][candidate.text]
+			if second_symbol ~= nil then
+				engine:commit_text(second_symbol)
 				context:clear()
 				return kAccepted
 			end
