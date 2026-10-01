@@ -1,0 +1,39 @@
+---
+patch:
+  preset_color_schemes/polycarbonate-dark:
+    name: polycarbonate-dark
+    back_color: 0xcc000000
+    border_color: 0xcc000000
+    candidate_back_color: 0x00ffffff
+    candidate_text_color: 0xdddddd
+    comment_text_color: 0x666666
+    hilited_back_color: 0xee444444
+    hilited_candidate_back_color: 0xee444444
+    hilited_candidate_text_color: 0xf9f9f9
+    hilited_comment_text_color: 0xf9f9f9
+    # 对应小狼毫的hilited_label_color
+    hilited_candidate_label_color: 0xf9f9f9
+    hilited_text_color: 0xf9f9f9
+    label_color: 0xc9c9c9
+    text_color: 0xc9c9c9
+
+  style/font_face: Sha1 Sans
+  style/font_point: 16
+  style/label_font_face: Sha1 Sans
+  style/label_font_point: 16
+  style/comment_font_face: Sha1 Sans
+  style/comment_font_point: 16
+  style/color_scheme: polycarbonate-dark
+  style/color_scheme_dark: polycarbonate-dark
+  # 对应horizontal: true
+  style/candidate_list_layout: linear
+  style/text_orientation: horizontal
+  style/inline_preedit: true
+  # 鼠须管没有横排candidate_spacing，用一个全角空白近似15像素间距
+  style/candidate_format: "[label]. [candidate] [comment]\u2003"
+  style/corner_radius: 5
+  style/hilited_corner_radius: 5
+  # 鼠须管的border_width/border_height控制内边距，对应margin_x/margin_y
+  style/border_width: 5
+  style/border_height: 5
+  # hilited_mark_color和min_width没有直接对应的鼠须管配置项
