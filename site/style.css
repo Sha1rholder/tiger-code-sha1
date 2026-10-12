@@ -17,6 +17,7 @@ main {
   margin: 0 auto;
   padding: 48px 0;
   overflow-wrap: anywhere;
+  text-autospace: normal;
 }
 
 h1,
@@ -63,6 +64,7 @@ blockquote {
 }
 
 code {
+  text-autospace: no-autospace;
   padding: 0.1em 0.3em;
   border: 1px solid #3a3a3a;
   border-radius: 3px;
