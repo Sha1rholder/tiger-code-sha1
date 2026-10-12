@@ -44,23 +44,6 @@ cargo run --release
 
 fcitx5目录为`~/.local/share/fcitx5/rime`，鼠须管目录为`~/Library/Rime`
 
-## 介绍网站
-
-[在线阅读](https://sha1rholder.github.io/tiger-code-sha1/)，内容来自[site/intro.md](site/intro.md)，使用Pandoc转换为单页HTML
-
-先按[Pandoc安装说明](https://pandoc.org/installing.html)安装Pandoc，Ubuntu/Debian可运行`sudo apt-get install pandoc`，Fedora可运行`sudo dnf install pandoc`
-
-在仓库根目录构建并预览（预览需要Python 3）：
-
-```sh
-bash site/build.sh
-python3 -m http.server 8000 --bind 127.0.0.1 --directory site/dist
-```
-
-浏览器打开`http://127.0.0.1:8000/`即可预览，生成的`site/dist/`不提交到仓库
-
-GitHub仓库的Settings → Pages → Build and deployment → Source选择GitHub Actions。`main`分支的`site/`或Pages工作流修改会自动构建部署，也可手动运行工作流；PR只构建验证
-
 ## 致谢
 
 - [虎码输入法](https://www.tiger-code.com)
