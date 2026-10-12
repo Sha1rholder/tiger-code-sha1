@@ -7,3 +7,5 @@ temp*
 /user.yaml
 
 /*.dict.yaml
+
+/site/dist/

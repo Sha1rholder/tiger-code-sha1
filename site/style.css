@@ -1,0 +1,106 @@
+:root {
+  color-scheme: dark;
+  background: #121212;
+  color: #e0e0e0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  width: calc(100% - 32px);
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 48px 0;
+  overflow-wrap: anywhere;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  line-height: 1.4;
+  text-wrap: balance;
+}
+
+h1 {
+  margin: 1.25em 0 0.75em;
+  font-size: clamp(1.6rem, 4vw, 2rem);
+}
+
+h2 {
+  margin: 2em 0 0.75em;
+  font-size: 1.4rem;
+}
+
+p,
+blockquote,
+pre,
+ul,
+ol {
+  margin: 1.25em 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+blockquote {
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: 1em;
+  border-left: 3px solid #3a3a3a;
+}
+
+code {
+  padding: 0.1em 0.3em;
+  border: 1px solid #3a3a3a;
+  border-radius: 3px;
+  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+pre {
+  overflow-x: auto;
+  padding: 1em;
+  border: 1px solid #3a3a3a;
+  border-radius: 3px;
+  overflow-wrap: normal;
+}
+
+pre code {
+  padding: 0;
+  border: 0;
+}
+
+hr {
+  margin: 2.5em 0;
+  border: 0;
+  border-top: 1px solid #3a3a3a;
+}
+
+@media (max-width: 600px) {
+  main {
+    padding: 24px 0;
+  }
+}
