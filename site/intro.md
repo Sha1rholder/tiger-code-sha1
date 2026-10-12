@@ -1,3 +1,5 @@
+![Example](assets/example.png)
+
 # Tiger Code Sha1：一种以静态码表统合中英文的输入方案
 
 >*Tiger Code Sha1*是一套针对中英混输体验优化的输入法编排方案。汉字循形取码，英文依词频与词形关系补全，标点由Lua协同处理；候选在本地预先编排，完全禁用动态用户词库及其学习，跳出semantic analysis、context-based prediction、用户画像、LLM等其他闭源云端算法依赖的设计基础，实现超过商业输入法的输入体验
