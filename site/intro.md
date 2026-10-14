@@ -2,9 +2,8 @@
 
 # Tiger Code Sha1：一种以静态码表统合中英文的输入方案
 
----
-
-源码与分发：<https://github.com/Sha1rholder/tiger-code-sha1>
+GitHub: <https://github.com/Sha1rholder/tiger-code-sha1>  
+DeepWiki: <https://deepwiki.com/Sha1rholder/tiger-code-sha1>
 
 - [象其物宜：汉字编码与精粹组词](#象其物宜汉字编码与精粹组词)
 - [经纪条贯：Zipf词频与英文词缀的变化](#经纪条贯zipf词频与英文词缀的变化)
