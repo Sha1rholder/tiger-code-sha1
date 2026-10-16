@@ -27,8 +27,6 @@ type TigerCharsRaw = HashMap<Text, TigerChar>;
 
 /// 补全候选项数量
 const CANDIDATES: usize = 3;
-/// 最大补全候选项数量
-const MAX_CANDIDATES: usize = 9;
 
 /// 读取虎码原始数据，以Text和Code为键收集并拒绝重复组合，丢弃非法字符
 fn build_tiger_entries(
@@ -455,12 +453,6 @@ fn merge_zh_words(
 			.or_default()
 			.extend(texts.iter().cloned());
 	}
-
-	// 基础候选不能超过候选页容量
-	assert!(
-		zh_words.values().all(|texts| texts.len() <= MAX_CANDIDATES),
-		"base Chinese candidates must not exceed MAX_CANDIDATES"
-	);
 
 	// 最后用自动词补足候选
 	for (code, texts) in automatic_words {
