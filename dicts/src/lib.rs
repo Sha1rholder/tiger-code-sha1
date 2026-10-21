@@ -8,7 +8,7 @@ mod zh_chars;
 pub mod zh_dict;
 pub mod zh_en_dict;
 
-pub use prelude::{Code, Freq, Text, Weight};
+pub use prelude::{Code, CodeChar, CodeNode, Freq, NodeId, Text, Weight};
 
 use crate::pinyin::PINYIN_DICT;
 use crate::zh_en_dict::ZH_EN_DICT;

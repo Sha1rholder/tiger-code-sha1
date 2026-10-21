@@ -2,7 +2,7 @@
 //!
 //! 基于虎码字符表生成自动词候选，读取自定义条目并按优先级合并
 
-use crate::prelude::{group_texts_by_code, parse_target};
+use crate::prelude::{code_nodes_to_groups, group_texts_by_code, parse_target};
 use crate::tiger_dict::TIGER_CHARS_DICT;
 use crate::zh_chars::{ZH_CHARS, contains_illegal_zh_char};
 use crate::{Code, Freq, Text};
@@ -118,11 +118,13 @@ static ZH_FREQ: LazyLock<HashMap<Text, Freq>> = LazyLock::new(|| {
 
 /// 中文候选词
 pub static ZH_WORDS_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
+	// 临时兼容边界，词模块迁移到节点后删除
+	let tiger_chars = code_nodes_to_groups(&TIGER_CHARS_DICT);
 	// 单字到最终虎码的映射，已应用重编码
 	let mut char_codes = HashMap::new();
 
 	// 反转虎码字符表并断言每个字符只有一个编码
-	for (code, texts) in &*TIGER_CHARS_DICT {
+	for (code, texts) in &tiger_chars {
 		for text in texts {
 			let previous = char_codes.insert(text.clone(), code.clone());
 			assert!(previous.is_none(), "tiger text must map to one code");
@@ -212,7 +214,7 @@ pub static ZH_WORDS_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| 
 	let mut zh_words = HashMap::<Code, Vec<Text>>::new();
 
 	// 先加入虎码字符
-	for (code, texts) in &*TIGER_CHARS_DICT {
+	for (code, texts) in &tiger_chars {
 		zh_words
 			.entry(code.clone())
 			.or_default()

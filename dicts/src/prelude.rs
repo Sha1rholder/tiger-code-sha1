@@ -1,4 +1,4 @@
-//! 项目基础类型[`Text`]、[`Code`]、[`Weight`]、[`Freq`]
+//! 项目基础类型[`Text`]、[`CodeChar`]、[`CodeNode`]、[`Weight`]、[`Freq`]与待迁移的[`Code`]
 //! 与通用数据文件解析函数[`parse_target`]、编码分组函数[`group_texts_by_code`]
 
 use std::collections::HashMap;
@@ -22,7 +22,7 @@ impl Text {
 	}
 }
 
-/// 编码
+/// 临时字符串编码，供尚未迁移到节点的模块使用
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Code(String);
 impl From<String> for Code {
@@ -31,6 +31,17 @@ impl From<String> for Code {
 	}
 }
 impl Code {
+	/// 临时兼容转换，从节点的完整路径恢复字符串编码
+	pub(crate) fn from_node(nodes: &[CodeNode], node_id: NodeId) -> Self {
+		Self(
+			nodes[node_id]
+				.path(nodes)
+				.into_iter()
+				.map(char::from)
+				.collect(),
+		)
+	}
+
 	/// 返回底层字符串切片
 	pub(crate) fn as_str(&self) -> &str {
 		&self.0
@@ -45,6 +56,297 @@ impl Code {
 	pub fn is_empty(&self) -> bool {
 		self.0.is_empty()
 	}
+}
+
+/// 编码字符，变体按ASCII字典序排列，子节点仍通过无序HashMap存储
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum CodeChar {
+	Apostrophe,
+	UpperA,
+	UpperB,
+	UpperC,
+	UpperD,
+	UpperE,
+	UpperF,
+	UpperG,
+	UpperH,
+	UpperI,
+	UpperJ,
+	UpperK,
+	UpperL,
+	UpperM,
+	UpperN,
+	UpperO,
+	UpperP,
+	UpperQ,
+	UpperR,
+	UpperS,
+	UpperT,
+	UpperU,
+	UpperV,
+	UpperW,
+	UpperX,
+	UpperY,
+	UpperZ,
+	LowerA,
+	LowerB,
+	LowerC,
+	LowerD,
+	LowerE,
+	LowerF,
+	LowerG,
+	LowerH,
+	LowerI,
+	LowerJ,
+	LowerK,
+	LowerL,
+	LowerM,
+	LowerN,
+	LowerO,
+	LowerP,
+	LowerQ,
+	LowerR,
+	LowerS,
+	LowerT,
+	LowerU,
+	LowerV,
+	LowerW,
+	LowerX,
+	LowerY,
+	LowerZ,
+}
+
+impl TryFrom<char> for CodeChar {
+	type Error = char;
+
+	fn try_from(value: char) -> Result<Self, Self::Error> {
+		match value {
+			'\'' => Ok(Self::Apostrophe),
+			'A' => Ok(Self::UpperA),
+			'B' => Ok(Self::UpperB),
+			'C' => Ok(Self::UpperC),
+			'D' => Ok(Self::UpperD),
+			'E' => Ok(Self::UpperE),
+			'F' => Ok(Self::UpperF),
+			'G' => Ok(Self::UpperG),
+			'H' => Ok(Self::UpperH),
+			'I' => Ok(Self::UpperI),
+			'J' => Ok(Self::UpperJ),
+			'K' => Ok(Self::UpperK),
+			'L' => Ok(Self::UpperL),
+			'M' => Ok(Self::UpperM),
+			'N' => Ok(Self::UpperN),
+			'O' => Ok(Self::UpperO),
+			'P' => Ok(Self::UpperP),
+			'Q' => Ok(Self::UpperQ),
+			'R' => Ok(Self::UpperR),
+			'S' => Ok(Self::UpperS),
+			'T' => Ok(Self::UpperT),
+			'U' => Ok(Self::UpperU),
+			'V' => Ok(Self::UpperV),
+			'W' => Ok(Self::UpperW),
+			'X' => Ok(Self::UpperX),
+			'Y' => Ok(Self::UpperY),
+			'Z' => Ok(Self::UpperZ),
+			'a' => Ok(Self::LowerA),
+			'b' => Ok(Self::LowerB),
+			'c' => Ok(Self::LowerC),
+			'd' => Ok(Self::LowerD),
+			'e' => Ok(Self::LowerE),
+			'f' => Ok(Self::LowerF),
+			'g' => Ok(Self::LowerG),
+			'h' => Ok(Self::LowerH),
+			'i' => Ok(Self::LowerI),
+			'j' => Ok(Self::LowerJ),
+			'k' => Ok(Self::LowerK),
+			'l' => Ok(Self::LowerL),
+			'm' => Ok(Self::LowerM),
+			'n' => Ok(Self::LowerN),
+			'o' => Ok(Self::LowerO),
+			'p' => Ok(Self::LowerP),
+			'q' => Ok(Self::LowerQ),
+			'r' => Ok(Self::LowerR),
+			's' => Ok(Self::LowerS),
+			't' => Ok(Self::LowerT),
+			'u' => Ok(Self::LowerU),
+			'v' => Ok(Self::LowerV),
+			'w' => Ok(Self::LowerW),
+			'x' => Ok(Self::LowerX),
+			'y' => Ok(Self::LowerY),
+			'z' => Ok(Self::LowerZ),
+			other => Err(other),
+		}
+	}
+}
+
+impl From<CodeChar> for char {
+	fn from(value: CodeChar) -> Self {
+		match value {
+			CodeChar::Apostrophe => '\'',
+			CodeChar::UpperA => 'A',
+			CodeChar::UpperB => 'B',
+			CodeChar::UpperC => 'C',
+			CodeChar::UpperD => 'D',
+			CodeChar::UpperE => 'E',
+			CodeChar::UpperF => 'F',
+			CodeChar::UpperG => 'G',
+			CodeChar::UpperH => 'H',
+			CodeChar::UpperI => 'I',
+			CodeChar::UpperJ => 'J',
+			CodeChar::UpperK => 'K',
+			CodeChar::UpperL => 'L',
+			CodeChar::UpperM => 'M',
+			CodeChar::UpperN => 'N',
+			CodeChar::UpperO => 'O',
+			CodeChar::UpperP => 'P',
+			CodeChar::UpperQ => 'Q',
+			CodeChar::UpperR => 'R',
+			CodeChar::UpperS => 'S',
+			CodeChar::UpperT => 'T',
+			CodeChar::UpperU => 'U',
+			CodeChar::UpperV => 'V',
+			CodeChar::UpperW => 'W',
+			CodeChar::UpperX => 'X',
+			CodeChar::UpperY => 'Y',
+			CodeChar::UpperZ => 'Z',
+			CodeChar::LowerA => 'a',
+			CodeChar::LowerB => 'b',
+			CodeChar::LowerC => 'c',
+			CodeChar::LowerD => 'd',
+			CodeChar::LowerE => 'e',
+			CodeChar::LowerF => 'f',
+			CodeChar::LowerG => 'g',
+			CodeChar::LowerH => 'h',
+			CodeChar::LowerI => 'i',
+			CodeChar::LowerJ => 'j',
+			CodeChar::LowerK => 'k',
+			CodeChar::LowerL => 'l',
+			CodeChar::LowerM => 'm',
+			CodeChar::LowerN => 'n',
+			CodeChar::LowerO => 'o',
+			CodeChar::LowerP => 'p',
+			CodeChar::LowerQ => 'q',
+			CodeChar::LowerR => 'r',
+			CodeChar::LowerS => 's',
+			CodeChar::LowerT => 't',
+			CodeChar::LowerU => 'u',
+			CodeChar::LowerV => 'v',
+			CodeChar::LowerW => 'w',
+			CodeChar::LowerX => 'x',
+			CodeChar::LowerY => 'y',
+			CodeChar::LowerZ => 'z',
+		}
+	}
+}
+
+/// 节点在所属Vec中的下标，0固定为根节点
+pub type NodeId = usize;
+
+/// 编码节点，完整路径由父节点和自身字符共同确定
+#[derive(Clone, Debug)]
+pub struct CodeNode {
+	parent: Option<NodeId>,
+	character: Option<CodeChar>,
+	texts: Vec<Text>,
+	children: HashMap<CodeChar, NodeId>,
+}
+
+impl CodeNode {
+	/// 创建放在0号位置的唯一根节点
+	pub(crate) fn root() -> Self {
+		Self {
+			parent: None,
+			character: None,
+			texts: Vec::new(),
+			children: HashMap::new(),
+		}
+	}
+
+	/// 当前节点自身的有序候选
+	pub(crate) fn texts(&self) -> &[Text] {
+		&self.texts
+	}
+
+	/// 修改普通节点自身的候选
+	pub(crate) fn texts_mut(&mut self) -> &mut Vec<Text> {
+		assert!(self.parent.is_some(), "root must not have texts");
+		&mut self.texts
+	}
+
+	/// 从父链计算编码长度，根节点的长度为0
+	pub(crate) fn depth(&self, nodes: &[Self]) -> usize {
+		let mut depth = 0;
+		let mut current = self;
+		while let Some(parent) = current.parent {
+			depth += 1;
+			current = &nodes[parent];
+		}
+		depth
+	}
+
+	/// 比较完整路径的字典序，不依赖节点的分配顺序
+	pub(crate) fn cmp_path(&self, other: &Self, nodes: &[Self]) -> std::cmp::Ordering {
+		self.path(nodes).cmp(&other.path(nodes))
+	}
+
+	/// 沿父链取得从根到当前节点的字符
+	fn path(&self, nodes: &[Self]) -> Vec<CodeChar> {
+		let mut path = Vec::new();
+		let mut current = self;
+		while let Some(parent) = current.parent {
+			path.push(
+				current
+					.character
+					.expect("nonroot node must have a character"),
+			);
+			current = &nodes[parent];
+		}
+		path.reverse();
+		path
+	}
+}
+
+/// 将输入编码解析到节点，只追加节点，已有id保持稳定
+pub(crate) fn insert_code(nodes: &mut Vec<CodeNode>, code: &str) -> NodeId {
+	assert!(!nodes.is_empty(), "nodes must contain the root at index 0");
+	assert!(!code.is_empty(), "code must not be empty");
+	// 先校验全部字符，避免非法输入留下部分路径
+	let characters = code
+		.chars()
+		.map(|character| {
+			CodeChar::try_from(character)
+				.unwrap_or_else(|invalid| panic!("invalid code character: {invalid:?}"))
+		})
+		.collect::<Vec<_>>();
+	let mut node_id = 0;
+
+	for character in characters {
+		if let Some(&child) = nodes[node_id].children.get(&character) {
+			node_id = child;
+		} else {
+			let child = nodes.len();
+			nodes.push(CodeNode {
+				parent: Some(node_id),
+				character: Some(character),
+				texts: Vec::new(),
+				children: HashMap::new(),
+			});
+			let _ = nodes[node_id].children.insert(character, child);
+			node_id = child;
+		}
+	}
+
+	node_id
+}
+
+/// 临时兼容尚未迁移的词模块，跳过只有路径而没有候选的节点
+pub(crate) fn code_nodes_to_groups(nodes: &[CodeNode]) -> HashMap<Code, Vec<Text>> {
+	nodes
+		.iter()
+		.enumerate()
+		.filter(|(_, node)| !node.texts().is_empty())
+		.map(|(node_id, node)| (Code::from_node(nodes, node_id), node.texts().to_vec()))
+		.collect()
 }
 
 /// 权重
@@ -126,4 +428,129 @@ pub(crate) fn group_texts_by_code(
 	}
 
 	grouped
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn alphabet_has_exactly_53_distinct_characters() {
+		let accepted = (0..=127)
+			.filter_map(|value| CodeChar::try_from(char::from(value)).ok())
+			.collect::<Vec<_>>();
+		assert_eq!(accepted.len(), 53);
+		assert_eq!(
+			accepted
+				.iter()
+				.collect::<std::collections::HashSet<_>>()
+				.len(),
+			53
+		);
+		assert_eq!(
+			accepted.iter().copied().map(char::from).collect::<String>(),
+			"'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+		);
+		assert!(accepted.windows(2).all(|pair| pair[0] < pair[1]));
+		for character in ['中', 'é', 'Ａ', '’'] {
+			assert_eq!(CodeChar::try_from(character), Err(character));
+		}
+
+		let mut nodes = vec![CodeNode::root()];
+		for character in accepted {
+			let node = insert_code(&mut nodes, &char::from(character).to_string());
+			assert_eq!(nodes[node].parent, Some(0));
+			assert_eq!(nodes[node].character, Some(character));
+		}
+		assert_eq!(nodes[0].children.len(), 53);
+		assert_eq!(nodes.len(), 54);
+	}
+
+	#[test]
+	fn prefixes_share_nodes_but_keep_their_own_candidates() {
+		let mut nodes = vec![CodeNode::root()];
+		let inf = insert_code(&mut nodes, "inf");
+		let inq = insert_code(&mut nodes, "inq");
+		let prefix = insert_code(&mut nodes, "in");
+		let i = insert_code(&mut nodes, "i");
+		assert_eq!(nodes.len(), 5);
+		assert_eq!(insert_code(&mut nodes, "inf"), inf);
+		assert_eq!(nodes.len(), 5);
+
+		for (node, texts) in [
+			(i, vec!["为", "为什么"]),
+			(prefix, vec!["主", "主要", "主"]),
+			(inf, vec!["缄"]),
+			(inq, vec!["缜"]),
+		] {
+			nodes[node]
+				.texts_mut()
+				.extend(texts.into_iter().map(|text| Text::from(text.to_owned())));
+		}
+		let xyz = insert_code(&mut nodes, "xyz");
+		nodes[xyz].texts_mut().push(Text::from("字".to_owned()));
+		assert_eq!(nodes[0].parent, None);
+		assert_eq!(nodes[0].character, None);
+		assert!(nodes[0].texts().is_empty());
+		assert_eq!(nodes[0].depth(&nodes), 0);
+		assert_eq!(nodes[inf].depth(&nodes), 3);
+		assert_eq!(nodes[inf].parent, Some(prefix));
+		assert_eq!(nodes[inq].parent, Some(prefix));
+		assert_eq!(nodes[prefix].parent, Some(i));
+		assert_eq!(nodes[prefix].children[&CodeChar::LowerF], inf);
+		assert_eq!(nodes[prefix].children[&CodeChar::LowerQ], inq);
+		for (parent, node) in nodes.iter().enumerate() {
+			for (&character, &child) in &node.children {
+				assert_eq!(nodes[child].parent, Some(parent));
+				assert_eq!(nodes[child].character, Some(character));
+			}
+		}
+
+		let groups = code_nodes_to_groups(&nodes);
+		assert_eq!(groups.len(), 5);
+		assert_eq!(
+			groups[&Code::from("in".to_owned())]
+				.iter()
+				.map(Text::as_str)
+				.collect::<Vec<_>>(),
+			["主", "主要", "主"]
+		);
+		for code in ["i", "in", "inf", "inq", "xyz"] {
+			let node = insert_code(&mut nodes, code);
+			assert_eq!(Code::from_node(&nodes, node).as_str(), code);
+		}
+		for code in ["", "x", "xy"] {
+			assert!(!groups.contains_key(&Code::from(code.to_owned())));
+		}
+	}
+
+	#[test]
+	fn path_order_does_not_depend_on_node_ids() {
+		let mut nodes = vec![CodeNode::root()];
+		let mut codes = ["z", "inq", "inf", "in", "i", "a", "A", "'", "I", "i'n"];
+		let mut ids = codes
+			.iter()
+			.map(|code| insert_code(&mut nodes, code))
+			.collect::<Vec<_>>();
+		ids.sort_unstable_by(|&left, &right| nodes[left].cmp_path(&nodes[right], &nodes));
+		codes.sort_unstable();
+		let ordered = ids
+			.into_iter()
+			.map(|node| Code::from_node(&nodes, node))
+			.collect::<Vec<_>>();
+		assert_eq!(ordered.iter().map(Code::as_str).collect::<Vec<_>>(), codes);
+	}
+
+	#[test]
+	fn invalid_input_leaves_no_partial_path() {
+		let mut nodes = vec![CodeNode::root()];
+		for code in ["", "ab1", "abé", "a b", "a-b", "abc\n"] {
+			let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+				insert_code(&mut nodes, code)
+			}));
+			assert!(result.is_err(), "accepted invalid code: {code:?}");
+			assert_eq!(nodes.len(), 1);
+			assert!(nodes[0].children.is_empty());
+		}
+	}
 }
