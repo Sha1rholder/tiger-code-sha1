@@ -21,101 +21,6 @@ type CompletionWeight = Freq;
 /// 补全候选项数量
 const CANDIDATES: usize = 3;
 
-/// 自定义编码
-static ZH_CUSTOM_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
-	// 读取自定义Code和Text
-	let entries = parse_target("data/zh/custom.tsv")
-		.into_iter()
-		.skip(1)
-		.map(|line| {
-			let mut fields = line.split('\t');
-			let code = fields.next().expect("missing code field");
-			let text = fields.next().expect("missing text field");
-
-			(Code::from(code.to_owned()), Text::from(text.to_owned()))
-		});
-
-	// 按Code分组并保留Text原顺序
-	group_texts_by_code(entries)
-});
-
-/// 合法中文wordfreq
-static ZH_FREQ: LazyLock<HashMap<Text, Freq>> = LazyLock::new(|| {
-	let path = "data/zh/wordfreq.tsv";
-	let mut seen = HashSet::new();
-	let mut frequencies = HashMap::new();
-
-	// 读取并过滤中文词频
-	for line in parse_target(path).into_iter().skip(1) {
-		let mut fields = line.split('\t');
-		let text = fields.next().expect("missing text field");
-		let freq = fields.next().expect("missing freq field");
-		let freq = Freq::from(freq.parse().expect("invalid freq field"));
-		let parsed_text = text.to_owned();
-
-		// 拒绝重复Text
-		if !seen.insert(parsed_text.clone()) {
-			panic!("duplicate text in {path}: {text}");
-		}
-		// 丢弃单字和包含非法字符的词
-		if text.chars().count() == 1 || contains_illegal_zh_char(text, &ZH_CHARS) {
-			continue;
-		}
-
-		let _ = frequencies.insert(parsed_text, freq);
-	}
-
-	// 临时借用全部合法键
-	let texts = frequencies
-		.keys()
-		.map(String::as_str)
-		.collect::<HashSet<_>>();
-	// 找出包含任意其它键的键
-	let contained_texts = texts
-		.iter()
-		.copied()
-		.filter(|text| {
-			// 逐字符选择子串起点
-			for (start, _) in text.char_indices() {
-				let suffix = &text[start..];
-
-				// 枚举该起点后的所有字符边界
-				for (relative_end, _) in suffix
-					.char_indices()
-					.skip(1)
-					.chain(std::iter::once((suffix.len(), '\0')))
-				{
-					let end = start + relative_end;
-					// 跳过文本自身
-					if start == 0 && end == text.len() {
-						continue;
-					}
-					// 命中任意其它键后立即返回
-					if texts.contains(&text[start..end]) {
-						return true;
-					}
-				}
-			}
-
-			false
-		})
-		.map(str::to_owned)
-		.collect::<Vec<_>>();
-	// 释放键集合借用
-	drop(texts);
-
-	// 删除包含其它键的键值对
-	for text in contained_texts {
-		let _ = frequencies.remove(&text);
-	}
-
-	// 转换为公开的Text键
-	frequencies
-		.into_iter()
-		.map(|(text, freq)| (Text::from(text), freq))
-		.collect()
-});
-
 /// 中文候选词
 pub static ZH_WORDS_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 	// 临时兼容边界，词模块迁移到节点后删除
@@ -134,8 +39,84 @@ pub static ZH_WORDS_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| 
 	// 首字到补全部及其加权词频的映射
 	let mut completions = HashMap::<FirstText, HashMap<CompletionText, CompletionWeight>>::new();
 
+	let frequencies: HashMap<Text, Freq> = {
+		let path = "data/zh/wordfreq.tsv";
+		let mut seen = HashSet::new();
+		let mut frequencies = HashMap::new();
+
+		// 读取并过滤中文词频
+		for line in parse_target(path).into_iter().skip(1) {
+			let mut fields = line.split('\t');
+			let text = fields.next().expect("missing text field");
+			let freq = fields.next().expect("missing freq field");
+			let freq = Freq::from(freq.parse().expect("invalid freq field"));
+			let parsed_text = text.to_owned();
+
+			// 拒绝重复Text
+			if !seen.insert(parsed_text.clone()) {
+				panic!("duplicate text in {path}: {text}");
+			}
+			// 丢弃单字和包含非法字符的词
+			if text.chars().count() == 1 || contains_illegal_zh_char(text, &ZH_CHARS) {
+				continue;
+			}
+
+			let _ = frequencies.insert(parsed_text, freq);
+		}
+
+		// 临时借用全部合法键
+		let texts = frequencies
+			.keys()
+			.map(String::as_str)
+			.collect::<HashSet<_>>();
+		// 找出包含任意其它键的键
+		let contained_texts = texts
+			.iter()
+			.copied()
+			.filter(|text| {
+				// 逐字符选择子串起点
+				for (start, _) in text.char_indices() {
+					let suffix = &text[start..];
+
+					// 枚举该起点后的所有字符边界
+					for (relative_end, _) in suffix
+						.char_indices()
+						.skip(1)
+						.chain(std::iter::once((suffix.len(), '\0')))
+					{
+						let end = start + relative_end;
+						// 跳过文本自身
+						if start == 0 && end == text.len() {
+							continue;
+						}
+						// 命中任意其它键后立即返回
+						if texts.contains(&text[start..end]) {
+							return true;
+						}
+					}
+				}
+
+				false
+			})
+			.map(str::to_owned)
+			.collect::<Vec<_>>();
+		// 释放键集合借用
+		drop(texts);
+
+		// 删除包含其它键的键值对
+		for text in contained_texts {
+			let _ = frequencies.remove(&text);
+		}
+
+		// 转换为公开的Text键
+		frequencies
+			.into_iter()
+			.map(|(text, freq)| (Text::from(text), freq))
+			.collect()
+	};
+
 	// 按首字收集补全部和补全加权词频
-	for (original, freq) in &*ZH_FREQ {
+	for (original, freq) in frequencies {
 		// 将原词拆为首字和补全部
 		let mut chars = original.as_str().chars();
 		let first = chars.next().expect("original text must not be empty");
@@ -220,12 +201,26 @@ pub static ZH_WORDS_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| 
 			.or_default()
 			.extend(texts.iter().cloned());
 	}
+	let custom_words = {
+		// 读取自定义Code和Text
+		let entries = parse_target("data/zh/custom.tsv")
+			.into_iter()
+			.skip(1)
+			.map(|line| {
+				let mut fields = line.split('\t');
+				let code = fields.next().expect("missing code field");
+				let text = fields.next().expect("missing text field");
+
+				(Code::from(code.to_owned()), Text::from(text.to_owned()))
+			});
+
+		// 按Code分组并保留Text原顺序
+		group_texts_by_code(entries)
+	};
+
 	// 再加入自定义词并保留重复
-	for (code, texts) in &*ZH_CUSTOM_DICT {
-		zh_words
-			.entry(code.clone())
-			.or_default()
-			.extend(texts.iter().cloned());
+	for (code, texts) in custom_words {
+		zh_words.entry(code).or_default().extend(texts);
 	}
 
 	// 最后用自动词补足候选
