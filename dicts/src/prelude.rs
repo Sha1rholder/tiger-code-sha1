@@ -1,6 +1,7 @@
 //! 项目基础类型[`Text`]、[`Code`]、[`Weight`]、[`Freq`]
-//! 与通用数据文件解析函数[`parse_target`]
+//! 与通用数据文件解析函数[`parse_target`]、编码分组函数[`group_texts_by_code`]
 
+use std::collections::HashMap;
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::ops::AddAssign;
@@ -111,4 +112,18 @@ pub(crate) fn parse_target(path: impl AsRef<Path>) -> Vec<String> {
 		.filter(|line| !line.is_empty() && !line.starts_with('#'))
 		.map(str::to_owned)
 		.collect()
+}
+
+/// 按编码分组文本并保留输入中的相对顺序
+pub(crate) fn group_texts_by_code(
+	entries: impl IntoIterator<Item = (Code, Text)>,
+) -> HashMap<Code, Vec<Text>> {
+	let mut grouped = HashMap::<Code, Vec<Text>>::new();
+
+	// 同Code的Text按输入顺序追加
+	for (code, text) in entries {
+		grouped.entry(code).or_default().push(text);
+	}
+
+	grouped
 }

@@ -3,6 +3,7 @@
 pub mod en_dict;
 pub mod pinyin;
 mod prelude;
+mod tiger_dict;
 mod zh_chars;
 pub mod zh_dict;
 pub mod zh_en_dict;
