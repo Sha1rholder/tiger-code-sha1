@@ -204,59 +204,6 @@ static ESDB: LazyLock<HashMap<TextLower, HashSet<TextEn>>> = LazyLock::new(|| {
 	grouped
 });
 
-/// 英文wordfreq
-static EN_FREQ: LazyLock<HashMap<TextLower, FreqSelf>> = LazyLock::new(|| {
-	let path = "data/en/wordfreq.tsv";
-	// 读取并过滤英文词频
-	let mut lines = parse_target(path).into_iter();
-	// 校验TSV标题
-	assert_eq!(
-		lines.next().as_deref(),
-		Some("text\tfrequency"),
-		"invalid English wordfreq header in {path}"
-	);
-
-	let mut seen = HashSet::new();
-	let mut frequencies = HashMap::new();
-	// 读取并过滤英文词频
-	for line in lines {
-		let mut fields = line.split('\t');
-		let text = fields.next().expect("missing text field");
-		let raw_freq = fields.next().expect("missing freq field");
-		assert!(fields.next().is_none(), "extra fields in {path}: {line}");
-		// 重复和大写ASCII属于数据错误
-		assert!(
-			seen.insert(text.to_owned()),
-			"duplicate text in {path}: {text}"
-		);
-		assert!(
-			text.bytes().all(|byte| !byte.is_ascii_uppercase()),
-			"English wordfreq results must not contain uppercase ASCII letters: {line}"
-		);
-
-		let raw_freq: f64 = raw_freq.parse().expect("invalid freq field");
-		assert!(
-			raw_freq.is_finite() && raw_freq > 0.0,
-			"English wordfreq must contain positive finite frequencies: {line}"
-		);
-		// 非英文词形不进入英文词频表
-		if !is_valid_english_text(text) {
-			continue;
-		}
-
-		// 按全小写形式保存词频
-		let lower = TextLower::from_lowercase(text.to_owned());
-		assert!(
-			frequencies
-				.insert(lower, FreqSelf::from(raw_freq))
-				.is_none(),
-			"duplicate lowercase text in {path}: {text}"
-		);
-	}
-
-	frequencies
-});
-
 /// 按大小写分类并保持分类内的输入顺序
 fn build_custom_words(
 	lines: impl IntoIterator<Item = String>,
@@ -311,10 +258,63 @@ struct WordScore {
 pub static EN_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 	let esdb = &*ESDB;
 
+	// 读取英文wordfreq
+	let frequencies = {
+		let path = "data/en/wordfreq.tsv";
+		// 读取并过滤英文词频
+		let mut lines = parse_target(path).into_iter();
+		// 校验TSV标题
+		assert_eq!(
+			lines.next().as_deref(),
+			Some("text\tfrequency"),
+			"invalid English wordfreq header in {path}"
+		);
+
+		let mut seen = HashSet::new();
+		let mut frequencies = HashMap::new();
+		// 读取并过滤英文词频
+		for line in lines {
+			let mut fields = line.split('\t');
+			let text = fields.next().expect("missing text field");
+			let raw_freq = fields.next().expect("missing freq field");
+			assert!(fields.next().is_none(), "extra fields in {path}: {line}");
+			// 重复和大写ASCII属于数据错误
+			assert!(
+				seen.insert(text.to_owned()),
+				"duplicate text in {path}: {text}"
+			);
+			assert!(
+				text.bytes().all(|byte| !byte.is_ascii_uppercase()),
+				"English wordfreq results must not contain uppercase ASCII letters: {line}"
+			);
+
+			let raw_freq: f64 = raw_freq.parse().expect("invalid freq field");
+			assert!(
+				raw_freq.is_finite() && raw_freq > 0.0,
+				"English wordfreq must contain positive finite frequencies: {line}"
+			);
+			// 非英文词形不进入英文词频表
+			if !is_valid_english_text(text) {
+				continue;
+			}
+
+			// 按全小写形式保存词频
+			let lower = TextLower::from_lowercase(text.to_owned());
+			assert!(
+				frequencies
+					.insert(lower, FreqSelf::from(raw_freq))
+					.is_none(),
+				"duplicate lowercase text in {path}: {text}"
+			);
+		}
+
+		frequencies
+	};
+
 	// 以原始小写词构图并评分，大小写形式共享同一最终词频
-	let mut nodes = EN_FREQ
-		.iter()
-		.map(|(lower, &freq_self)| WordNode {
+	let mut nodes = frequencies
+		.into_iter()
+		.map(|(lower, freq_self)| WordNode {
 			text: lower.lower_form(),
 			freq_self,
 			direct_bases: Vec::new(),
