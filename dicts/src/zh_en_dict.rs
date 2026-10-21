@@ -3,6 +3,7 @@
 //! 合并[`ZH_WORDS_DICT`]与[`EN_DICT`]，英文独有编码以编码本身为首选候选
 
 use crate::en_dict::EN_DICT;
+use crate::prelude::code_nodes_to_groups;
 use crate::zh_dict::ZH_WORDS_DICT;
 use crate::{Code, Text};
 use std::collections::{HashMap, hash_map::Entry};
@@ -10,7 +11,8 @@ use std::sync::LazyLock;
 
 /// 按编码分组的中英混合词典
 pub static ZH_EN_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
-	let mut dictionary = (*ZH_WORDS_DICT).clone();
+	// 临时兼容尚未迁移的中英合并流程
+	let mut dictionary = code_nodes_to_groups(&ZH_WORDS_DICT);
 
 	for (code, texts) in EN_DICT.iter() {
 		match dictionary.entry(code.clone()) {

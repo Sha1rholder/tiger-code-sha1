@@ -1,5 +1,5 @@
 //! 项目基础类型[`Text`]、[`CodeChar`]、[`CodeNode`]、[`Weight`]、[`Freq`]与待迁移的[`Code`]
-//! 与通用数据文件解析函数[`parse_target`]、编码分组函数[`group_texts_by_code`]
+//! 与通用数据文件解析函数[`parse_target`]
 
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
@@ -444,7 +444,7 @@ fn compact_nodes(nodes: &mut Vec<CodeNode>, removed: &[bool]) {
 	}
 }
 
-/// 临时兼容尚未迁移的词模块，跳过只有路径而没有候选的节点
+/// 临时兼容尚未迁移的中英合并模块，跳过只有路径而没有候选的节点
 pub(crate) fn code_nodes_to_groups(nodes: &[CodeNode]) -> HashMap<Code, Vec<Text>> {
 	nodes
 		.iter()
@@ -519,20 +519,6 @@ pub(crate) fn parse_target(path: impl AsRef<Path>) -> Vec<String> {
 		.filter(|line| !line.is_empty() && !line.starts_with('#'))
 		.map(str::to_owned)
 		.collect()
-}
-
-/// 按编码分组文本并保留输入中的相对顺序
-pub(crate) fn group_texts_by_code(
-	entries: impl IntoIterator<Item = (Code, Text)>,
-) -> HashMap<Code, Vec<Text>> {
-	let mut grouped = HashMap::<Code, Vec<Text>>::new();
-
-	// 同Code的Text按输入顺序追加
-	for (code, text) in entries {
-		grouped.entry(code).or_default().push(text);
-	}
-
-	grouped
 }
 
 #[cfg(test)]

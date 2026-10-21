@@ -1,11 +1,11 @@
-//! 生成原始中文候选表[`ZH_WORDS_DICT`]
+//! 生成中文候选节点表[`ZH_WORDS_DICT`]
 //!
-//! 基于虎码字符表生成自动词候选，读取自定义条目并按优先级合并
+//! 在虎码字符节点上生成自动词候选，读取自定义条目并按优先级追加
 
-use crate::prelude::{code_nodes_to_groups, group_texts_by_code, parse_target};
+use crate::prelude::{insert_code, parse_target};
 use crate::tiger_dict::TIGER_CHARS_DICT;
 use crate::zh_chars::{ZH_CHARS, contains_illegal_zh_char};
-use crate::{Code, Freq, Text};
+use crate::{CodeNode, Freq, NodeId, Text};
 use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
 
@@ -21,18 +21,17 @@ type CompletionWeight = Freq;
 /// 补全候选项数量
 const CANDIDATES: usize = 3;
 
-/// 中文候选词
-pub static ZH_WORDS_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
-	// 临时兼容边界，词模块迁移到节点后删除
-	let tiger_chars = code_nodes_to_groups(&TIGER_CHARS_DICT);
-	// 单字到最终虎码的映射，已应用重编码
-	let mut char_codes = HashMap::new();
+/// 中文候选节点，保留虎码字符节点及其id，0号节点固定为根
+pub static ZH_WORDS_DICT: LazyLock<Vec<CodeNode>> = LazyLock::new(|| {
+	let mut nodes = (*TIGER_CHARS_DICT).clone();
+	// 单字到最终节点的映射，已应用重编码
+	let mut char_nodes = HashMap::new();
 
-	// 反转虎码字符表并断言每个字符只有一个编码
-	for (code, texts) in &tiger_chars {
-		for text in texts {
-			let previous = char_codes.insert(text.clone(), code.clone());
-			assert!(previous.is_none(), "tiger text must map to one code");
+	// 反转虎码字符表并断言每个字符只有一个节点
+	for (node_id, node) in nodes.iter().enumerate() {
+		for text in node.texts() {
+			let previous = char_nodes.insert(text.clone(), node_id);
+			assert!(previous.is_none(), "tiger text must map to one node");
 		}
 	}
 
@@ -135,10 +134,10 @@ pub static ZH_WORDS_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| 
 			.chars()
 			.map(|character| {
 				let text = Text::from(character.to_string());
-				char_codes
+				let node = *char_nodes
 					.get(&text)
-					.expect("completion text must have a code")
-					.len() + 1
+					.expect("completion text must have a node");
+				nodes[node].depth(&nodes) + 1
 			})
 			.sum();
 		let weight = freq.scale(code_len);
@@ -152,14 +151,11 @@ pub static ZH_WORDS_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| 
 		);
 	}
 
-	let mut weighted_words = HashMap::<Code, HashMap<OriginalText, CompletionWeight>>::new();
+	let mut weighted_words = HashMap::<NodeId, HashMap<OriginalText, CompletionWeight>>::new();
 
-	// 将首字分组转换为Code分组
+	// 按首字所在节点合并自动词，同码单字共用候选名额
 	for (first, completion_weights) in completions {
-		let code = char_codes
-			.get(&first)
-			.expect("first text must have a code")
-			.clone();
+		let node = *char_nodes.get(&first).expect("first text must have a node");
 
 		for (completion, weight) in completion_weights {
 			// 拼接首字和补全部
@@ -169,66 +165,82 @@ pub static ZH_WORDS_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| 
 			original.push_str(completion.as_str());
 			let original = OriginalText::from(original);
 			let previous = weighted_words
-				.entry(code.clone())
+				.entry(node)
 				.or_default()
 				.insert(original, weight);
-			assert!(previous.is_none(), "original text must be unique per code");
+			assert!(previous.is_none(), "original text must be unique per node");
 		}
 	}
 
-	// 按补全加权词频不稳定降序
-	let automatic_words = weighted_words
-		.into_iter()
-		.map(|(code, words)| {
-			let mut words = words.into_iter().collect::<Vec<_>>();
-			words.sort_unstable_by(|(left_text, left), (right_text, right)| {
-				right
-					.total_cmp(left)
-					.then_with(|| left_text.cmp(right_text))
-			});
-			let words = words.into_iter().map(|(text, _)| text).collect();
-			(code, words)
-		})
-		.collect::<HashMap<Code, Vec<Text>>>();
-
-	// 按优先级合并全部中文候选
-	let mut zh_words = HashMap::<Code, Vec<Text>>::new();
-
-	// 先加入虎码字符
-	for (code, texts) in &tiger_chars {
-		zh_words
-			.entry(code.clone())
-			.or_default()
-			.extend(texts.iter().cloned());
-	}
-	let custom_words = {
-		// 读取自定义Code和Text
-		let entries = parse_target("data/zh/custom.tsv")
-			.into_iter()
-			.skip(1)
-			.map(|line| {
-				let mut fields = line.split('\t');
-				let code = fields.next().expect("missing code field");
-				let text = fields.next().expect("missing text field");
-
-				(Code::from(code.to_owned()), Text::from(text.to_owned()))
-			});
-
-		// 按Code分组并保留Text原顺序
-		group_texts_by_code(entries)
-	};
-
-	// 再加入自定义词并保留重复
-	for (code, texts) in custom_words {
-		zh_words.entry(code).or_default().extend(texts);
+	// 单字已在节点中，按文件顺序追加自定义词并保留重复
+	for line in parse_target("data/zh/custom.tsv").into_iter().skip(1) {
+		let mut fields = line.split('\t');
+		let code = fields.next().expect("missing code field");
+		let text = fields.next().expect("missing text field");
+		let node = insert_code(&mut nodes, code);
+		nodes[node].texts_mut().push(Text::from(text.to_owned()));
 	}
 
-	// 最后用自动词补足候选
-	for (code, texts) in automatic_words {
-		let words = zh_words.entry(code).or_default();
-		let available = CANDIDATES.saturating_sub(words.len());
-		words.extend(texts.into_iter().take(available));
+	// 最后按补全加权词频降序补足候选，同权重时按Text排序
+	for (node, words) in weighted_words {
+		let mut words = words.into_iter().collect::<Vec<_>>();
+		words.sort_unstable_by(|(left_text, left), (right_text, right)| {
+			right
+				.total_cmp(left)
+				.then_with(|| left_text.cmp(right_text))
+		});
+		let texts = nodes[node].texts_mut();
+		let available = CANDIDATES.saturating_sub(texts.len());
+		texts.extend(words.into_iter().take(available).map(|(text, _)| text));
 	}
 
-	zh_words
+	nodes
 });
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn output_preserves_character_nodes_and_candidate_priority() {
+		let mut nodes = (*ZH_WORDS_DICT).clone();
+		assert!(nodes[0].texts().is_empty());
+		assert_eq!(nodes[0].depth(&nodes), 0);
+		assert!(nodes.len() >= TIGER_CHARS_DICT.len());
+
+		// 单字节点的id、深度和候选前缀保持不变
+		let mut prefixes = vec![Vec::new(); nodes.len()];
+		for (id, original) in TIGER_CHARS_DICT.iter().enumerate() {
+			assert_eq!(nodes[id].depth(&nodes), original.depth(&TIGER_CHARS_DICT));
+			prefixes[id].extend_from_slice(original.texts());
+		}
+
+		// 自定义路径必须已经存在，候选紧接在单字后且保持文件顺序
+		let node_count = nodes.len();
+		for line in parse_target("data/zh/custom.tsv").into_iter().skip(1) {
+			let (code, text) = line.split_once('\t').unwrap();
+			let id = insert_code(&mut nodes, code);
+			assert_eq!(nodes.len(), node_count);
+			prefixes[id].push(Text::from(text.to_owned()));
+		}
+
+		for (id, (node, prefix)) in nodes.iter().zip(prefixes).enumerate() {
+			assert!(node.texts().starts_with(&prefix), "candidate order at {id}");
+			assert!(node.texts().len() <= CANDIDATES.max(prefix.len()));
+			let characters = TIGER_CHARS_DICT
+				.get(id)
+				.map(CodeNode::texts)
+				.unwrap_or_default();
+			// 自动词只能追加在首字最终所在的节点，空心节点不会被提升或补字
+			for word in &node.texts()[prefix.len()..] {
+				assert!(word.as_str().chars().count() > 1);
+				assert!(
+					characters
+						.iter()
+						.any(|first| word.as_str().starts_with(first.as_str())),
+					"automatic word at the wrong node: {word:?}"
+				);
+			}
+		}
+	}
+}
