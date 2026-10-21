@@ -7,15 +7,19 @@ use crate::zh_chars::{ZH_CHARS, contains_illegal_zh_char};
 use crate::{Code, Text, Weight};
 use std::cmp::Reverse;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::sync::LazyLock;
 
-/// 读取无表头的拼音数据，同权重时保留源文件顺序
-fn build_pinyin(
-	lines: impl IntoIterator<Item = String>,
-	path: &str,
-	zh_chars: &HashSet<Text>,
-) -> Vec<(Code, Text)> {
+/// 按权重降序排列的拼音和汉字
+pub static PINYIN_DICT: LazyLock<Vec<(Code, Text)>> = LazyLock::new(|| {
+	let path = "data/zh/tiger-code/PY_c.dict.yaml.tsv";
+	let mut lines = parse_target(path).into_iter();
+	// 校验并跳过TSV标题
+	assert_eq!(
+		lines.next().as_deref(),
+		Some("text\tcode\tweight"),
+		"invalid pinyin header in {path}"
+	);
+	// 读取拼音数据，同权重时保留源文件顺序
 	let mut weighted_entries = HashMap::new();
 
 	for line in lines {
@@ -28,7 +32,7 @@ fn build_pinyin(
 			.parse()
 			.expect("invalid weight field");
 
-		if contains_illegal_zh_char(text, zh_chars) {
+		if contains_illegal_zh_char(text, &ZH_CHARS) {
 			continue;
 		}
 
@@ -50,17 +54,4 @@ fn build_pinyin(
 		.into_iter()
 		.map(|(code, text, _)| (code, text))
 		.collect()
-}
-
-/// 按权重降序排列的拼音和汉字
-pub static PINYIN_DICT: LazyLock<Vec<(Code, Text)>> = LazyLock::new(|| {
-	let path = "data/zh/tiger-code/PY_c.dict.yaml.tsv";
-	let mut lines = parse_target(path).into_iter();
-	// 校验并跳过TSV标题
-	assert_eq!(
-		lines.next().as_deref(),
-		Some("text\tcode\tweight"),
-		"invalid pinyin header in {path}"
-	);
-	build_pinyin(lines, path, &ZH_CHARS)
 });

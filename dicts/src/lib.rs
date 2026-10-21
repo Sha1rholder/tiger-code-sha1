@@ -11,7 +11,6 @@ pub use prelude::{Code, Freq, Text, Weight};
 
 use crate::pinyin::PINYIN_DICT;
 use crate::zh_en_dict::ZH_EN_DICT;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
 use std::path::Path;
@@ -60,45 +59,6 @@ fn write_tsv<'a>(
 	Ok(())
 }
 
-/// 将分组词典按编码排序后写为TSV
-fn write_dictionary_tsv(
-	writer: &mut impl Write,
-	head: &str,
-	dictionary: &HashMap<Code, Vec<Text>>,
-) -> io::Result<()> {
-	let mut groups = dictionary.iter().collect::<Vec<_>>();
-	groups.sort_unstable_by_key(|(code, _)| *code);
-	write_tsv(
-		writer,
-		head,
-		groups
-			.into_iter()
-			.flat_map(|(code, texts)| texts.iter().map(move |text| (code, text))),
-	)
-}
-
-/// 将有序条目写入文件并刷新缓冲区
-fn write_entries_file(path: &Path, head: &str, entries: &[(Code, Text)]) -> io::Result<()> {
-	let mut writer = BufWriter::new(File::create(path)?);
-	write_tsv(
-		&mut writer,
-		head,
-		entries.iter().map(|(code, text)| (code, text)),
-	)?;
-	writer.flush()
-}
-
-/// 将分组词典写入文件并刷新缓冲区
-fn write_dictionary_file(
-	path: &Path,
-	head: &str,
-	dictionary: &HashMap<Code, Vec<Text>>,
-) -> io::Result<()> {
-	let mut writer = BufWriter::new(File::create(path)?);
-	write_dictionary_tsv(&mut writer, head, dictionary)?;
-	writer.flush()
-}
-
 /// 输出拼音反查和中英混合词典到Rime用户目录
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
 	let output_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -107,15 +67,30 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
 	// 先完成数据加载和校验，再打开输出文件
 	let pinyin = &*PINYIN_DICT;
 	let dictionary = &*ZH_EN_DICT;
-	write_entries_file(
-		&output_dir.join(PINYIN_LOOKUP_FILE),
-		PINYIN_LOOKUP_HEAD,
-		pinyin,
-	)?;
-	write_dictionary_file(
-		&output_dir.join(TIGER_CODE_SHA1_FILE),
-		TIGER_CODE_SHA1_HEAD,
-		dictionary,
-	)?;
+	{
+		// 将有序拼音条目写入文件并刷新缓冲区
+		let mut writer = BufWriter::new(File::create(output_dir.join(PINYIN_LOOKUP_FILE))?);
+		write_tsv(
+			&mut writer,
+			PINYIN_LOOKUP_HEAD,
+			pinyin.iter().map(|(code, text)| (code, text)),
+		)?;
+		writer.flush()?;
+	}
+
+	{
+		// 将分组词典按编码排序后写入文件并刷新缓冲区
+		let mut writer = BufWriter::new(File::create(output_dir.join(TIGER_CODE_SHA1_FILE))?);
+		let mut groups = dictionary.iter().collect::<Vec<_>>();
+		groups.sort_unstable_by_key(|(code, _)| *code);
+		write_tsv(
+			&mut writer,
+			TIGER_CODE_SHA1_HEAD,
+			groups
+				.into_iter()
+				.flat_map(|(code, texts)| texts.iter().map(move |text| (code, text))),
+		)?;
+		writer.flush()?;
+	}
 	Ok(())
 }
