@@ -28,13 +28,32 @@ type TigerCharsRaw = HashMap<Text, TigerChar>;
 /// 补全候选项数量
 const CANDIDATES: usize = 3;
 
-/// 读取虎码原始数据，以Text和Code为键收集并拒绝重复组合，丢弃非法字符
-fn build_tiger_entries(
-	lines: impl IntoIterator<Item = String>,
-	path: &str,
-	zh_chars: &HashSet<Text>,
-) -> TigerEntries {
-	let mut entries = TigerEntries::new();
+/// 按编码分组文本并保留输入中的相对顺序
+fn group_texts_by_code(
+	entries: impl IntoIterator<Item = (Code, Text)>,
+) -> HashMap<Code, Vec<Text>> {
+	let mut grouped = HashMap::<Code, Vec<Text>>::new();
+
+	// 同Code的Text按输入顺序追加
+	for (code, text) in entries {
+		grouped.entry(code).or_default().push(text);
+	}
+
+	grouped
+}
+
+/// 虎码字符表
+static TIGER_CHARS_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
+	let path = "data/zh/tiger-code/tiger.dict.yaml.tsv";
+	let mut lines = parse_target(path).into_iter();
+	// 校验并跳过TSV标题
+	assert_eq!(
+		lines.next().as_deref(),
+		Some("text\tcode\tweight"),
+		"invalid tiger character header in {path}"
+	);
+	// 读取原始虎码数据，去掉非法字符
+	let mut tiger_raw = TigerEntries::new();
 
 	for line in lines {
 		let mut fields = line.split('\t');
@@ -47,7 +66,7 @@ fn build_tiger_entries(
 			.expect("invalid weight field");
 		assert!(fields.next().is_none(), "extra fields in {path}: {line}");
 
-		let previous = entries
+		let previous = tiger_raw
 			.entry(Text::from(text.to_owned()))
 			.or_default()
 			.insert(Code::from(code.to_owned()), Weight::from(weight));
@@ -58,15 +77,11 @@ fn build_tiger_entries(
 	}
 
 	// 丢弃ZH_CHARS外的字符
-	entries.retain(|text, _| zh_chars.contains(text));
+	tiger_raw.retain(|text, _| ZH_CHARS.contains(text));
 
-	entries
-}
-
-/// 按Weight选择每个字符使用的虎码
-fn build_tiger_chars(tiger: TigerEntries) -> TigerCharsRaw {
+	// 生成有序的单字编码表
 	// 显式按Weight降序处理，消除对HashMap迭代顺序的依赖
-	let mut weighted_entries = tiger
+	let mut weighted_entries = tiger_raw
 		.into_iter()
 		.flat_map(|(text, codes)| {
 			codes
@@ -83,19 +98,19 @@ fn build_tiger_chars(tiger: TigerEntries) -> TigerCharsRaw {
 		},
 	);
 
-	let mut tiger_chars_raw = TigerCharsRaw::new();
+	let mut tiger_chars = TigerCharsRaw::new();
 	// 记录当前HashMap中每个Code的使用次数
 	let mut current_codes = HashMap::<Code, usize>::new();
 
 	for (text, code, weight) in weighted_entries {
 		// 新Text按遍历顺序直接插入
-		if !tiger_chars_raw.contains_key(&text) {
+		if !tiger_chars.contains_key(&text) {
 			*current_codes.entry(code.clone()).or_default() += 1;
-			let _ = tiger_chars_raw.insert(text, (code, weight));
+			let _ = tiger_chars.insert(text, (code, weight));
 			continue;
 		}
 
-		let current_code = tiger_chars_raw
+		let current_code = tiger_chars
 			.get(&text)
 			.expect("existing text must have a code")
 			.0
@@ -120,76 +135,12 @@ fn build_tiger_chars(tiger: TigerEntries) -> TigerCharsRaw {
 		// 登记并写入新Code
 		let previous = current_codes.insert(code.clone(), 1);
 		debug_assert!(previous.is_none());
-		tiger_chars_raw
+		tiger_chars
 			.get_mut(&text)
 			.expect("existing text must have a code")
 			.0 = code;
 	}
 
-	tiger_chars_raw
-}
-
-/// 断言重编码键有效并替换字符编码
-fn apply_tiger_recode(tiger_chars_raw: &mut TigerCharsRaw, tiger_recode: HashMap<Text, Code>) {
-	// 重编码键必须来自原始字符表
-	assert!(
-		tiger_recode
-			.keys()
-			.all(|text| tiger_chars_raw.contains_key(text)),
-		"tiger recode keys must be a subset of tiger raw keys"
-	);
-
-	// 原位替换字符编码，保留原始优先级
-	for (text, code) in tiger_recode {
-		tiger_chars_raw
-			.get_mut(&text)
-			.expect("validated recode text must exist")
-			.0 = code;
-	}
-}
-
-/// 按编码分组文本并保留输入中的相对顺序
-fn group_texts_by_code(
-	entries: impl IntoIterator<Item = (Code, Text)>,
-) -> HashMap<Code, Vec<Text>> {
-	let mut grouped = HashMap::<Code, Vec<Text>>::new();
-
-	// 同Code的Text按输入顺序追加
-	for (code, text) in entries {
-		grouped.entry(code).or_default().push(text);
-	}
-
-	grouped
-}
-
-/// 按优先级降序分组已筛选虎码
-fn group_tiger_chars_by_code(tiger_chars: TigerCharsRaw) -> HashMap<Code, Vec<Text>> {
-	let mut entries = tiger_chars.into_iter().collect::<Vec<_>>();
-	entries.sort_unstable_by(
-		|(left_text, (_, left_weight)), (right_text, (_, right_weight))| {
-			right_weight
-				.cmp(left_weight)
-				.then_with(|| left_text.cmp(right_text))
-		},
-	);
-
-	group_texts_by_code(entries.into_iter().map(|(text, (code, _))| (code, text)))
-}
-
-/// 虎码字符表
-static TIGER_CHARS_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
-	let path = "data/zh/tiger-code/tiger.dict.yaml.tsv";
-	let mut lines = parse_target(path).into_iter();
-	// 校验并跳过TSV标题
-	assert_eq!(
-		lines.next().as_deref(),
-		Some("text\tcode\tweight"),
-		"invalid tiger character header in {path}"
-	);
-	// 读取原始虎码数据，去掉非法字符
-	let tiger_raw = build_tiger_entries(lines, path, &ZH_CHARS);
-	// 生成有序的单字编码表
-	let mut tiger_chars = build_tiger_chars(tiger_raw);
 	{
 		// 断言字符集合完整覆盖ZH_CHARS
 		let tiger_keys = tiger_chars.keys().collect::<HashSet<_>>();
@@ -214,10 +165,33 @@ static TIGER_CHARS_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 		.filter(|(text, _)| ZH_CHARS.contains(text))
 		.collect::<HashMap<_, _>>();
 	// 应用重编码
-	apply_tiger_recode(&mut tiger_chars, tiger_recode);
+	// 重编码键必须来自原始字符表
+	assert!(
+		tiger_recode
+			.keys()
+			.all(|text| tiger_chars.contains_key(text)),
+		"tiger recode keys must be a subset of tiger raw keys"
+	);
+
+	// 原位替换字符编码，保留原始优先级
+	for (text, code) in tiger_recode {
+		tiger_chars
+			.get_mut(&text)
+			.expect("validated recode text must exist")
+			.0 = code;
+	}
 
 	// 按Code分组，组内按原始Weight降序排列
-	group_tiger_chars_by_code(tiger_chars)
+	let mut entries = tiger_chars.into_iter().collect::<Vec<_>>();
+	entries.sort_unstable_by(
+		|(left_text, (_, left_weight)), (right_text, (_, right_weight))| {
+			right_weight
+				.cmp(left_weight)
+				.then_with(|| left_text.cmp(right_text))
+		},
+	);
+
+	group_texts_by_code(entries.into_iter().map(|(text, (code, _))| (code, text)))
 });
 
 /// 自定义编码
@@ -237,33 +211,6 @@ static ZH_CUSTOM_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 	// 按Code分组并保留Text原顺序
 	group_texts_by_code(entries)
 });
-
-/// 返回文本是否包含键集合中的其它文本
-fn contains_other_text(text: &str, texts: &HashSet<&str>) -> bool {
-	// 逐字符选择子串起点
-	for (start, _) in text.char_indices() {
-		let suffix = &text[start..];
-
-		// 枚举该起点后的所有字符边界
-		for (relative_end, _) in suffix
-			.char_indices()
-			.skip(1)
-			.chain(std::iter::once((suffix.len(), '\0')))
-		{
-			let end = start + relative_end;
-			// 跳过文本自身
-			if start == 0 && end == text.len() {
-				continue;
-			}
-			// 命中任意其它键后立即返回
-			if texts.contains(&text[start..end]) {
-				return true;
-			}
-		}
-	}
-
-	false
-}
 
 /// 合法中文wordfreq
 static ZH_FREQ: LazyLock<HashMap<Text, Freq>> = LazyLock::new(|| {
@@ -300,7 +247,31 @@ static ZH_FREQ: LazyLock<HashMap<Text, Freq>> = LazyLock::new(|| {
 	let contained_texts = texts
 		.iter()
 		.copied()
-		.filter(|text| contains_other_text(text, &texts))
+		.filter(|text| {
+			// 逐字符选择子串起点
+			for (start, _) in text.char_indices() {
+				let suffix = &text[start..];
+
+				// 枚举该起点后的所有字符边界
+				for (relative_end, _) in suffix
+					.char_indices()
+					.skip(1)
+					.chain(std::iter::once((suffix.len(), '\0')))
+				{
+					let end = start + relative_end;
+					// 跳过文本自身
+					if start == 0 && end == text.len() {
+						continue;
+					}
+					// 命中任意其它键后立即返回
+					if texts.contains(&text[start..end]) {
+						return true;
+					}
+				}
+			}
+
+			false
+		})
 		.map(str::to_owned)
 		.collect::<Vec<_>>();
 	// 释放键集合借用
@@ -318,73 +289,48 @@ static ZH_FREQ: LazyLock<HashMap<Text, Freq>> = LazyLock::new(|| {
 		.collect()
 });
 
-/// 反转虎码字符表并断言每个字符只有一个编码
-fn build_char_codes(tiger_chars: &HashMap<Code, Vec<Text>>) -> HashMap<Text, Code> {
+/// 中文候选词
+pub static ZH_WORDS_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
+	// 单字到最终虎码的映射，已应用重编码
 	let mut char_codes = HashMap::new();
 
-	// 展开Code到Text的分组
-	for (code, texts) in tiger_chars {
+	// 反转虎码字符表并断言每个字符只有一个编码
+	for (code, texts) in &*TIGER_CHARS_DICT {
 		for text in texts {
 			let previous = char_codes.insert(text.clone(), code.clone());
 			assert!(previous.is_none(), "tiger text must map to one code");
 		}
 	}
 
-	char_codes
-}
-
-/// 将原词拆为首字和补全部
-fn split_original_text(original: &OriginalText) -> (FirstText, CompletionText) {
-	let mut chars = original.as_str().chars();
-	let first = chars.next().expect("original text must not be empty");
-	let completion = chars.collect::<String>();
-	assert!(
-		!completion.is_empty(),
-		"original text must contain multiple characters"
-	);
-
-	(
-		FirstText::from(first.to_string()),
-		CompletionText::from(completion),
-	)
-}
-
-/// 计算补全部对应的补全码长
-fn completion_code_len(completion: &CompletionText, char_codes: &HashMap<Text, Code>) -> usize {
-	// 每个字符编码后的空格也占一码
-	completion
-		.as_str()
-		.chars()
-		.map(|character| {
-			let text = Text::from(character.to_string());
-			char_codes
-				.get(&text)
-				.expect("completion text must have a code")
-				.len() + 1
-		})
-		.sum()
-}
-
-/// 拼接首字和补全部
-fn join_text(first: &FirstText, completion: &CompletionText) -> OriginalText {
-	let mut original = String::with_capacity(first.as_str().len() + completion.as_str().len());
-	original.push_str(first.as_str());
-	original.push_str(completion.as_str());
-	OriginalText::from(original)
-}
-
-/// 按补全加权词频生成每个编码的自动词
-fn build_automatic_words(
-	zh_freq: &HashMap<Text, Freq>,
-	tiger_chars: &HashMap<Code, Vec<Text>>,
-) -> HashMap<Code, Vec<Text>> {
-	let char_codes = build_char_codes(tiger_chars);
+	// 首字到补全部及其加权词频的映射
 	let mut completions = HashMap::<FirstText, HashMap<CompletionText, CompletionWeight>>::new();
 
 	// 按首字收集补全部和补全加权词频
-	for (original, freq) in zh_freq {
-		let (first, completion) = split_original_text(original);
-		let code_len = completion_code_len(&completion, &char_codes);
+	for (original, freq) in &*ZH_FREQ {
+		// 将原词拆为首字和补全部
+		let mut chars = original.as_str().chars();
+		let first = chars.next().expect("original text must not be empty");
+		let completion = chars.collect::<String>();
+		assert!(
+			!completion.is_empty(),
+			"original text must contain multiple characters"
+		);
+
+		let first = FirstText::from(first.to_string());
+		let completion = CompletionText::from(completion);
+		// 计算补全部对应的补全码长
+		// 每个字符编码后的空格也占一码
+		let code_len = completion
+			.as_str()
+			.chars()
+			.map(|character| {
+				let text = Text::from(character.to_string());
+				char_codes
+					.get(&text)
+					.expect("completion text must have a code")
+					.len() + 1
+			})
+			.sum();
 		let weight = freq.scale(code_len);
 		let previous = completions
 			.entry(first)
@@ -406,7 +352,12 @@ fn build_automatic_words(
 			.clone();
 
 		for (completion, weight) in completion_weights {
-			let original = join_text(&first, &completion);
+			// 拼接首字和补全部
+			let mut original =
+				String::with_capacity(first.as_str().len() + completion.as_str().len());
+			original.push_str(first.as_str());
+			original.push_str(completion.as_str());
+			let original = OriginalText::from(original);
 			let previous = weighted_words
 				.entry(code.clone())
 				.or_default()
@@ -416,7 +367,7 @@ fn build_automatic_words(
 	}
 
 	// 按补全加权词频不稳定降序
-	weighted_words
+	let automatic_words = weighted_words
 		.into_iter()
 		.map(|(code, words)| {
 			let mut words = words.into_iter().collect::<Vec<_>>();
@@ -428,26 +379,20 @@ fn build_automatic_words(
 			let words = words.into_iter().map(|(text, _)| text).collect();
 			(code, words)
 		})
-		.collect()
-}
+		.collect::<HashMap<Code, Vec<Text>>>();
 
-/// 合并字符和自定义词并用自动词补位
-fn merge_zh_words(
-	tiger_chars: &HashMap<Code, Vec<Text>>,
-	zh_custom: &HashMap<Code, Vec<Text>>,
-	automatic_words: HashMap<Code, Vec<Text>>,
-) -> HashMap<Code, Vec<Text>> {
+	// 按优先级合并全部中文候选
 	let mut zh_words = HashMap::<Code, Vec<Text>>::new();
 
 	// 先加入虎码字符
-	for (code, texts) in tiger_chars {
+	for (code, texts) in &*TIGER_CHARS_DICT {
 		zh_words
 			.entry(code.clone())
 			.or_default()
 			.extend(texts.iter().cloned());
 	}
 	// 再加入自定义词并保留重复
-	for (code, texts) in zh_custom {
+	for (code, texts) in &*ZH_CUSTOM_DICT {
 		zh_words
 			.entry(code.clone())
 			.or_default()
@@ -462,12 +407,4 @@ fn merge_zh_words(
 	}
 
 	zh_words
-}
-
-/// 中文候选词
-pub static ZH_WORDS_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
-	// 生成按补全加权词频排序的自动词
-	let automatic_words = build_automatic_words(&ZH_FREQ, &TIGER_CHARS_DICT);
-	// 按优先级合并全部中文候选
-	merge_zh_words(&TIGER_CHARS_DICT, &ZH_CUSTOM_DICT, automatic_words)
 });
