@@ -19,21 +19,8 @@ type TigerCharsRaw = HashMap<Text, TigerChar>;
 
 /// 虎码字符节点，0号节点固定为根
 pub(crate) static TIGER_CHARS_DICT: LazyLock<Vec<CodeNode>> = LazyLock::new(|| {
-	build_tiger_chars(
-		parse_target("data/zh/tiger-code/tiger.dict.yaml.tsv"),
-		parse_target("data/zh/recode.tsv"),
-		&ZH_CHARS,
-	)
-});
-
-/// 完成单字选码和排序，消除空心节点后再执行重编码
-fn build_tiger_chars(
-	lines: impl IntoIterator<Item = String>,
-	recodes: impl IntoIterator<Item = String>,
-	zh_chars: &HashSet<Text>,
-) -> Vec<CodeNode> {
 	let path = "data/zh/tiger-code/tiger.dict.yaml.tsv";
-	let mut lines = lines.into_iter();
+	let mut lines = parse_target(path).into_iter();
 	// 校验并跳过TSV标题
 	assert_eq!(
 		lines.next().as_deref(),
@@ -67,7 +54,7 @@ fn build_tiger_chars(
 	}
 
 	// 丢弃ZH_CHARS外的字符
-	tiger_raw.retain(|text, _| zh_chars.contains(text));
+	tiger_raw.retain(|text, _| ZH_CHARS.contains(text));
 
 	// 生成有序的单字编码表
 	// 显式按Weight降序处理，消除对HashMap迭代顺序的依赖
@@ -134,7 +121,7 @@ fn build_tiger_chars(
 	{
 		// 断言字符集合完整覆盖ZH_CHARS
 		let tiger_keys = tiger_chars.keys().collect::<HashSet<_>>();
-		let zh_chars_keys = zh_chars.iter().collect::<HashSet<_>>();
+		let zh_chars_keys = ZH_CHARS.iter().collect::<HashSet<_>>();
 		assert_eq!(
 			tiger_keys, zh_chars_keys,
 			"tiger raw keys must equal ZH_CHARS"
@@ -160,22 +147,13 @@ fn build_tiger_chars(
 	}
 	eliminate_hollow_nodes(&mut nodes);
 	// 重编码最后执行，允许刻意留下新的空心节点
-	apply_recodes(&mut nodes, recodes, &weights);
-	nodes
-}
-
-/// 从提升后的实际位置移动单字，保留优先级，不再清理重编码产生的空节点
-fn apply_recodes(
-	nodes: &mut Vec<CodeNode>,
-	recodes: impl IntoIterator<Item = String>,
-	weights: &HashMap<Text, Weight>,
-) {
+	// 从提升后的实际位置移动单字，保留优先级，不再清理重编码产生的空节点
 	let locations = nodes
 		.iter()
 		.enumerate()
 		.flat_map(|(node, entry)| entry.texts().iter().cloned().map(move |text| (text, node)))
 		.collect::<HashMap<_, _>>();
-	let recodes = recodes
+	let recodes = parse_target("data/zh/recode.tsv")
 		.into_iter()
 		.skip(1)
 		.filter_map(|line| {
@@ -186,7 +164,7 @@ fn apply_recodes(
 			if !weights.contains_key(&text) {
 				return None;
 			}
-			Some((text, insert_code(nodes, code)))
+			Some((text, insert_code(&mut nodes, code)))
 		})
 		.collect::<HashMap<_, _>>();
 
@@ -212,4 +190,5 @@ fn apply_recodes(
 				.then_with(|| left.cmp(right))
 		});
 	}
-}
+	nodes
+});
