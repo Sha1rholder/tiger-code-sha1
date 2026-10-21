@@ -1,8 +1,8 @@
 //! 生成应用重编码后的虎码字符表[`TIGER_CHARS_DICT`]
 //!
-//! 读取虎码原始数据，按字符集过滤并选择编码节点，再应用重编码与按权重填充候选
+//! 读取虎码原始数据，按字符集过滤并选码，排列单字、消除空心节点，最后应用重编码
 
-use crate::prelude::{insert_code, parse_target};
+use crate::prelude::{eliminate_hollow_nodes, insert_code, parse_target};
 use crate::zh_chars::ZH_CHARS;
 use crate::{CodeNode, NodeId, Text, Weight};
 use std::collections::{HashMap, HashSet};
@@ -26,7 +26,7 @@ pub(crate) static TIGER_CHARS_DICT: LazyLock<Vec<CodeNode>> = LazyLock::new(|| {
 	)
 });
 
-/// 在同一组节点中完成单字选码、重编码和候选排序
+/// 完成单字选码和排序，消除空心节点后再执行重编码
 fn build_tiger_chars(
 	lines: impl IntoIterator<Item = String>,
 	recodes: impl IntoIterator<Item = String>,
@@ -140,37 +140,6 @@ fn build_tiger_chars(
 			"tiger raw keys must equal ZH_CHARS"
 		);
 	}
-	// 将重编码解析到同一组节点
-	let tiger_recode = recodes
-		.into_iter()
-		.skip(1)
-		.map(|line| {
-			let mut fields = line.split('\t');
-			let code = fields.next().expect("missing code field");
-			let text = fields.next().expect("missing text field");
-
-			(Text::from(text.to_owned()), insert_code(&mut nodes, code))
-		})
-		// 已从字符表移除的字不再应用重编码
-		.filter(|(text, _)| zh_chars.contains(text))
-		.collect::<HashMap<_, _>>();
-	// 应用重编码
-	// 重编码键必须来自原始字符表
-	assert!(
-		tiger_recode
-			.keys()
-			.all(|text| tiger_chars.contains_key(text)),
-		"tiger recode keys must be a subset of tiger raw keys"
-	);
-
-	// 只替换字与节点的关联，保留原始优先级与所有父子关系
-	for (text, node) in tiger_recode {
-		tiger_chars
-			.get_mut(&text)
-			.expect("validated recode text must exist")
-			.0 = node;
-	}
-
 	// 按原始Weight降序填充节点候选，同权重时按Text排序
 	let mut entries = tiger_chars.into_iter().collect::<Vec<_>>();
 	entries.sort_unstable_by(
@@ -180,11 +149,69 @@ fn build_tiger_chars(
 				.then_with(|| left_text.cmp(right_text))
 		},
 	);
+	// 清理会重新编号，后续只保留与节点id无关的单字权重
+	let weights = entries
+		.iter()
+		.map(|(text, (_, weight))| (text.clone(), *weight))
+		.collect::<HashMap<_, _>>();
 
 	for (text, (node, _)) in entries {
 		nodes[node].texts_mut().push(text);
 	}
+	eliminate_hollow_nodes(&mut nodes);
+	// 重编码最后执行，允许刻意留下新的空心节点
+	apply_recodes(&mut nodes, recodes, &weights);
 	nodes
+}
+
+/// 从提升后的实际位置移动单字，保留优先级，不再清理重编码产生的空节点
+fn apply_recodes(
+	nodes: &mut Vec<CodeNode>,
+	recodes: impl IntoIterator<Item = String>,
+	weights: &HashMap<Text, Weight>,
+) {
+	let locations = nodes
+		.iter()
+		.enumerate()
+		.flat_map(|(node, entry)| entry.texts().iter().cloned().map(move |text| (text, node)))
+		.collect::<HashMap<_, _>>();
+	let recodes = recodes
+		.into_iter()
+		.skip(1)
+		.filter_map(|line| {
+			let mut fields = line.split('\t');
+			let code = fields.next().expect("missing code field");
+			let text = Text::from(fields.next().expect("missing text field").to_owned());
+			// 已从字符表移除的字不再应用重编码，也不为其新建路径
+			if !weights.contains_key(&text) {
+				return None;
+			}
+			Some((text, insert_code(nodes, code)))
+		})
+		.collect::<HashMap<_, _>>();
+
+	for (text, target) in recodes {
+		let source = locations[&text];
+		if source == target {
+			continue;
+		}
+		let position = nodes[source]
+			.texts()
+			.iter()
+			.position(|candidate| candidate == &text)
+			.expect("recode text must exist at its current node");
+		let text = nodes[source].texts_mut().remove(position);
+		nodes[target].texts_mut().push(text);
+	}
+
+	// 重编码可能合并候选，继续沿用单字最初选定的权重和同权重排序
+	for node in nodes.iter_mut().skip(1) {
+		node.texts_mut().sort_unstable_by(|left, right| {
+			weights[right]
+				.cmp(&weights[left])
+				.then_with(|| left.cmp(right))
+		});
+	}
 }
 
 #[cfg(test)]
@@ -264,24 +291,87 @@ mod tests {
 		);
 		assert_eq!(dictionary.len(), 3);
 		assert_eq!(dictionary["z"], ["甲", "丁", "丙"]);
-		assert_eq!(dictionary["abc"], ["乙"]);
+		assert_eq!(dictionary["ab"], ["乙"]);
 		assert_eq!(dictionary["I'n"], ["戊"]);
 	}
 
 	#[test]
 	fn equal_weights_choose_by_path_instead_of_allocation_order() {
-		let mut entries = [("甲", "zzz", 100), ("甲", "abd", 100), ("甲", "abc", 100)];
-		let dictionary = build(&entries, &[], "甲");
-		assert_eq!(dictionary.len(), 1);
+		let mut entries = [
+			("甲", "zzz", 100),
+			("甲", "abd", 100),
+			("甲", "abc", 100),
+			("乙", "a", 90),
+			("丙", "ab", 80),
+		];
+		let dictionary = build(&entries, &[], "甲乙丙");
+		assert_eq!(dictionary.len(), 3);
 		assert_eq!(dictionary["abc"], ["甲"]);
 
 		entries.reverse();
-		assert_eq!(build(&entries, &[], "甲"), dictionary);
+		assert_eq!(build(&entries, &[], "甲乙丙"), dictionary);
 	}
 
 	#[test]
 	#[should_panic(expected = "duplicate tiger code and text")]
 	fn duplicate_text_and_path_are_rejected() {
 		let _ = build(&[("甲", "ab", 100), ("甲", "ab", 90)], &[], "甲");
+	}
+
+	#[test]
+	fn recoding_runs_after_promotion_and_keeps_new_hollow_nodes() {
+		let nodes = build_tiger_chars(
+			["text\tcode\tweight", "甲\txyz\t100", "乙\txzz\t90"].map(str::to_owned),
+			["code\ttext", "abc\t甲"].map(str::to_owned),
+			&["甲", "乙"].map(|text| Text::from(text.to_owned())).into(),
+		);
+		let groups = code_nodes_to_groups(&nodes);
+		// 甲先从xyz提升到x，再被重编码到abc；乙提升到xz
+		assert_eq!(groups.len(), 2);
+		assert_eq!(
+			groups[&crate::Code::from("abc".to_owned())][0].as_str(),
+			"甲"
+		);
+		assert_eq!(
+			groups[&crate::Code::from("xz".to_owned())][0].as_str(),
+			"乙"
+		);
+		for code in ["x", "a", "ab"] {
+			let (_, node) = nodes
+				.iter()
+				.enumerate()
+				.find(|(id, _)| crate::Code::from_node(&nodes, *id).as_str() == code)
+				.expect("recode must keep the empty path");
+			assert!(node.texts().is_empty());
+		}
+	}
+
+	#[test]
+	fn real_characters_have_no_hollow_nodes_before_recode() {
+		let nodes = build_tiger_chars(
+			parse_target("data/zh/tiger-code/tiger.dict.yaml.tsv"),
+			["code\ttext".to_owned()],
+			&ZH_CHARS,
+		);
+		assert!(nodes[0].texts().is_empty());
+		assert!(nodes.iter().skip(1).all(|node| !node.texts().is_empty()));
+		let texts = nodes
+			.iter()
+			.flat_map(CodeNode::texts)
+			.cloned()
+			.collect::<Vec<_>>();
+		assert_eq!(texts.len(), ZH_CHARS.len());
+		assert_eq!(texts.into_iter().collect::<HashSet<_>>(), *ZH_CHARS);
+		let groups = code_nodes_to_groups(&nodes);
+		assert_eq!(groups[&crate::Code::from("c".to_owned())][0].as_str(), "不");
+		assert_eq!(
+			groups[&crate::Code::from("cm".to_owned())][0].as_str(),
+			"炉"
+		);
+		assert_eq!(
+			groups[&crate::Code::from("cmg".to_owned())][0].as_str(),
+			"蝰"
+		);
+		assert!(!groups.contains_key(&crate::Code::from("cmgg".to_owned())));
 	}
 }

@@ -1,7 +1,7 @@
 //! 项目基础类型[`Text`]、[`CodeChar`]、[`CodeNode`]、[`Weight`]、[`Freq`]与待迁移的[`Code`]
 //! 与通用数据文件解析函数[`parse_target`]、编码分组函数[`group_texts_by_code`]
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::ops::AddAssign;
@@ -58,7 +58,7 @@ impl Code {
 	}
 }
 
-/// 编码字符，变体按ASCII字典序排列，子节点仍通过无序HashMap存储
+/// 编码字符，变体按ASCII字典序排列，供完整路径比较使用
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum CodeChar {
 	Apostrophe,
@@ -239,7 +239,7 @@ impl From<CodeChar> for char {
 	}
 }
 
-/// 节点在所属Vec中的下标，0固定为根节点
+/// 节点在所属Vec中的下标，0固定为根节点，清理压缩后需要重新取得id
 pub type NodeId = usize;
 
 /// 编码节点，完整路径由父节点和自身字符共同确定
@@ -248,7 +248,8 @@ pub struct CodeNode {
 	parent: Option<NodeId>,
 	character: Option<CodeChar>,
 	texts: Vec<Text>,
-	children: HashMap<CodeChar, NodeId>,
+	// id按创建顺序递增，BTreeMap据此保留子节点的添加顺序
+	children: BTreeMap<NodeId, CodeChar>,
 }
 
 impl CodeNode {
@@ -258,7 +259,7 @@ impl CodeNode {
 			parent: None,
 			character: None,
 			texts: Vec::new(),
-			children: HashMap::new(),
+			children: BTreeMap::new(),
 		}
 	}
 
@@ -321,7 +322,11 @@ pub(crate) fn insert_code(nodes: &mut Vec<CodeNode>, code: &str) -> NodeId {
 	let mut node_id = 0;
 
 	for character in characters {
-		if let Some(&child) = nodes[node_id].children.get(&character) {
+		if let Some((&child, _)) = nodes[node_id]
+			.children
+			.iter()
+			.find(|(_, existing)| **existing == character)
+		{
 			node_id = child;
 		} else {
 			let child = nodes.len();
@@ -329,14 +334,114 @@ pub(crate) fn insert_code(nodes: &mut Vec<CodeNode>, code: &str) -> NodeId {
 				parent: Some(node_id),
 				character: Some(character),
 				texts: Vec::new(),
-				children: HashMap::new(),
+				children: BTreeMap::new(),
 			});
-			let _ = nodes[node_id].children.insert(character, child);
+			let _ = nodes[node_id].children.insert(child, character);
 			node_id = child;
 		}
 	}
 
 	node_id
+}
+
+/// 按节点添加顺序消除空心节点，根节点不参与提升
+///
+/// 先删除未采用编码留下的空枝，再从最早子节点的路径上取首选
+/// 清理结束后统一压缩Vec并更新父子id，调用方不得继续使用旧id
+pub(crate) fn eliminate_hollow_nodes(nodes: &mut Vec<CodeNode>) {
+	assert!(!nodes.is_empty(), "nodes must contain the root at index 0");
+	let mut removed = vec![false; nodes.len()];
+
+	// 父节点总是先创建，倒序清理可排除所有没有候选的子树
+	for node in (1..nodes.len()).rev() {
+		prune_empty_branch(nodes, node, &mut removed);
+	}
+
+	for node in 1..nodes.len() {
+		if removed[node] || !nodes[node].texts.is_empty() {
+			continue;
+		}
+
+		let mut highest = node;
+		while let Some(parent) = nodes[highest].parent {
+			if parent == 0 || !nodes[parent].texts.is_empty() {
+				break;
+			}
+			highest = parent;
+		}
+
+		// 沿最早加入的子节点向下，遇到候选就取其首选
+		let mut source = highest;
+		while nodes[source].texts.is_empty() {
+			source = *nodes[source]
+				.children
+				.first_key_value()
+				.expect("live empty node must have a child with descendants")
+				.0;
+		}
+		let text = nodes[source].texts.remove(0);
+		nodes[highest].texts.push(text);
+
+		// 仍有候选或子节点时保留，轮到该节点时继续补字
+		prune_empty_branch(nodes, source, &mut removed);
+	}
+
+	compact_nodes(nodes, &removed);
+}
+
+/// 只删除无候选且无子节点的空枝，遇到根、候选或其他分支就停止
+fn prune_empty_branch(nodes: &mut [CodeNode], mut node: NodeId, removed: &mut [bool]) {
+	while node != 0
+		&& !removed[node]
+		&& nodes[node].texts.is_empty()
+		&& nodes[node].children.is_empty()
+	{
+		let parent = nodes[node].parent.expect("nonroot node must have a parent");
+		let _ = nodes[parent]
+			.children
+			.remove(&node)
+			.expect("parent must contain its child");
+		removed[node] = true;
+		node = parent;
+	}
+}
+
+/// 维持剩余节点的相对添加顺序，并同步重写全部父子引用
+fn compact_nodes(nodes: &mut Vec<CodeNode>, removed: &[bool]) {
+	let mut next = 0;
+	let ids = removed
+		.iter()
+		.map(|&removed| {
+			if removed {
+				None
+			} else {
+				let id = next;
+				next += 1;
+				Some(id)
+			}
+		})
+		.collect::<Vec<_>>();
+	let mut previous = 0;
+	nodes.retain(|_| {
+		let keep = !removed[previous];
+		previous += 1;
+		keep
+	});
+
+	for node in nodes {
+		node.parent = node
+			.parent
+			.map(|parent| ids[parent].expect("live node must have a live parent"));
+		node.children = std::mem::take(&mut node.children)
+			.into_iter()
+			.map(|(child, character)| {
+				(
+					ids[child].expect("live child must not be removed"),
+					character,
+				)
+			})
+			.collect();
+	}
 }
 
 /// 临时兼容尚未迁移的词模块，跳过只有路径而没有候选的节点
@@ -434,6 +539,157 @@ pub(crate) fn group_texts_by_code(
 mod tests {
 	use super::*;
 
+	fn add_texts(nodes: &mut Vec<CodeNode>, code: &str, texts: &[&str]) {
+		let node = insert_code(nodes, code);
+		nodes[node]
+			.texts_mut()
+			.extend(texts.iter().map(|text| Text::from((*text).to_owned())));
+	}
+
+	fn groups(nodes: &[CodeNode]) -> BTreeMap<String, Vec<String>> {
+		code_nodes_to_groups(nodes)
+			.into_iter()
+			.map(|(code, texts)| {
+				(
+					code.as_str().to_owned(),
+					texts.iter().map(|text| text.as_str().to_owned()).collect(),
+				)
+			})
+			.collect()
+	}
+
+	fn assert_filled_tree(nodes: &[CodeNode]) {
+		assert_eq!(nodes[0].parent, None);
+		assert_eq!(nodes[0].character, None);
+		assert!(nodes[0].texts.is_empty());
+		let mut incoming = vec![0; nodes.len()];
+		for (id, node) in nodes.iter().enumerate() {
+			if id != 0 {
+				assert!(!node.texts.is_empty(), "hollow node: {id}");
+				assert!(node.parent.unwrap() < id);
+			}
+			let mut characters = std::collections::HashSet::new();
+			for (&child, &character) in &node.children {
+				assert!(characters.insert(character));
+				assert_eq!(nodes[child].parent, Some(id));
+				assert_eq!(nodes[child].character, Some(character));
+				incoming[child] += 1;
+			}
+		}
+		assert_eq!(incoming[0], 0);
+		assert!(incoming[1..].iter().all(|&count| count == 1));
+	}
+
+	#[test]
+	fn hollow_nodes_take_the_first_text_from_the_first_added_child() {
+		let mut nodes = vec![CodeNode::root()];
+		add_texts(&mut nodes, "xzb", &["丁"]);
+		add_texts(&mut nodes, "xz", &["甲", "乙"]);
+		add_texts(&mut nodes, "xaa", &["丙"]);
+		eliminate_hollow_nodes(&mut nodes);
+
+		let dictionary = groups(&nodes);
+		assert_eq!(dictionary.len(), 4);
+		assert_eq!(dictionary["x"], ["甲"]);
+		assert_eq!(dictionary["xz"], ["乙"]);
+		assert_eq!(dictionary["xzb"], ["丁"]);
+		assert_eq!(dictionary["xa"], ["丙"]);
+		assert_filled_tree(&nodes);
+
+		// 压缩后最先创建的z分支仍在a分支之前
+		let count = nodes.len();
+		let x = insert_code(&mut nodes, "x");
+		let children = nodes[x].children.values().copied().collect::<Vec<_>>();
+		assert_eq!(children, [CodeChar::LowerZ, CodeChar::LowerA]);
+		for code in dictionary.keys() {
+			let _ = insert_code(&mut nodes, code);
+		}
+		assert_eq!(nodes.len(), count);
+	}
+
+	#[test]
+	fn promotion_preserves_a_donor_that_still_has_descendants() {
+		let mut nodes = vec![CodeNode::root()];
+		add_texts(&mut nodes, "xab", &["乙"]);
+		add_texts(&mut nodes, "xa", &["甲"]);
+		add_texts(&mut nodes, "xac", &["丙"]);
+		add_texts(&mut nodes, "xz", &["丁"]);
+		eliminate_hollow_nodes(&mut nodes);
+
+		let dictionary = groups(&nodes);
+		assert_eq!(dictionary.len(), 4);
+		assert_eq!(dictionary["x"], ["甲"]);
+		assert_eq!(dictionary["xa"], ["乙"]);
+		assert_eq!(dictionary["xac"], ["丙"]);
+		assert_eq!(dictionary["xz"], ["丁"]);
+		assert_filled_tree(&nodes);
+	}
+
+	#[test]
+	fn promotion_prunes_empty_chains_but_keeps_sibling_branches() {
+		let mut nodes = vec![CodeNode::root()];
+		// 原始选码可能留下完全没有候选的路径
+		let _ = insert_code(&mut nodes, "unused");
+		add_texts(&mut nodes, "xab", &["甲"]);
+		add_texts(&mut nodes, "xac", &["乙"]);
+		add_texts(&mut nodes, "xz", &["丙"]);
+		eliminate_hollow_nodes(&mut nodes);
+
+		let dictionary = groups(&nodes);
+		assert_eq!(dictionary.len(), 3);
+		assert_eq!(dictionary["x"], ["甲"]);
+		assert_eq!(dictionary["xa"], ["乙"]);
+		assert_eq!(dictionary["xz"], ["丙"]);
+		assert_eq!(nodes.len(), 4);
+		assert_filled_tree(&nodes);
+	}
+
+	#[test]
+	fn an_unused_tree_keeps_only_its_root() {
+		let mut nodes = vec![CodeNode::root()];
+		let _ = insert_code(&mut nodes, "abc");
+		let _ = insert_code(&mut nodes, "q");
+		eliminate_hollow_nodes(&mut nodes);
+		assert_eq!(nodes.len(), 1);
+		assert_filled_tree(&nodes);
+	}
+
+	#[test]
+	fn promotion_preserves_every_text_and_only_shortens_its_path() {
+		// 固定种子生成不同形状的树，检查结果而不重复提升算法
+		let mut seed = 7_u64;
+		for _ in 0..64 {
+			let mut nodes = vec![CodeNode::root()];
+			let mut original = HashMap::new();
+			for index in 0..40 {
+				seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
+				let length = 1 + (seed % 5) as usize;
+				let mut code = String::new();
+				for _ in 0..length {
+					seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
+					code.push(['z', 'a', 'b', 'A', '\''][(seed >> 32) as usize % 5]);
+				}
+				let text = format!("text{index}");
+				add_texts(&mut nodes, &code, &[&text]);
+				let _ = original.insert(text, code);
+			}
+			eliminate_hollow_nodes(&mut nodes);
+			assert_filled_tree(&nodes);
+			let mut remaining = original.clone();
+			for (code, texts) in groups(&nodes) {
+				for text in texts {
+					let original_code = remaining.remove(&text).expect("duplicate or added text");
+					assert!(original_code.starts_with(&code));
+				}
+			}
+			assert!(remaining.is_empty());
+			let once = groups(&nodes);
+			eliminate_hollow_nodes(&mut nodes);
+			assert_eq!(groups(&nodes), once);
+			assert_filled_tree(&nodes);
+		}
+	}
+
 	#[test]
 	fn alphabet_has_exactly_53_distinct_characters() {
 		let accepted = (0..=127)
@@ -497,10 +753,10 @@ mod tests {
 		assert_eq!(nodes[inf].parent, Some(prefix));
 		assert_eq!(nodes[inq].parent, Some(prefix));
 		assert_eq!(nodes[prefix].parent, Some(i));
-		assert_eq!(nodes[prefix].children[&CodeChar::LowerF], inf);
-		assert_eq!(nodes[prefix].children[&CodeChar::LowerQ], inq);
+		assert_eq!(nodes[prefix].children[&inf], CodeChar::LowerF);
+		assert_eq!(nodes[prefix].children[&inq], CodeChar::LowerQ);
 		for (parent, node) in nodes.iter().enumerate() {
-			for (&character, &child) in &node.children {
+			for (&child, &character) in &node.children {
 				assert_eq!(nodes[child].parent, Some(parent));
 				assert_eq!(nodes[child].character, Some(character));
 			}
