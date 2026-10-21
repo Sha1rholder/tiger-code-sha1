@@ -1,9 +1,9 @@
 //! 生成英文词典[`EN_DICT`]
 //!
-//! 读取ESDB、英文词频与自定义前后加词，构建变体图并评分后按ESDB和最终词频过滤，再按编码分组
+//! 读取ESDB、英文词频与自定义前后加词，构建变体图并评分后按ESDB和最终词频过滤，再生成编码节点
 
-use crate::prelude::parse_target;
-use crate::{Code, Freq, Text};
+use crate::prelude::{insert_code, parse_target};
+use crate::{CodeNode, Freq, Text};
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
@@ -254,8 +254,8 @@ struct WordScore {
 	freq_final: FreqFinal,
 }
 
-/// 按所有非空前缀码分组的英文词典
-pub static EN_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
+/// 英文编码节点，每个非空前缀保留有序候选，0号节点固定为根
+pub static EN_DICT: LazyLock<Vec<CodeNode>> = LazyLock::new(|| {
 	let esdb = &*ESDB;
 
 	// 读取英文wordfreq
@@ -604,12 +604,14 @@ pub static EN_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 		}
 	}
 
-	let mut dictionary = HashMap::<Code, Vec<Text>>::new();
+	let mut dictionary = vec![CodeNode::root()];
 
 	for text in words.into_iter().map(|text| text.0) {
-		for end in 1..=text.as_str().len() {
-			let code = Code::from(text.as_str()[..end].to_owned());
-			dictionary.entry(code).or_default().push(text.clone());
+		// 每个词只建一次完整路径，沿父链为每个非空前缀追加候选
+		let mut node = insert_code(&mut dictionary, text.as_str());
+		while let Some(parent) = dictionary[node].parent {
+			dictionary[node].texts_mut().push(text.clone());
+			node = parent;
 		}
 	}
 

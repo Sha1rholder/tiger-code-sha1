@@ -291,7 +291,7 @@ impl CodeNode {
 	}
 
 	/// 沿父链取得从根到当前节点的字符
-	fn path(&self, nodes: &[Self]) -> Vec<CodeChar> {
+	pub(crate) fn path(&self, nodes: &[Self]) -> Vec<CodeChar> {
 		let mut path = Vec::new();
 		let mut current = self;
 		while let Some(parent) = current.parent {
@@ -322,29 +322,38 @@ pub(crate) fn insert_code(nodes: &mut Vec<CodeNode>, code: &str) -> NodeId {
 	let mut node_id = 0;
 
 	for character in characters {
-		if let Some((&child, _)) = nodes[node_id]
-			.children
-			.iter()
-			.find(|(_, existing)| **existing == character)
-		{
-			node_id = child;
-		} else {
-			let child = nodes.len();
-			nodes.push(CodeNode {
-				parent: Some(node_id),
-				character: Some(character),
-				texts: Vec::new(),
-				children: BTreeMap::new(),
-			});
-			let _ = nodes[node_id].children.insert(child, character);
-			node_id = child;
-		}
+		node_id = insert_child(nodes, node_id, character);
 	}
 
 	node_id
 }
 
-/// 临时兼容尚未迁移的中英合并模块，跳过只有路径而没有候选的节点
+/// 查找或追加指定字符的子节点，已有id和子节点顺序保持不变
+pub(crate) fn insert_child(
+	nodes: &mut Vec<CodeNode>,
+	parent: NodeId,
+	character: CodeChar,
+) -> NodeId {
+	if let Some((&child, _)) = nodes[parent]
+		.children
+		.iter()
+		.find(|(_, existing)| **existing == character)
+	{
+		return child;
+	}
+
+	let child = nodes.len();
+	nodes.push(CodeNode {
+		parent: Some(parent),
+		character: Some(character),
+		texts: Vec::new(),
+		children: BTreeMap::new(),
+	});
+	let _ = nodes[parent].children.insert(child, character);
+	child
+}
+
+/// 将完成处理的节点转换为现有输出格式，跳过没有候选的路径节点
 pub(crate) fn code_nodes_to_groups(nodes: &[CodeNode]) -> HashMap<Code, Vec<Text>> {
 	nodes
 		.iter()
