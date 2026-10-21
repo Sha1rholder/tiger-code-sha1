@@ -1,4 +1,4 @@
-//! 生成英文词典[`EN_DICT_LONG`]
+//! 生成英文词典[`EN_DICT`]
 //!
 //! 读取ESDB、英文词频与自定义前后加词，构建变体图并评分后按ESDB和最终词频过滤，再按编码分组
 
@@ -29,8 +29,6 @@ const DEMOTION_POWER: usize = 10;
 const DOUBLE_LOWER: &str = "bdgklmnprstz";
 /// 允许双写的大写辅音
 const DOUBLE_UPPER: &str = "BDGKLMNPRSTZ";
-/// [`EN_WORDS_LONG`]中最短码长
-const MIN_LONG: usize = 5;
 
 /// 英文文本的大小写分类
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -310,7 +308,7 @@ struct WordScore {
 }
 
 /// 英文候选词
-static EN_WORDS_LONG: LazyLock<Vec<Text>> = LazyLock::new(|| {
+static EN_WORDS: LazyLock<Vec<Text>> = LazyLock::new(|| {
 	let esdb = &*ESDB;
 
 	// 以原始小写词构图并评分，大小写形式共享同一最终词频
@@ -606,19 +604,14 @@ static EN_WORDS_LONG: LazyLock<Vec<Text>> = LazyLock::new(|| {
 		}
 	}
 
-	let words = words.into_iter().map(|text| text.0).collect::<Vec<_>>();
-	words
-		.iter()
-		.filter(|text| text.as_str().len() > MIN_LONG)
-		.cloned()
-		.collect()
+	words.into_iter().map(|text| text.0).collect()
 });
 
-/// 按所有非空前缀码分组的长英文词典
-pub static EN_DICT_LONG: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
+/// 按所有非空前缀码分组的英文词典
+pub static EN_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 	let mut dictionary = HashMap::<Code, Vec<Text>>::new();
 
-	for text in &*EN_WORDS_LONG {
+	for text in &*EN_WORDS {
 		for end in 1..=text.as_str().len() {
 			let code = Code::from(text.as_str()[..end].to_owned());
 			dictionary.entry(code).or_default().push(text.clone());

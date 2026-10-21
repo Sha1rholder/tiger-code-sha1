@@ -1,8 +1,8 @@
 //! 生成中英混合词典[`ZH_EN_DICT`]
 //!
-//! 合并[`ZH_WORDS_DICT`]与[`EN_DICT_LONG`]，英文独有编码以编码本身为首选候选
+//! 合并[`ZH_WORDS_DICT`]与[`EN_DICT`]，英文独有编码以编码本身为首选候选
 
-use crate::en_dict::EN_DICT_LONG;
+use crate::en_dict::EN_DICT;
 use crate::zh_dict::ZH_WORDS_DICT;
 use crate::{Code, Text};
 use std::collections::{HashMap, hash_map::Entry};
@@ -12,7 +12,7 @@ use std::sync::LazyLock;
 pub static ZH_EN_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 	let mut dictionary = (*ZH_WORDS_DICT).clone();
 
-	for (code, texts) in EN_DICT_LONG.iter() {
+	for (code, texts) in EN_DICT.iter() {
 		match dictionary.entry(code.clone()) {
 			Entry::Occupied(mut entry) => entry.get_mut().extend(texts.iter().cloned()),
 			Entry::Vacant(entry) => {
