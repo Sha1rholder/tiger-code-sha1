@@ -307,8 +307,8 @@ struct WordScore {
 	freq_final: FreqFinal,
 }
 
-/// 英文候选词
-static EN_WORDS: LazyLock<Vec<Text>> = LazyLock::new(|| {
+/// 按所有非空前缀码分组的英文词典
+pub static EN_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 	let esdb = &*ESDB;
 
 	// 以原始小写词构图并评分，大小写形式共享同一最终词频
@@ -604,14 +604,9 @@ static EN_WORDS: LazyLock<Vec<Text>> = LazyLock::new(|| {
 		}
 	}
 
-	words.into_iter().map(|text| text.0).collect()
-});
-
-/// 按所有非空前缀码分组的英文词典
-pub static EN_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
 	let mut dictionary = HashMap::<Code, Vec<Text>>::new();
 
-	for text in &*EN_WORDS {
+	for text in words.into_iter().map(|text| text.0) {
 		for end in 1..=text.as_str().len() {
 			let code = Code::from(text.as_str()[..end].to_owned());
 			dictionary.entry(code).or_default().push(text.clone());
