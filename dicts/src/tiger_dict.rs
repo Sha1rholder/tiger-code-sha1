@@ -5,7 +5,7 @@
 use crate::prelude::{insert_code, parse_target};
 use crate::zh_chars::ZH_CHARS;
 use crate::{CodeNode, NodeId, Text, Weight};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, hash_map::Entry};
 use std::sync::LazyLock;
 
 /// 单个字符对应的多个编码节点及其权重
@@ -81,16 +81,16 @@ pub(crate) static TIGER_CHARS_DICT: LazyLock<Vec<CodeNode>> = LazyLock::new(|| {
 
 	for (text, node, weight) in weighted_entries {
 		// 新Text按遍历顺序直接插入
-		if !tiger_chars.contains_key(&text) {
-			*current_nodes.entry(node).or_default() += 1;
-			let _ = tiger_chars.insert(text, (node, weight));
-			continue;
-		}
+		let mut entry = match tiger_chars.entry(text) {
+			Entry::Vacant(entry) => {
+				*current_nodes.entry(node).or_default() += 1;
+				entry.insert((node, weight));
+				continue;
+			}
+			Entry::Occupied(entry) => entry,
+		};
 
-		let current_node = tiger_chars
-			.get(&text)
-			.expect("existing text must have a node")
-			.0;
+		let current_node = entry.get().0;
 		// 仅接受更短且当前未占用的编码节点
 		if nodes[node].depth(&nodes) >= nodes[current_node].depth(&nodes)
 			|| current_nodes.contains_key(&node)
@@ -112,10 +112,7 @@ pub(crate) static TIGER_CHARS_DICT: LazyLock<Vec<CodeNode>> = LazyLock::new(|| {
 		// 登记新节点，保留该字最初选定的优先级
 		let previous = current_nodes.insert(node, 1);
 		debug_assert!(previous.is_none());
-		tiger_chars
-			.get_mut(&text)
-			.expect("existing text must have a node")
-			.0 = node;
+		entry.get_mut().0 = node;
 	}
 
 	{

@@ -254,8 +254,14 @@ struct WordScore {
 	freq_final: FreqFinal,
 }
 
+/// 英文节点及prepend与普通候选、append之间的边界
+pub struct EnglishDictionary {
+	pub(crate) nodes: Vec<CodeNode>,
+	pub(crate) prepend_counts: Vec<usize>,
+}
+
 /// 英文编码节点，每个非空前缀保留有序候选，0号节点固定为根
-pub static EN_DICT: LazyLock<Vec<CodeNode>> = LazyLock::new(|| {
+pub static EN_DICT: LazyLock<EnglishDictionary> = LazyLock::new(|| {
 	let esdb = &*ESDB;
 
 	// 读取英文wordfreq
@@ -547,7 +553,7 @@ pub static EN_DICT: LazyLock<Vec<CodeNode>> = LazyLock::new(|| {
 	}
 
 	// 分类内排序并丢弃评分
-	let mut automatic = grouped
+	let automatic = grouped
 		.into_iter()
 		.map(|(word_case, mut words)| {
 			words.sort_unstable_by(|(left_text, left_score), (right_text, right_score)| {
@@ -590,30 +596,100 @@ pub static EN_DICT: LazyLock<Vec<CodeNode>> = LazyLock::new(|| {
 		panic!("custom English words conflict with generated words or each other: {conflicts}");
 	}
 
-	let mut words = Vec::new();
-	// 按固定大小写分类顺序合并三层优先级
-	for word_case in WordCase::OUTPUT_ORDER {
-		if let Some(values) = EN_PREPEND.get(&word_case) {
-			words.extend(values.iter().cloned());
-		}
-		if let Some(values) = automatic.remove(&word_case) {
-			words.extend(values);
-		}
-		if let Some(values) = EN_APPEND.get(&word_case) {
-			words.extend(values.iter().cloned());
-		}
-	}
-
-	let mut dictionary = vec![CodeNode::root()];
-
-	for text in words.into_iter().map(|text| text.0) {
-		// 每个词只建一次完整路径，沿父链为每个非空前缀追加候选
-		let mut node = insert_code(&mut dictionary, text.as_str());
-		while let Some(parent) = dictionary[node].parent {
-			dictionary[node].texts_mut().push(text.clone());
-			node = parent;
-		}
-	}
-
-	dictionary
+	build_dictionary(automatic, &EN_PREPEND, &EN_APPEND)
 });
+
+/// prepend单独置前，其余候选保留大小写分类内自动词、append的顺序
+fn build_dictionary(
+	mut automatic: HashMap<WordCase, Vec<TextEn>>,
+	prepend: &HashMap<WordCase, Vec<TextEn>>,
+	append: &HashMap<WordCase, Vec<TextEn>>,
+) -> EnglishDictionary {
+	let mut nodes = vec![CodeNode::root()];
+	for word_case in WordCase::OUTPUT_ORDER {
+		if let Some(values) = prepend.get(&word_case) {
+			for text in values {
+				insert_word(&mut nodes, text.0.clone());
+			}
+		}
+	}
+	let mut prepend_counts = nodes
+		.iter()
+		.map(|node| node.texts().len())
+		.collect::<Vec<_>>();
+	for word_case in WordCase::OUTPUT_ORDER {
+		if let Some(values) = automatic.remove(&word_case) {
+			for text in values {
+				insert_word(&mut nodes, text.0);
+			}
+		}
+		if let Some(values) = append.get(&word_case) {
+			for text in values {
+				insert_word(&mut nodes, text.0.clone());
+			}
+		}
+	}
+	// 后续创建的路径没有prepend候选
+	prepend_counts.resize(nodes.len(), 0);
+	EnglishDictionary {
+		nodes,
+		prepend_counts,
+	}
+}
+
+/// 每个词只建一次完整路径，沿父链为每个非空前缀追加候选
+fn insert_word(nodes: &mut Vec<CodeNode>, text: Text) {
+	let mut node = insert_code(nodes, text.as_str());
+	while let Some(parent) = nodes[node].parent {
+		nodes[node].texts_mut().push(text.clone());
+		node = parent;
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn prepend_precedes_all_cases_and_expands_to_every_prefix() {
+		let words = |values: &[&str]| {
+			build_custom_words(values.iter().map(|value| (*value).to_owned()), "test")
+		};
+		let mut dictionary = build_dictionary(
+			words(&["apple", "apPly", "Apple"]),
+			&words(&["apPre", "apricot", "APREP"]),
+			&words(&["apAfter", "apogee"]),
+		);
+		let count = dictionary.nodes.len();
+		assert_eq!(dictionary.prepend_counts.len(), count);
+		for (code, prepend_count, expected) in [
+			(
+				"a",
+				2,
+				vec!["apricot", "apPre", "apple", "apogee", "apPly", "apAfter"],
+			),
+			(
+				"ap",
+				2,
+				vec!["apricot", "apPre", "apple", "apogee", "apPly", "apAfter"],
+			),
+			("apP", 1, vec!["apPre", "apPly"]),
+			("apPre", 1, vec!["apPre"]),
+			("app", 0, vec!["apple"]),
+			("A", 1, vec!["APREP", "Apple"]),
+		] {
+			let id = insert_code(&mut dictionary.nodes, code);
+			assert_eq!(dictionary.nodes.len(), count);
+			assert_eq!(dictionary.prepend_counts[id], prepend_count);
+			assert_eq!(
+				dictionary.nodes[id]
+					.texts()
+					.iter()
+					.map(Text::as_str)
+					.collect::<Vec<_>>(),
+				expected
+			);
+		}
+		assert!(dictionary.nodes[0].texts().is_empty());
+	}
+}

@@ -18,11 +18,14 @@ type CompletionText = Text;
 /// 补全加权词频
 type CompletionWeight = Freq;
 
-/// 补全候选项数量
-const CANDIDATES: usize = 3;
+/// 中文节点及匹配、加词与自动词之间的边界
+pub struct ChineseDictionary {
+	pub(crate) nodes: Vec<CodeNode>,
+	pub(crate) fixed_counts: Vec<usize>,
+}
 
 /// 中文候选节点，保留虎码字符节点及其id，0号节点固定为根
-pub static ZH_WORDS_DICT: LazyLock<Vec<CodeNode>> = LazyLock::new(|| {
+pub static ZH_WORDS_DICT: LazyLock<ChineseDictionary> = LazyLock::new(|| {
 	let mut nodes = (*TIGER_CHARS_DICT).clone();
 	// 单字到最终节点的映射，已应用重编码
 	let mut char_nodes = HashMap::new();
@@ -153,7 +156,7 @@ pub static ZH_WORDS_DICT: LazyLock<Vec<CodeNode>> = LazyLock::new(|| {
 
 	let mut weighted_words = HashMap::<NodeId, HashMap<OriginalText, CompletionWeight>>::new();
 
-	// 按首字所在节点合并自动词，同码单字共用候选名额
+	// 按首字所在节点合并自动词，同码单字的自动词共同排序
 	for (first, completion_weights) in completions {
 		let node = *char_nodes.get(&first).expect("first text must have a node");
 
@@ -181,7 +184,9 @@ pub static ZH_WORDS_DICT: LazyLock<Vec<CodeNode>> = LazyLock::new(|| {
 		nodes[node].texts_mut().push(Text::from(text.to_owned()));
 	}
 
-	// 最后按补全加权词频降序补足候选，同权重时按Text排序
+	// 记录匹配和加词的边界，保留完整自动词队列供中英合并时分页
+	let fixed_counts = nodes.iter().map(|node| node.texts().len()).collect();
+	// 自动词按补全加权词频降序排列，同权重时按Text排序
 	for (node, words) in weighted_words {
 		let mut words = words.into_iter().collect::<Vec<_>>();
 		words.sort_unstable_by(|(left_text, left), (right_text, right)| {
@@ -190,11 +195,15 @@ pub static ZH_WORDS_DICT: LazyLock<Vec<CodeNode>> = LazyLock::new(|| {
 				.then_with(|| left_text.cmp(right_text))
 		});
 		let texts = nodes[node].texts_mut();
-		let available = CANDIDATES.saturating_sub(texts.len());
-		texts.extend(words.into_iter().take(available).map(|(text, _)| text));
+		// 同码手工词已经占据优先位置，自动词队列不再重复提供
+		words.retain(|(text, _)| !texts.contains(text));
+		texts.extend(words.into_iter().map(|(text, _)| text));
 	}
 
-	nodes
+	ChineseDictionary {
+		nodes,
+		fixed_counts,
+	}
 });
 
 #[cfg(test)]
@@ -203,7 +212,7 @@ mod tests {
 
 	#[test]
 	fn output_preserves_character_nodes_and_candidate_priority() {
-		let mut nodes = (*ZH_WORDS_DICT).clone();
+		let mut nodes = ZH_WORDS_DICT.nodes.clone();
 		assert!(nodes[0].texts().is_empty());
 		assert_eq!(nodes[0].depth(&nodes), 0);
 		assert!(nodes.len() >= TIGER_CHARS_DICT.len());
@@ -224,15 +233,26 @@ mod tests {
 			prefixes[id].push(Text::from(text.to_owned()));
 		}
 
+		assert_eq!(ZH_WORDS_DICT.fixed_counts.len(), nodes.len());
+		assert!(
+			nodes
+				.iter()
+				.zip(&ZH_WORDS_DICT.fixed_counts)
+				.any(|(node, fixed)| node.texts().len() > fixed + 9)
+		);
 		for (id, (node, prefix)) in nodes.iter().zip(prefixes).enumerate() {
 			assert!(node.texts().starts_with(&prefix), "candidate order at {id}");
-			assert!(node.texts().len() <= CANDIDATES.max(prefix.len()));
+			assert_eq!(ZH_WORDS_DICT.fixed_counts[id], prefix.len());
 			let characters = TIGER_CHARS_DICT
 				.get(id)
 				.map(CodeNode::texts)
 				.unwrap_or_default();
 			// 自动词只能追加在首字最终所在的节点，空心节点不会被提升或补字
 			for word in &node.texts()[prefix.len()..] {
+				assert!(
+					!prefix.contains(word),
+					"automatic word repeats a fixed candidate: {word:?}"
+				);
 				assert!(word.as_str().chars().count() > 1);
 				assert!(
 					characters
