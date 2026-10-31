@@ -1,21 +1,19 @@
 //! 生成中英混合词典[`ZH_EN_DICT`]
 //!
 //! 合并[`ZH_WORDS_DICT`]与[`EN_DICT`]的节点，英文独有编码以编码本身为首选候选
-//! 完成合并后再转换为现有输出格式
 
 use crate::en_dict::EN_DICT;
-use crate::prelude::{code_nodes_to_groups, insert_child};
+use crate::prelude::insert_child;
 use crate::zh_dict::ZH_WORDS_DICT;
-use crate::{Code, CodeNode, Text};
-use std::collections::HashMap;
+use crate::{CodeNode, Text};
 use std::sync::LazyLock;
 
-/// 按编码分组的中英混合词典
-pub static ZH_EN_DICT: LazyLock<HashMap<Code, Vec<Text>>> = LazyLock::new(|| {
+/// 中英混合词典节点，0号节点固定为根
+pub static ZH_EN_DICT: LazyLock<Vec<CodeNode>> = LazyLock::new(|| {
 	let mut nodes = (*ZH_WORDS_DICT).clone();
 	merge_english(&mut nodes, &EN_DICT);
 
-	code_nodes_to_groups(&nodes)
+	nodes
 });
 
 /// 按英文节点的添加顺序合并路径，中文候选优先，已有节点id保持稳定

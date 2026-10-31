@@ -8,10 +8,11 @@ mod zh_chars;
 pub mod zh_dict;
 pub mod zh_en_dict;
 
-pub use prelude::{Code, CodeChar, CodeNode, Freq, NodeId, Text, Weight};
+pub use prelude::{CodeChar, CodeNode, Freq, NodeId, Text, Weight};
 
 use crate::pinyin::PINYIN_DICT;
 use crate::zh_en_dict::ZH_EN_DICT;
+use std::cmp::Reverse;
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
 use std::path::Path;
@@ -47,15 +48,26 @@ columns:
 ..."
 );
 
-/// 将有序条目写为带YAML头的TSV
-fn write_tsv<'a>(
-	writer: &mut impl Write,
-	head: &str,
-	entries: impl IntoIterator<Item = (&'a Code, &'a Text)>,
-) -> io::Result<()> {
+/// 按编码字典序遍历节点，保留节点内候选顺序，写为带YAML头的TSV
+fn write_tsv(writer: &mut impl Write, head: &str, nodes: &[CodeNode]) -> io::Result<()> {
 	writeln!(writer, "{head}")?;
-	for (code, text) in entries {
-		writeln!(writer, "{}\t{}", code.as_str(), text.as_str())?;
+	// 字符串路径仅在写文件时生成，深度优先遍历复用同一个缓冲区
+	let mut code = String::new();
+	let mut pending = vec![(0, 0)];
+	while let Some((node_id, parent_len)) = pending.pop() {
+		let node = &nodes[node_id];
+		code.truncate(parent_len);
+		if let Some(parent) = node.parent {
+			code.push(char::from(nodes[parent].children[&node_id]));
+		}
+		for text in node.texts() {
+			writeln!(writer, "{code}\t{}", text.as_str())?;
+		}
+
+		// 子节点按添加顺序存储，输出时临时按字符倒序入栈，保证弹出顺序为字典序
+		let mut children = node.children.iter().collect::<Vec<_>>();
+		children.sort_unstable_by_key(|(_, character)| Reverse(**character));
+		pending.extend(children.into_iter().map(|(&child, _)| (child, code.len())));
 	}
 	Ok(())
 }
@@ -69,28 +81,16 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
 	let pinyin = &*PINYIN_DICT;
 	let dictionary = &*ZH_EN_DICT;
 	{
-		// 将有序拼音条目写入文件并刷新缓冲区
+		// 将拼音节点写入文件并刷新缓冲区
 		let mut writer = BufWriter::new(File::create(output_dir.join(PINYIN_LOOKUP_FILE))?);
-		write_tsv(
-			&mut writer,
-			PINYIN_LOOKUP_HEAD,
-			pinyin.iter().map(|(code, text)| (code, text)),
-		)?;
+		write_tsv(&mut writer, PINYIN_LOOKUP_HEAD, pinyin)?;
 		writer.flush()?;
 	}
 
 	{
-		// 将分组词典按编码排序后写入文件并刷新缓冲区
+		// 将中英混合节点写入文件并刷新缓冲区
 		let mut writer = BufWriter::new(File::create(output_dir.join(TIGER_CODE_SHA1_FILE))?);
-		let mut groups = dictionary.iter().collect::<Vec<_>>();
-		groups.sort_unstable_by_key(|(code, _)| *code);
-		write_tsv(
-			&mut writer,
-			TIGER_CODE_SHA1_HEAD,
-			groups
-				.into_iter()
-				.flat_map(|(code, texts)| texts.iter().map(move |text| (code, text))),
-		)?;
+		write_tsv(&mut writer, TIGER_CODE_SHA1_HEAD, dictionary)?;
 		writer.flush()?;
 	}
 	Ok(())

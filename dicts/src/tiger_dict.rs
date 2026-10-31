@@ -296,7 +296,7 @@ fn compact_nodes(nodes: &mut Vec<CodeNode>, removed: &[bool]) {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::prelude::{Code, CodeChar, code_nodes_to_groups};
+	use crate::CodeChar;
 	use std::collections::BTreeMap;
 
 	fn add_texts(nodes: &mut Vec<CodeNode>, code: &str, texts: &[&str]) {
@@ -307,12 +307,16 @@ mod tests {
 	}
 
 	fn groups(nodes: &[CodeNode]) -> BTreeMap<String, Vec<String>> {
-		code_nodes_to_groups(nodes)
-			.into_iter()
-			.map(|(code, texts)| {
+		nodes
+			.iter()
+			.filter(|node| !node.texts().is_empty())
+			.map(|node| {
 				(
-					code.as_str().to_owned(),
-					texts.iter().map(|text| text.as_str().to_owned()).collect(),
+					node.path(nodes).into_iter().map(char::from).collect(),
+					node.texts()
+						.iter()
+						.map(|text| text.as_str().to_owned())
+						.collect(),
 				)
 			})
 			.collect()
@@ -332,17 +336,7 @@ mod tests {
 			for (&child, &character) in &node.children {
 				assert!(characters.insert(character));
 				assert_eq!(nodes[child].parent, Some(id));
-				assert_eq!(
-					CodeChar::try_from(
-						Code::from_node(nodes, child)
-							.as_str()
-							.chars()
-							.last()
-							.unwrap()
-					)
-					.unwrap(),
-					character
-				);
+				assert_eq!(nodes[child].path(nodes).last(), Some(&character));
 				incoming[child] += 1;
 			}
 		}

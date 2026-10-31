@@ -47,7 +47,7 @@ DeepWiki: <https://deepwiki.com/Sha1rholder/tiger-code-sha1>
 
 从结果上看，[wordfreq所用的Zipf刻度](https://github.com/rspeer/wordfreq#usage)，取每十亿词中出现次数的常用对数：数值为6，约每千词出现一次；为3，约每百万词出现一次。相差一级，频率相差十倍，除以10相当于降低一级。程序仍用原始频率相加，算完所得是排序分数；自动词的保留门槛为`10⁻⁸`，相当于Zipf值1。先构图评分，后按拼写库与门槛筛选，便使最后未被收录的词，也有机会通过变体关系参与评分
 
-关系愈繁杂，其中奥妙愈要算计清楚。同一变体若循两条路径到达同一个基本形式，贡献只能算一次；传递的也始终是原始频率，不能把已经提权的数值再往上滚。这里便用得上Rust强大的类型系统与标准数据结构：`Text`、`Code`分开文本与编码，`TextEn`、`TextLower`在构造时约束ASCII英文文本及其小写形式；`HashMap`建立词与节点的对应，`HashSet`保存不重复的基本形式集合，从设计上就规避重复数据与冲突。反之，若以次次遍历穷举再作运算，犹治丝而棼之也（换Rust前我用Python写过类似算法，跑一次10多分钟[给我14900K干报废了一个](https://www.reddit.com/r/overclocking/comments/1v6cf47/intel_13th14th_gen_cpus_still_degrading_even_with/)，还好有保修）
+关系愈繁杂，其中奥妙愈要算计清楚。同一变体若循两条路径到达同一个基本形式，贡献只能算一次；传递的也始终是原始频率，不能把已经提权的数值再往上滚。这里便用得上Rust强大的类型系统与标准数据结构：`Text`、`CodeNode`分开文本与编码节点，`TextEn`、`TextLower`在构造时约束ASCII英文文本及其小写形式；`HashMap`建立词与节点的对应，`HashSet`保存不重复的基本形式集合，从设计上就规避重复数据与冲突。反之，若以次次遍历穷举再作运算，犹治丝而棼之也（换Rust前我用Python写过类似算法，跑一次10多分钟[给我14900K干报废了一个](https://www.reddit.com/r/overclocking/comments/1v6cf47/intel_13th14th_gen_cpus_still_degrading_even_with/)，还好有保修）
 
 评分之后，再补足相应的大小写形式，并在各类别内依分数、长度、字面顺序排序。最终只把超过4个字符的词作为补全目标，将每个词的全部非空前缀写入词典，例如`python`自`p`至全词均有登记。因此Rime即使关闭通用补全，仍可直接查到这些候选。短词通常径直敲完，长词则不必全凭记忆；该记多少、该补多少，由这套静态词表分担
 

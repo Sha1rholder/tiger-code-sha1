@@ -1,7 +1,7 @@
-//! 项目基础类型[`Text`]、[`CodeChar`]、[`CodeNode`]、[`Weight`]、[`Freq`]与待迁移的[`Code`]
+//! 项目基础类型[`Text`]、[`CodeChar`]、[`CodeNode`]、[`Weight`]、[`Freq`]
 //! 与通用数据文件解析函数[`parse_target`]
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::ops::AddAssign;
@@ -22,45 +22,11 @@ impl Text {
 	}
 }
 
-/// 临时字符串编码，供尚未迁移到节点的模块使用
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Code(String);
-impl From<String> for Code {
-	fn from(value: String) -> Self {
-		Self(value)
-	}
-}
-impl Code {
-	/// 临时兼容转换，从节点的完整路径恢复字符串编码
-	pub(crate) fn from_node(nodes: &[CodeNode], node_id: NodeId) -> Self {
-		Self(
-			nodes[node_id]
-				.path(nodes)
-				.into_iter()
-				.map(char::from)
-				.collect(),
-		)
-	}
-
-	/// 返回底层字符串切片
-	pub(crate) fn as_str(&self) -> &str {
-		&self.0
-	}
-
-	/// 返回编码的字节长度
-	pub fn len(&self) -> usize {
-		self.0.len()
-	}
-
-	/// 返回编码是否为空
-	pub fn is_empty(&self) -> bool {
-		self.0.is_empty()
-	}
-}
-
 /// 编码字符，变体按ASCII字典序排列，供完整路径比较使用
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum CodeChar {
+	/// 多音节拼音的分隔符
+	Space,
 	Apostrophe,
 	UpperA,
 	UpperB,
@@ -121,6 +87,7 @@ impl TryFrom<char> for CodeChar {
 
 	fn try_from(value: char) -> Result<Self, Self::Error> {
 		match value {
+			' ' => Ok(Self::Space),
 			'\'' => Ok(Self::Apostrophe),
 			'A' => Ok(Self::UpperA),
 			'B' => Ok(Self::UpperB),
@@ -182,6 +149,7 @@ impl TryFrom<char> for CodeChar {
 impl From<CodeChar> for char {
 	fn from(value: CodeChar) -> Self {
 		match value {
+			CodeChar::Space => ' ',
 			CodeChar::Apostrophe => '\'',
 			CodeChar::UpperA => 'A',
 			CodeChar::UpperB => 'B',
@@ -353,16 +321,6 @@ pub(crate) fn insert_child(
 	child
 }
 
-/// 将完成处理的节点转换为现有输出格式，跳过没有候选的路径节点
-pub(crate) fn code_nodes_to_groups(nodes: &[CodeNode]) -> HashMap<Code, Vec<Text>> {
-	nodes
-		.iter()
-		.enumerate()
-		.filter(|(_, node)| !node.texts().is_empty())
-		.map(|(node_id, node)| (Code::from_node(nodes, node_id), node.texts().to_vec()))
-		.collect()
-}
-
 /// 权重
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Weight(usize);
@@ -428,4 +386,22 @@ pub(crate) fn parse_target(path: impl AsRef<Path>) -> Vec<String> {
 		.filter(|line| !line.is_empty() && !line.starts_with('#'))
 		.map(str::to_owned)
 		.collect()
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn encoding_characters_round_trip_in_ascii_order() {
+		let characters = (0..=127_u8)
+			.filter_map(|value| CodeChar::try_from(char::from(value)).ok())
+			.collect::<Vec<_>>();
+		assert_eq!(characters.len(), 54);
+		assert!(characters.windows(2).all(|pair| pair[0] < pair[1]));
+		assert_eq!(
+			characters.into_iter().map(char::from).collect::<String>(),
+			" 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+		);
+	}
 }
