@@ -1,4 +1,6 @@
 temp*
+.local/
+AGENTS.override.md
 
 /sync/
 /build/
