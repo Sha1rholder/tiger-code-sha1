@@ -3,15 +3,16 @@
 pub mod en_dict;
 pub mod pinyin;
 mod prelude;
+mod tiger_dict;
 mod zh_chars;
 pub mod zh_dict;
 pub mod zh_en_dict;
 
-pub use prelude::{Code, Freq, Text, Weight};
+pub use prelude::{CodeChar, CodeNode, Freq, NodeId, Text, Weight};
 
 use crate::pinyin::PINYIN_DICT;
 use crate::zh_en_dict::ZH_EN_DICT;
-use std::collections::HashMap;
+use std::cmp::Reverse;
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
 use std::path::Path;
@@ -47,56 +48,28 @@ columns:
 ..."
 );
 
-/// 将有序条目写为带YAML头的TSV
-fn write_tsv<'a>(
-	writer: &mut impl Write,
-	head: &str,
-	entries: impl IntoIterator<Item = (&'a Code, &'a Text)>,
-) -> io::Result<()> {
+/// 按编码字典序遍历节点，保留节点内候选顺序，写为带YAML头的TSV
+fn write_tsv(writer: &mut impl Write, head: &str, nodes: &[CodeNode]) -> io::Result<()> {
 	writeln!(writer, "{head}")?;
-	for (code, text) in entries {
-		writeln!(writer, "{}\t{}", code.as_str(), text.as_str())?;
+	// 字符串路径仅在写文件时生成，深度优先遍历复用同一个缓冲区
+	let mut code = String::new();
+	let mut pending = vec![(0, 0)];
+	while let Some((node_id, parent_len)) = pending.pop() {
+		let node = &nodes[node_id];
+		code.truncate(parent_len);
+		if let Some(parent) = node.parent {
+			code.push(char::from(nodes[parent].children[&node_id]));
+		}
+		for text in node.texts() {
+			writeln!(writer, "{code}\t{}", text.as_str())?;
+		}
+
+		// 子节点按添加顺序存储，输出时临时按字符倒序入栈，保证弹出顺序为字典序
+		let mut children = node.children.iter().collect::<Vec<_>>();
+		children.sort_unstable_by_key(|(_, character)| Reverse(**character));
+		pending.extend(children.into_iter().map(|(&child, _)| (child, code.len())));
 	}
 	Ok(())
-}
-
-/// 将分组词典按编码排序后写为TSV
-fn write_dictionary_tsv(
-	writer: &mut impl Write,
-	head: &str,
-	dictionary: &HashMap<Code, Vec<Text>>,
-) -> io::Result<()> {
-	let mut groups = dictionary.iter().collect::<Vec<_>>();
-	groups.sort_unstable_by_key(|(code, _)| *code);
-	write_tsv(
-		writer,
-		head,
-		groups
-			.into_iter()
-			.flat_map(|(code, texts)| texts.iter().map(move |text| (code, text))),
-	)
-}
-
-/// 将有序条目写入文件并刷新缓冲区
-fn write_entries_file(path: &Path, head: &str, entries: &[(Code, Text)]) -> io::Result<()> {
-	let mut writer = BufWriter::new(File::create(path)?);
-	write_tsv(
-		&mut writer,
-		head,
-		entries.iter().map(|(code, text)| (code, text)),
-	)?;
-	writer.flush()
-}
-
-/// 将分组词典写入文件并刷新缓冲区
-fn write_dictionary_file(
-	path: &Path,
-	head: &str,
-	dictionary: &HashMap<Code, Vec<Text>>,
-) -> io::Result<()> {
-	let mut writer = BufWriter::new(File::create(path)?);
-	write_dictionary_tsv(&mut writer, head, dictionary)?;
-	writer.flush()
 }
 
 /// 输出拼音反查和中英混合词典到Rime用户目录
@@ -107,15 +80,18 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
 	// 先完成数据加载和校验，再打开输出文件
 	let pinyin = &*PINYIN_DICT;
 	let dictionary = &*ZH_EN_DICT;
-	write_entries_file(
-		&output_dir.join(PINYIN_LOOKUP_FILE),
-		PINYIN_LOOKUP_HEAD,
-		pinyin,
-	)?;
-	write_dictionary_file(
-		&output_dir.join(TIGER_CODE_SHA1_FILE),
-		TIGER_CODE_SHA1_HEAD,
-		dictionary,
-	)?;
+	{
+		// 将拼音节点写入文件并刷新缓冲区
+		let mut writer = BufWriter::new(File::create(output_dir.join(PINYIN_LOOKUP_FILE))?);
+		write_tsv(&mut writer, PINYIN_LOOKUP_HEAD, pinyin)?;
+		writer.flush()?;
+	}
+
+	{
+		// 将中英混合节点写入文件并刷新缓冲区
+		let mut writer = BufWriter::new(File::create(output_dir.join(TIGER_CODE_SHA1_FILE))?);
+		write_tsv(&mut writer, TIGER_CODE_SHA1_HEAD, dictionary)?;
+		writer.flush()?;
+	}
 	Ok(())
 }

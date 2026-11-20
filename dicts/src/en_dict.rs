@@ -1,9 +1,9 @@
-//! 生成英文词典[`EN_DICT_LONG`]
+//! 生成英文词典[`EN_DICT`]
 //!
-//! 读取ESDB、英文词频与自定义前后加词，构建变体图并评分后按ESDB和最终词频过滤，再按编码分组
+//! 读取ESDB、英文词频与自定义前后加词，构建变体图并评分后按ESDB和最终词频过滤，再生成编码节点
 
-use crate::prelude::parse_target;
-use crate::{Code, Freq, Text};
+use crate::prelude::{insert_code, parse_target};
+use crate::{CodeNode, Freq, Text};
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
@@ -29,8 +29,6 @@ const DEMOTION_POWER: usize = 10;
 const DOUBLE_LOWER: &str = "bdgklmnprstz";
 /// 允许双写的大写辅音
 const DOUBLE_UPPER: &str = "BDGKLMNPRSTZ";
-/// [`EN_WORDS_LONG`]中最短码长
-const MIN_LONG: usize = 5;
 
 /// 英文文本的大小写分类
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -117,11 +115,6 @@ impl TextEn {
 	fn lower(&self) -> TextLower {
 		TextLower::from_lowercase(self.as_str().to_ascii_lowercase())
 	}
-
-	/// 转换为通用文本
-	fn into_text(self) -> Text {
-		self.0
-	}
 }
 
 /// 英文文本的全小写形式
@@ -143,26 +136,9 @@ impl TextLower {
 		self.0.as_str()
 	}
 
-	/// 返回英文小写文本的字节长度
-	fn len(&self) -> usize {
-		self.0.len()
-	}
-
 	/// 返回标准小写词形
 	fn lower_form(&self) -> TextEn {
 		self.0.clone()
-	}
-
-	/// 返回标准首字母大写词形
-	fn capitalized_form(&self) -> TextEn {
-		// 只转换首个字母并保留撇号位置
-		let mut bytes = self.as_str().as_bytes().to_vec();
-		let first = bytes
-			.iter_mut()
-			.find(|byte| byte.is_ascii_alphabetic())
-			.expect("validated English text must contain a letter");
-		first.make_ascii_uppercase();
-		TextEn::from_string(String::from_utf8(bytes).expect("validated English text must be ASCII"))
 	}
 
 	/// 返回标准全大写词形
@@ -189,12 +165,11 @@ fn is_valid_english_text(value: &str) -> bool {
 		.any(|byte| byte.is_ascii_alphabetic())
 }
 
-/// 构造按全小写形式分组的[`ESDB`]
-fn build_esdb(
-	lines: impl IntoIterator<Item = String>,
-	path: &str,
-) -> HashMap<TextLower, HashSet<TextEn>> {
-	let mut lines = lines.into_iter();
+/// English Speller Database正确英文拼写数据库
+static ESDB: LazyLock<HashMap<TextLower, HashSet<TextEn>>> = LazyLock::new(|| {
+	let path = "data/en/ESDB.txt";
+	// 读取并分组ESDB词条
+	let mut lines = parse_target(path).into_iter();
 	let mut found_marker = false;
 	// 跳过说明文本并定位词表起点
 	for line in lines.by_ref() {
@@ -227,74 +202,6 @@ fn build_esdb(
 	}
 
 	grouped
-}
-
-/// English Speller Database正确英文拼写数据库
-static ESDB: LazyLock<HashMap<TextLower, HashSet<TextEn>>> = LazyLock::new(|| {
-	let path = "data/en/ESDB.txt";
-	// 读取并分组ESDB词条
-	build_esdb(parse_target(path), path)
-});
-
-/// 构造合法英文wordfreq
-fn build_en_freq(
-	lines: impl IntoIterator<Item = String>,
-	path: &str,
-) -> HashMap<TextLower, FreqSelf> {
-	let mut lines = lines.into_iter();
-	// 校验TSV标题
-	assert_eq!(
-		lines.next().as_deref(),
-		Some("text\tfrequency"),
-		"invalid English wordfreq header in {path}"
-	);
-
-	let mut seen = HashSet::new();
-	let mut frequencies = HashMap::new();
-	// 读取并过滤英文词频
-	for line in lines {
-		let mut fields = line.split('\t');
-		let text = fields.next().expect("missing text field");
-		let raw_freq = fields.next().expect("missing freq field");
-		assert!(fields.next().is_none(), "extra fields in {path}: {line}");
-		// 重复和大写ASCII属于数据错误
-		assert!(
-			seen.insert(text.to_owned()),
-			"duplicate text in {path}: {text}"
-		);
-		assert!(
-			text.bytes().all(|byte| !byte.is_ascii_uppercase()),
-			"English wordfreq results must not contain uppercase ASCII letters: {line}"
-		);
-
-		let raw_freq: f64 = raw_freq.parse().expect("invalid freq field");
-		assert!(
-			raw_freq.is_finite() && raw_freq > 0.0,
-			"English wordfreq must contain positive finite frequencies: {line}"
-		);
-		// 非英文词形不进入英文词频表
-		if !is_valid_english_text(text) {
-			continue;
-		}
-
-		// 按全小写形式保存词频
-		let lower = TextLower::from_lowercase(text.to_owned());
-		assert!(
-			frequencies
-				.insert(lower, FreqSelf::from(raw_freq))
-				.is_none(),
-			"duplicate lowercase text in {path}: {text}"
-		);
-	}
-
-	frequencies
-}
-
-/// 英文wordfreq
-static EN_FREQ: LazyLock<HashMap<TextLower, FreqSelf>> = LazyLock::new(|| {
-	let path = "data/en/wordfreq.tsv";
-	// 读取并过滤英文词频
-	build_en_freq(parse_target(path), path)
 });
 
 /// 按大小写分类并保持分类内的输入顺序
@@ -333,30 +240,6 @@ static EN_APPEND: LazyLock<HashMap<WordCase, Vec<TextEn>>> = LazyLock::new(|| {
 	build_custom_words(parse_target(path), path)
 });
 
-/// 按现有大小写形式扩增标准大小写词形
-fn expand_case_forms(groups: &mut HashMap<TextLower, HashSet<TextEn>>) {
-	for (lower, forms) in groups {
-		debug_assert!(forms.iter().all(|text| text.len() == lower.len()));
-		// 记录扩增前已有的大小写分类
-		let cases = forms.iter().map(TextEn::word_case).collect::<HashSet<_>>();
-
-		// 全大写分类补充标准全大写形式
-		if cases.contains(&WordCase::Upper) {
-			let _ = forms.insert(lower.upper_form());
-		}
-		// 常规形式补齐小写、首字母大写和全大写
-		if cases.contains(&WordCase::Lower) || cases.contains(&WordCase::Capitalized) {
-			let _ = forms.insert(lower.lower_form());
-			let _ = forms.insert(lower.capitalized_form());
-			let _ = forms.insert(lower.upper_form());
-		}
-		// 混合大小写形式只补充标准小写
-		if cases.contains(&WordCase::LowerMixed) || cases.contains(&WordCase::CapitalizedMixed) {
-			let _ = forms.insert(lower.lower_form());
-		}
-	}
-}
-
 /// 按wordfreq原始小写形式构造的英文词图节点
 #[derive(Clone, Debug)]
 struct WordNode {
@@ -371,11 +254,73 @@ struct WordScore {
 	freq_final: FreqFinal,
 }
 
-/// 为全部英文wordfreq创建稳定小写节点，构图不依赖[`ESDB`]及大小写扩增
-fn build_nodes(frequencies: &HashMap<TextLower, FreqSelf>) -> Vec<WordNode> {
+/// 英文节点及prepend与普通候选、append之间的边界
+pub struct EnglishDictionary {
+	pub(crate) nodes: Vec<CodeNode>,
+	pub(crate) prepend_counts: Vec<usize>,
+}
+
+/// 英文编码节点，每个非空前缀保留有序候选，0号节点固定为根
+pub static EN_DICT: LazyLock<EnglishDictionary> = LazyLock::new(|| {
+	let esdb = &*ESDB;
+
+	// 读取英文wordfreq
+	let frequencies = {
+		let path = "data/en/wordfreq.tsv";
+		// 读取并过滤英文词频
+		let mut lines = parse_target(path).into_iter();
+		// 校验TSV标题
+		assert_eq!(
+			lines.next().as_deref(),
+			Some("text\tfrequency"),
+			"invalid English wordfreq header in {path}"
+		);
+
+		let mut seen = HashSet::new();
+		let mut frequencies = HashMap::new();
+		// 读取并过滤英文词频
+		for line in lines {
+			let mut fields = line.split('\t');
+			let text = fields.next().expect("missing text field");
+			let raw_freq = fields.next().expect("missing freq field");
+			assert!(fields.next().is_none(), "extra fields in {path}: {line}");
+			// 重复和大写ASCII属于数据错误
+			assert!(
+				seen.insert(text.to_owned()),
+				"duplicate text in {path}: {text}"
+			);
+			assert!(
+				text.bytes().all(|byte| !byte.is_ascii_uppercase()),
+				"English wordfreq results must not contain uppercase ASCII letters: {line}"
+			);
+
+			let raw_freq: f64 = raw_freq.parse().expect("invalid freq field");
+			assert!(
+				raw_freq.is_finite() && raw_freq > 0.0,
+				"English wordfreq must contain positive finite frequencies: {line}"
+			);
+			// 非英文词形不进入英文词频表
+			if !is_valid_english_text(text) {
+				continue;
+			}
+
+			// 按全小写形式保存词频
+			let lower = TextLower::from_lowercase(text.to_owned());
+			assert!(
+				frequencies
+					.insert(lower, FreqSelf::from(raw_freq))
+					.is_none(),
+				"duplicate lowercase text in {path}: {text}"
+			);
+		}
+
+		frequencies
+	};
+
+	// 以原始小写词构图并评分，大小写形式共享同一最终词频
 	let mut nodes = frequencies
-		.iter()
-		.map(|(lower, &freq_self)| WordNode {
+		.into_iter()
+		.map(|(lower, freq_self)| WordNode {
 			text: lower.lower_form(),
 			freq_self,
 			direct_bases: Vec::new(),
@@ -394,90 +339,7 @@ fn build_nodes(frequencies: &HashMap<TextLower, FreqSelf>) -> Vec<WordNode> {
 		"English graph texts must be unique"
 	);
 
-	nodes
-}
-
-/// 生成一次变体可能得到的全部字面量
-fn direct_variant_literals(base: &TextEn) -> HashSet<String> {
-	let value = base.as_str();
-	let Some(last) = value.bytes().next_back() else {
-		return HashSet::new();
-	};
-	let mut variants = HashSet::new();
-
-	if last.is_ascii_lowercase() {
-		// 追加通用小写后缀
-		for suffix in [
-			"s", "es", "d", "ed", "ing", "ly", "er", "est", "ment", "ness", "able", "'", "'s",
-			"'t", "'re",
-		] {
-			let _ = variants.insert(format!("{value}{suffix}"));
-		}
-
-		// 处理小写末字母替换
-		let stem = &value[..value.len() - 1];
-		match last {
-			b'y' => {
-				for suffix in ["ies", "ied", "ily", "ier", "iest", "iness"] {
-					let _ = variants.insert(format!("{stem}{suffix}"));
-				}
-			}
-			b'f' => {
-				let _ = variants.insert(format!("{stem}ves"));
-			}
-			b'e' => {
-				let _ = variants.insert(format!("{stem}ing"));
-				let _ = variants.insert(format!("{stem}able"));
-			}
-			_ => {}
-		}
-
-		// 处理小写辅音双写
-		if DOUBLE_LOWER.as_bytes().contains(&last) {
-			for suffix in ["ed", "ing", "er", "est"] {
-				let _ = variants.insert(format!("{value}{}{suffix}", last as char));
-			}
-		}
-	} else if last.is_ascii_uppercase() {
-		// 追加通用大写后缀
-		for suffix in [
-			"s", "S", "ES", "D", "ED", "ING", "LY", "ER", "EST", "MENT", "NESS", "ABLE", "'", "'s",
-			"'S", "'m", "'M", "'T", "'RE",
-		] {
-			let _ = variants.insert(format!("{value}{suffix}"));
-		}
-
-		// 处理大写末字母替换
-		let stem = &value[..value.len() - 1];
-		match last {
-			b'Y' => {
-				for suffix in ["IES", "IED", "ILY", "IER", "IEST", "INESS"] {
-					let _ = variants.insert(format!("{stem}{suffix}"));
-				}
-			}
-			b'F' => {
-				let _ = variants.insert(format!("{stem}VES"));
-			}
-			b'E' => {
-				let _ = variants.insert(format!("{stem}ING"));
-				let _ = variants.insert(format!("{stem}ABLE"));
-			}
-			_ => {}
-		}
-
-		// 处理大写辅音双写
-		if DOUBLE_UPPER.as_bytes().contains(&last) {
-			for suffix in ["ED", "ING", "ER", "EST"] {
-				let _ = variants.insert(format!("{value}{}{suffix}", last as char));
-			}
-		}
-	}
-
-	variants
-}
-
-/// 为存在于词表中的直接变体记录基本形式入边
-fn attach_direct_bases(nodes: &mut [WordNode]) {
+	// 为存在于词表中的直接变体记录基本形式入边
 	// 建立字面量到稳定节点编号的临时索引
 	let lookup = nodes
 		.iter()
@@ -496,7 +358,81 @@ fn attach_direct_bases(nodes: &mut [WordNode]) {
 		if node.text.len() < INFLECT_START {
 			continue;
 		}
-		for variant in direct_variant_literals(&node.text) {
+		let value = node.text.as_str();
+		let Some(last) = value.bytes().next_back() else {
+			continue;
+		};
+		let mut variants = HashSet::new();
+
+		if last.is_ascii_lowercase() {
+			// 追加通用小写后缀
+			for suffix in [
+				"s", "es", "d", "ed", "ing", "ly", "er", "est", "ment", "ness", "able", "'", "'s",
+				"'t", "'re",
+			] {
+				let _ = variants.insert(format!("{value}{suffix}"));
+			}
+
+			// 处理小写末字母替换
+			let stem = &value[..value.len() - 1];
+			match last {
+				b'y' => {
+					for suffix in ["ies", "ied", "ily", "ier", "iest", "iness"] {
+						let _ = variants.insert(format!("{stem}{suffix}"));
+					}
+				}
+				b'f' => {
+					let _ = variants.insert(format!("{stem}ves"));
+				}
+				b'e' => {
+					let _ = variants.insert(format!("{stem}ing"));
+					let _ = variants.insert(format!("{stem}able"));
+				}
+				_ => {}
+			}
+
+			// 处理小写辅音双写
+			if DOUBLE_LOWER.as_bytes().contains(&last) {
+				for suffix in ["ed", "ing", "er", "est"] {
+					let _ = variants.insert(format!("{value}{}{suffix}", last as char));
+				}
+			}
+		} else if last.is_ascii_uppercase() {
+			// 追加通用大写后缀
+			for suffix in [
+				"s", "S", "ES", "D", "ED", "ING", "LY", "ER", "EST", "MENT", "NESS", "ABLE", "'",
+				"'s", "'S", "'m", "'M", "'T", "'RE",
+			] {
+				let _ = variants.insert(format!("{value}{suffix}"));
+			}
+
+			// 处理大写末字母替换
+			let stem = &value[..value.len() - 1];
+			match last {
+				b'Y' => {
+					for suffix in ["IES", "IED", "ILY", "IER", "IEST", "INESS"] {
+						let _ = variants.insert(format!("{stem}{suffix}"));
+					}
+				}
+				b'F' => {
+					let _ = variants.insert(format!("{stem}VES"));
+				}
+				b'E' => {
+					let _ = variants.insert(format!("{stem}ING"));
+					let _ = variants.insert(format!("{stem}ABLE"));
+				}
+				_ => {}
+			}
+
+			// 处理大写辅音双写
+			if DOUBLE_UPPER.as_bytes().contains(&last) {
+				for suffix in ["ED", "ING", "ER", "EST"] {
+					let _ = variants.insert(format!("{value}{}{suffix}", last as char));
+				}
+			}
+		}
+
+		for variant in variants {
 			let Some(&variant_id) = lookup.get(variant.as_str()) else {
 				continue;
 			};
@@ -515,10 +451,8 @@ fn attach_direct_bases(nodes: &mut [WordNode]) {
 		bases.dedup();
 		node.direct_bases = bases;
 	}
-}
 
-/// 计算每个节点的全部直接和间接基本形式
-fn collect_all_bases(nodes: &[WordNode]) -> Vec<HashSet<NodeId>> {
+	// 根据全部基本形式计算节点评分
 	let mut all_bases = vec![HashSet::new(); nodes.len()];
 	// 稳定节点顺序保证基本形式闭包已经就绪
 	for node_id in 0..nodes.len() {
@@ -531,12 +465,6 @@ fn collect_all_bases(nodes: &[WordNode]) -> Vec<HashSet<NodeId>> {
 		all_bases[node_id] = bases;
 	}
 
-	all_bases
-}
-
-/// 根据全部基本形式计算节点评分
-fn score_nodes(nodes: &[WordNode]) -> Vec<WordScore> {
-	let all_bases = collect_all_bases(nodes);
 	let mut demotion_counts: Vec<DemotionCount> = vec![0; nodes.len()];
 	// 每个节点先保留自身原始词频
 	let mut scores = nodes
@@ -569,30 +497,6 @@ fn score_nodes(nodes: &[WordNode]) -> Vec<WordScore> {
 		}
 	}
 
-	scores
-}
-
-/// 比较两个带评分英文词的最终自动排序顺序
-fn compare_scored_words(
-	(left_text, left_score): &(TextEn, WordScore),
-	(right_text, right_score): &(TextEn, WordScore),
-) -> Ordering {
-	right_score
-		.freq_final
-		.total_cmp(&left_score.freq_final) // 最终词频
-		.then_with(|| left_text.len().cmp(&right_text.len())) // 码长
-		.then_with(|| left_text.cmp(right_text)) // 字面量
-}
-
-/// 构造按大小写分类和评分排序的自动英文词
-fn build_automatic_words(
-	esdb: &HashMap<TextLower, HashSet<TextEn>>,
-	frequencies: &HashMap<TextLower, FreqSelf>,
-) -> HashMap<WordCase, Vec<TextEn>> {
-	// 以原始小写词构图并评分，大小写形式共享同一最终词频
-	let mut nodes = build_nodes(frequencies);
-	attach_direct_bases(&mut nodes);
-	let scores = score_nodes(&nodes);
 	let scores = nodes
 		.into_iter()
 		.zip(scores)
@@ -606,7 +510,37 @@ fn build_automatic_words(
 			.get(lower)
 			.is_some_and(|score| score.freq_final.total_cmp(&MIN_FREQ) != Ordering::Less)
 	});
-	expand_case_forms(&mut groups);
+	// 按现有大小写形式扩增标准大小写词形
+	for (lower, forms) in &mut groups {
+		debug_assert!(forms.iter().all(|text| text.len() == lower.0.len()));
+		// 记录扩增前已有的大小写分类
+		let cases = forms.iter().map(TextEn::word_case).collect::<HashSet<_>>();
+
+		// 全大写分类补充标准全大写形式
+		if cases.contains(&WordCase::Upper) {
+			let _ = forms.insert(lower.upper_form());
+		}
+		// 常规形式补齐小写、首字母大写和全大写
+		if cases.contains(&WordCase::Lower) || cases.contains(&WordCase::Capitalized) {
+			let _ = forms.insert(lower.lower_form());
+			// 只转换首个字母并保留撇号位置
+			let mut bytes = lower.as_str().as_bytes().to_vec();
+			let first = bytes
+				.iter_mut()
+				.find(|byte| byte.is_ascii_alphabetic())
+				.expect("validated English text must contain a letter");
+			first.make_ascii_uppercase();
+			let capitalized = TextEn::from_string(
+				String::from_utf8(bytes).expect("validated English text must be ASCII"),
+			);
+			let _ = forms.insert(capitalized);
+			let _ = forms.insert(lower.upper_form());
+		}
+		// 混合大小写形式只补充标准小写
+		if cases.contains(&WordCase::LowerMixed) || cases.contains(&WordCase::CapitalizedMixed) {
+			let _ = forms.insert(lower.lower_form());
+		}
+	}
 	let mut grouped = HashMap::<WordCase, Vec<(TextEn, WordScore)>>::new();
 	for (lower, forms) in groups {
 		let score = scores[&lower];
@@ -619,27 +553,31 @@ fn build_automatic_words(
 	}
 
 	// 分类内排序并丢弃评分
-	grouped
+	let automatic = grouped
 		.into_iter()
 		.map(|(word_case, mut words)| {
-			words.sort_unstable_by(compare_scored_words);
+			words.sort_unstable_by(|(left_text, left_score), (right_text, right_score)| {
+				right_score
+					.freq_final
+					.total_cmp(&left_score.freq_final) // 最终词频
+					.then_with(|| left_text.len().cmp(&right_text.len())) // 码长
+					.then_with(|| left_text.cmp(right_text)) // 字面量
+			});
 			(word_case, words.into_iter().map(|(text, _)| text).collect())
 		})
-		.collect()
-}
+		.collect::<HashMap<WordCase, Vec<TextEn>>>();
 
-/// 校验并合并前置词、自动词和后置词
-fn merge_en_words(
-	first: &HashMap<WordCase, Vec<TextEn>>,
-	mut automatic: HashMap<WordCase, Vec<TextEn>>,
-	last: &HashMap<WordCase, Vec<TextEn>>,
-) -> Vec<Text> {
+	// 校验并合并前置词、自动词和后置词
 	// 收集自定义词之间及其与自动词的精确冲突
 	let automatic_texts = automatic.values().flatten().collect::<HashSet<_>>();
 	let mut custom_seen = HashSet::new();
 	let mut conflicts = HashSet::new();
 
-	for text in first.values().flatten().chain(last.values().flatten()) {
+	for text in EN_PREPEND
+		.values()
+		.flatten()
+		.chain(EN_APPEND.values().flatten())
+	{
 		if !custom_seen.insert(text.clone()) || automatic_texts.contains(text) {
 			let _ = conflicts.insert(text.clone());
 		}
@@ -658,48 +596,100 @@ fn merge_en_words(
 		panic!("custom English words conflict with generated words or each other: {conflicts}");
 	}
 
-	let mut words = Vec::new();
-	// 按固定大小写分类顺序合并三层优先级
-	for word_case in WordCase::OUTPUT_ORDER {
-		if let Some(values) = first.get(&word_case) {
-			words.extend(values.iter().cloned());
-		}
-		if let Some(values) = automatic.remove(&word_case) {
-			words.extend(values);
-		}
-		if let Some(values) = last.get(&word_case) {
-			words.extend(values.iter().cloned());
-		}
-	}
-
-	words.into_iter().map(TextEn::into_text).collect()
-}
-
-/// 英文候选词
-static EN_WORDS_LONG: LazyLock<Vec<Text>> = LazyLock::new(|| {
-	// 先生成自动词再合并自定义词
-	let automatic = build_automatic_words(&ESDB, &EN_FREQ);
-	merge_en_words(&EN_PREPEND, automatic, &EN_APPEND)
-		.iter()
-		.filter(|text| text.as_str().len() > MIN_LONG)
-		.cloned()
-		.collect()
+	build_dictionary(automatic, &EN_PREPEND, &EN_APPEND)
 });
 
-/// 用英文词的所有非空前缀构造词典
-fn build_en_dicts(words: &[Text]) -> HashMap<Code, Vec<Text>> {
-	let mut dictionary = HashMap::<Code, Vec<Text>>::new();
-
-	for text in words {
-		for end in 1..=text.as_str().len() {
-			let code = Code::from(text.as_str()[..end].to_owned());
-			dictionary.entry(code).or_default().push(text.clone());
+/// prepend单独置前，其余候选保留大小写分类内自动词、append的顺序
+fn build_dictionary(
+	mut automatic: HashMap<WordCase, Vec<TextEn>>,
+	prepend: &HashMap<WordCase, Vec<TextEn>>,
+	append: &HashMap<WordCase, Vec<TextEn>>,
+) -> EnglishDictionary {
+	let mut nodes = vec![CodeNode::root()];
+	for word_case in WordCase::OUTPUT_ORDER {
+		if let Some(values) = prepend.get(&word_case) {
+			for text in values {
+				insert_word(&mut nodes, text.0.clone());
+			}
 		}
 	}
-
-	dictionary
+	let mut prepend_counts = nodes
+		.iter()
+		.map(|node| node.texts().len())
+		.collect::<Vec<_>>();
+	for word_case in WordCase::OUTPUT_ORDER {
+		if let Some(values) = automatic.remove(&word_case) {
+			for text in values {
+				insert_word(&mut nodes, text.0);
+			}
+		}
+		if let Some(values) = append.get(&word_case) {
+			for text in values {
+				insert_word(&mut nodes, text.0.clone());
+			}
+		}
+	}
+	// 后续创建的路径没有prepend候选
+	prepend_counts.resize(nodes.len(), 0);
+	EnglishDictionary {
+		nodes,
+		prepend_counts,
+	}
 }
 
-/// 按所有非空前缀码分组的长英文词典
-pub static EN_DICT_LONG: LazyLock<HashMap<Code, Vec<Text>>> =
-	LazyLock::new(|| build_en_dicts(&EN_WORDS_LONG));
+/// 每个词只建一次完整路径，沿父链为每个非空前缀追加候选
+fn insert_word(nodes: &mut Vec<CodeNode>, text: Text) {
+	let mut node = insert_code(nodes, text.as_str());
+	while let Some(parent) = nodes[node].parent {
+		nodes[node].texts_mut().push(text.clone());
+		node = parent;
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn prepend_precedes_all_cases_and_expands_to_every_prefix() {
+		let words = |values: &[&str]| {
+			build_custom_words(values.iter().map(|value| (*value).to_owned()), "test")
+		};
+		let mut dictionary = build_dictionary(
+			words(&["apple", "apPly", "Apple"]),
+			&words(&["apPre", "apricot", "APREP"]),
+			&words(&["apAfter", "apogee"]),
+		);
+		let count = dictionary.nodes.len();
+		assert_eq!(dictionary.prepend_counts.len(), count);
+		for (code, prepend_count, expected) in [
+			(
+				"a",
+				2,
+				vec!["apricot", "apPre", "apple", "apogee", "apPly", "apAfter"],
+			),
+			(
+				"ap",
+				2,
+				vec!["apricot", "apPre", "apple", "apogee", "apPly", "apAfter"],
+			),
+			("apP", 1, vec!["apPre", "apPly"]),
+			("apPre", 1, vec!["apPre"]),
+			("app", 0, vec!["apple"]),
+			("A", 1, vec!["APREP", "Apple"]),
+		] {
+			let id = insert_code(&mut dictionary.nodes, code);
+			assert_eq!(dictionary.nodes.len(), count);
+			assert_eq!(dictionary.prepend_counts[id], prepend_count);
+			assert_eq!(
+				dictionary.nodes[id]
+					.texts()
+					.iter()
+					.map(Text::as_str)
+					.collect::<Vec<_>>(),
+				expected
+			);
+		}
+		assert!(dictionary.nodes[0].texts().is_empty());
+	}
+}

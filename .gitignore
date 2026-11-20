@@ -1,4 +1,6 @@
 temp*
+.local/
+AGENTS.override.md
 
 /sync/
 /build/
@@ -7,3 +9,5 @@ temp*
 /user.yaml
 
 /*.dict.yaml
+
+/site/dist/
